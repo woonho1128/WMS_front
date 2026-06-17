@@ -1,0 +1,399 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+/* ============================================================
+   WMS — Design tone overlay
+   "WMS (standalone)" 디자인 톤을 과장님 프로젝트에 입히는 레이어.
+   index.css 의 가장 마지막에서 로드되어 기존 토큰/공통 클래스를 덮어쓴다.
+   ============================================================ */
+
+:root {
+  /* surfaces */
+  --bg:            #eef1f6;
+  --surface:       #ffffff;
+  --surface-2:     #f8fafc;
+  --surface-3:     #f1f5f9;
+
+  /* sidebar */
+  --side-top:      #1f2a3d;
+  --side-bottom:   #0f1727;
+  --side-text:     #c7d2e0;
+  --side-muted:    #6b7a90;
+  --side-section:  #5b6b82;
+  --side-hover:    rgba(255,255,255,.06);
+  --side-active:   #2563eb;
+
+  /* text */
+  --ink:           #1e293b;
+  --ink-strong:    #0f172a;
+  --ink-muted:     #64748b;
+  --ink-faint:     #94a3b8;
+
+  /* lines */
+  --border:        #e5e9f0;
+  --border-soft:   #eef2f7;
+  --border-strong: #d3dae5;
+
+  /* brand */
+  --primary:       #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-press: #1e40af;
+  --primary-tint:  #eff5ff;
+  --primary-tint2: #dbe7fe;
+
+  /* status palette */
+  --c-success:  #16a34a;  --c-success-bg:  #e7f7ec;  --c-success-ink:#11703a;
+  --c-danger:   #dc2626;  --c-danger-bg:   #fdeaea;  --c-danger-ink: #a3161a;
+  --c-warning:  #d97706;  --c-warning-bg:  #fdf2e3;  --c-warning-ink:#9a5108;
+  --c-yellow:   #ca8a04;  --c-yellow-bg:   #fbf4d6;  --c-yellow-ink: #8a6308;
+  --c-info:     #2563eb;  --c-info-bg:     #e6effe;  --c-info-ink:   #1c4fc0;
+  --c-gray:     #64748b;  --c-gray-bg:     #eef1f6;  --c-gray-ink:   #475569;
+  --c-violet:   #7c3aed;  --c-violet-bg:   #f1ebfe;  --c-violet-ink: #5b21b6;
+  --c-indigo:   #4f46e5;  --c-indigo-bg:   #eaeafe;  --c-indigo-ink: #3730a3;
+  --c-teal:     #0d9488;  --c-teal-bg:     #d9f3f0;  --c-teal-ink:   #0a6b62;
+
+  /* 외주(ERP 미연동) accent */
+  --consign:      #9333ea;
+  --consign-bg:   #f6edfe;
+  --consign-ink:  #6b21a8;
+  --consign-line: #e6d4fb;
+
+  /* radii / shadow */
+  --r-sm: 7px;  --r-md: 10px;  --r-lg: 14px;  --r-xl: 18px;
+  --sh-card: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  --sh-pop:  0 12px 32px -8px rgba(16,24,40,.18), 0 4px 10px -4px rgba(16,24,40,.10);
+  --sh-modal:0 24px 64px -12px rgba(15,23,42,.34);
+
+  --side-w: 236px;
+  --header-h: 62px;
+  --font: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont,
+          "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+
+  /* ---- 기존 프로젝트 토큰을 디자인 팔레트로 remap ---- */
+  /* global.base.css 계열 (--color-*) : 페이지들이 광범위하게 사용 */
+  --color-primary: #2563eb;
+  --color-sidebar: #0f1727;
+  --color-bg: #eef1f6;
+  --color-card: #ffffff;
+  --color-border: #e5e9f0;
+  --color-text: #0f172a;
+  --color-text-secondary: #64748b;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  /* tokens/color.css 계열 (--c-*) : Button/Badge 등 UI 컴포넌트가 사용 */
+  --c-bg-app:       #eef1f6;
+  --c-bg-surface:   #ffffff;
+  --c-bg-subtle:    #f8fafc;
+  --c-border:       #e5e9f0;
+  --c-border-strong:#d3dae5;
+  --c-text-1:       #0f172a;
+  --c-text-2:       #64748b;
+  --c-text-3:       #94a3b8;
+  --c-primary-50:   #eff5ff;
+  --c-primary-100:  #dbe7fe;
+  --c-primary-500:  #3b82f6;
+  --c-primary-600:  #2563eb;
+  --c-success-fg:   #16a34a;
+  --c-warning-fg:   #d97706;
+  --c-danger-fg:    #dc2626;
+  --c-info-fg:      #2563eb;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "tnum" 1;
+}
+
+.tnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: "SF Mono", ui-monospace, "Roboto Mono", Menlo, monospace; }
+
+/* ============================================================
+   전역 공통 클래스 오버라이드 — 기존 페이지들이 자동으로 새 톤을 입는다
+   ============================================================ */
+
+/* page chrome */
+.app-content,
+.content-body { background: var(--bg); }
+
+.page-header h2,
+.page-header h3 { color: var(--ink-strong); letter-spacing: -.3px; }
+.page-header p { color: var(--ink-muted); }
+
+/* cards / surfaces */
+.card,
+.app-surface,
+.table-wrap {
+  border-color: var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+}
+.card-title { color: var(--ink-strong); }
+
+/* ---- data table ---- */
+.data-table thead { background: var(--surface-2); }
+.data-table thead th {
+  background: var(--surface-2);
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  border-bottom: 1px solid var(--border);
+  padding: 11px 14px;
+}
+.data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+  color: var(--ink);
+}
+.data-table tbody tr { transition: background .1s; }
+.data-table tbody tr:hover { background: var(--surface-2); }
+.row-selected,
+.data-table tbody tr.row-selected { background: var(--primary-tint); }
+
+/* ---- pagination ---- */
+.table-pagination { border-top: 1px solid var(--border); }
+.table-pagination button,
+.table-pagination select {
+  border-color: var(--border);
+  border-radius: var(--r-sm);
+  color: var(--ink-muted);
+}
+.table-pagination button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ---- status badge / chip ---- */
+.status-badge,
+.status-chip { font-weight: 700; }
+.status-badge.success,  .status-chip.success  { background: var(--c-success-bg); color: var(--c-success-ink); }
+.status-badge.warning,  .status-chip.warning  { background: var(--c-warning-bg); color: var(--c-warning-ink); }
+.status-badge.danger,   .status-chip.danger   { background: var(--c-danger-bg);  color: var(--c-danger-ink); }
+.status-badge.processing,
+.status-chip.processing { background: var(--c-info-bg); color: var(--c-info-ink); }
+.status-badge.pending   { background: var(--c-gray-bg); color: var(--c-gray-ink); }
+
+/* ---- kpi / metric cards ---- */
+.kpi-card,
+.monitor-kpi-card,
+.inbound-summary-card,
+.event-summary-card {
+  border-color: var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card);
+}
+.kpi-card:hover { border-color: var(--border-strong); box-shadow: var(--sh-pop); }
+.kpi-card h3 { color: var(--ink-strong); }
+.kpi-head p,
+.kpi-foot,
+.kpi-live { color: var(--ink-muted); }
+.kpi-trend.up { color: var(--c-success); }
+.kpi-trend.down { color: var(--c-danger); }
+.tone-inbound  { background: var(--c-info-bg); }
+.tone-outbound { background: var(--c-danger-bg); }
+.tone-order    { background: var(--c-violet-bg); }
+.tone-accuracy { background: var(--c-success-bg); }
+
+/* ---- toolbars / filters / inputs ---- */
+.table-toolbar,
+.inbound-toolbar,
+.event-filters { border-color: var(--border-soft); }
+.table-toolbar-filters input,
+.table-toolbar-filters select,
+.inbound-toolbar-filters input,
+.inbound-toolbar-filters select,
+.event-filters input,
+.event-filters select,
+.toolbar-filter,
+.role-select,
+.topbar-search {
+  border-color: var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--ink);
+}
+.table-toolbar-actions button,
+.inbound-toolbar-actions button {
+  border-color: var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-weight: 700;
+}
+.table-toolbar-actions button:hover,
+.inbound-toolbar-actions button:hover { background: var(--surface-3); }
+
+/* 출고 송장번호 필수 강조 */
+.invoice-input.is-required,
+.mobile-invoice input.is-required {
+  border-color: var(--c-warning) !important;
+  background: var(--c-warning-bg);
+}
+
+/* tab pills used across pages */
+.event-tabs button,
+.inbound-table-selectors button {
+  border-color: var(--border-strong);
+  color: var(--ink-muted);
+}
+.event-tabs button.active,
+.inbound-table-selectors button.active {
+  background: var(--primary-tint);
+  color: var(--primary);
+  border-color: var(--primary-tint2);
+}
+
+/* ---- buttons (global helper classes) ---- */
+.btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px -6px rgba(37,99,235,.6);
+}
+.btn-primary:hover { background: var(--primary-hover) !important; }
+.btn-secondary {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+.btn-secondary:hover { background: var(--surface-3); }
+
+/* ============================================================
+   디자인 시스템 공용 클래스 (새 컴포넌트 및 페이지에서 사용)
+   ============================================================ */
+
+/* badge */
+.ds-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700;
+  padding: 3px 9px 3px 8px; border-radius: 999px; line-height: 1.45; white-space: nowrap;
+}
+.ds-badge .bdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .9; }
+.ds-badge.success { background: var(--c-success-bg); color: var(--c-success-ink); }
+.ds-badge.danger  { background: var(--c-danger-bg);  color: var(--c-danger-ink); }
+.ds-badge.warning { background: var(--c-warning-bg); color: var(--c-warning-ink); }
+.ds-badge.yellow  { background: var(--c-yellow-bg);  color: var(--c-yellow-ink); }
+.ds-badge.info    { background: var(--c-info-bg);    color: var(--c-info-ink); }
+.ds-badge.gray    { background: var(--c-gray-bg);    color: var(--c-gray-ink); }
+.ds-badge.violet  { background: var(--c-violet-bg);  color: var(--c-violet-ink); }
+.ds-badge.indigo  { background: var(--c-indigo-bg);  color: var(--c-indigo-ink); }
+.ds-badge.teal    { background: var(--c-teal-bg);    color: var(--c-teal-ink); }
+.ds-badge.consign { background: var(--consign-bg);   color: var(--consign-ink); }
+
+/* ERP 연동 / 미연동 pill */
+.erp-on, .erp-off {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700;
+  padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+}
+.erp-on  { background: var(--c-info-bg); color: var(--c-info-ink); }
+.erp-off { background: var(--consign-bg); color: var(--consign-ink); border: 1px solid var(--consign-line); }
+.erp-on svg, .erp-off svg { width: 12px; height: 12px; }
+
+/* metric card */
+.ds-metric {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--sh-card); padding: 18px 20px; position: relative; overflow: hidden;
+}
+.ds-metric-top { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.ds-metric-ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: 0 0 40px; }
+.ds-metric-ico svg { width: 21px; height: 21px; }
+.ds-metric-label { font-size: 13.5px; font-weight: 700; color: var(--ink-muted); white-space: nowrap; }
+.ds-metric-val { display: flex; align-items: baseline; gap: 5px; margin: 14px 0 12px; }
+.ds-metric-num { font-size: 32px; font-weight: 800; color: var(--ink-strong); letter-spacing: -1px; line-height: 1; font-variant-numeric: tabular-nums; }
+.ds-metric-unit { font-size: 14px; font-weight: 600; color: var(--ink-faint); }
+.ds-metric-foot { font-size: 12.5px; color: var(--ink-muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ds-delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
+.ds-delta.up { color: var(--c-success); } .ds-delta.down { color: var(--c-danger); }
+.ds-delta svg { width: 14px; height: 14px; }
+
+/* stepper */
+.ds-stepper { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.ds-step { display: flex; align-items: center; gap: 10px; }
+.ds-step-node {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 800; flex: 0 0 34px;
+  background: var(--surface-3); color: var(--ink-faint); border: 2px solid var(--border);
+}
+.ds-step-node svg { width: 17px; height: 17px; }
+.ds-step.done .ds-step-node { background: var(--c-success); border-color: var(--c-success); color: #fff; }
+.ds-step.current .ds-step-node { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 0 0 4px var(--primary-tint); }
+.ds-step-label { font-size: 13px; font-weight: 700; color: var(--ink-faint); white-space: nowrap; }
+.ds-step.done .ds-step-label { color: var(--ink); }
+.ds-step.current .ds-step-label { color: var(--primary); }
+.ds-step-bar { flex: 1; height: 2px; min-width: 24px; background: var(--border); margin: 0 10px; border-radius: 2px; }
+.ds-step-bar.done { background: var(--c-success); }
+
+/* process banner (화면이 속한 WMS 단계 표시) */
+.wms-process-banner {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--sh-card); padding: 16px 20px; margin-bottom: 16px;
+}
+.wms-process-banner-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 14px;
+}
+.wms-process-banner-title { font-size: 13px; font-weight: 800; color: var(--ink-muted); letter-spacing: .3px; }
+.wms-process-banner-note { font-size: 12.5px; color: var(--ink-muted); }
+
+/* callout */
+.ds-callout { display: flex; gap: 11px; padding: 13px 15px; border-radius: var(--r-md); font-size: 13px; line-height: 1.5; align-items: flex-start; }
+.ds-callout svg { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 1px; }
+.ds-callout.danger { background: var(--c-danger-bg); color: var(--c-danger-ink); }
+.ds-callout.warning { background: var(--c-warning-bg); color: var(--c-warning-ink); }
+.ds-callout.success { background: var(--c-success-bg); color: var(--c-success-ink); }
+.ds-callout.info { background: var(--primary-tint); color: var(--primary-press); }
+.ds-callout.consign { background: var(--consign-bg); color: var(--consign-ink); }
+
+/* modal */
+.ds-overlay {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .5); z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: ds-fade .16s ease;
+}
+@keyframes ds-fade { from { opacity: 0; } to { opacity: 1; } }
+.ds-modal {
+  background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--sh-modal);
+  width: 460px; max-width: 100%; overflow: hidden; animation: ds-pop .2s cubic-bezier(.3, 1.2, .5, 1);
+}
+@keyframes ds-pop { from { transform: translateY(12px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.ds-modal-head { padding: 22px 24px 0; display: flex; gap: 14px; align-items: flex-start; }
+.ds-modal-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex: 0 0 46px; }
+.ds-modal-htext { flex: 1; min-width: 0; }
+.ds-modal-title { font-size: 18px; font-weight: 800; color: var(--ink-strong); letter-spacing: -.3px; }
+.ds-modal-desc { font-size: 13.5px; color: var(--ink-muted); margin-top: 5px; line-height: 1.55; }
+.ds-modal-x {
+  width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--surface-3);
+  color: var(--ink-muted); display: grid; place-items: center; cursor: pointer;
+}
+.ds-modal-x:hover { background: var(--border); color: var(--ink); }
+.ds-modal-body { padding: 18px 24px 4px; }
+.ds-modal-foot { padding: 18px 24px 22px; display: flex; gap: 10px; justify-content: flex-end; }
+
+/* modal form helpers */
+.ds-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+.ds-field > span { font-size: 12.5px; font-weight: 700; color: var(--ink-muted); }
+.ds-field select, .ds-field input, .ds-field textarea {
+  border: 1px solid var(--border-strong); border-radius: var(--r-md); background: #fff;
+  padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--ink); outline: none;
+}
+.ds-field select:focus, .ds-field input:focus, .ds-field textarea:focus { border-color: var(--primary); }
+
+/* outbound 요약 그리드: 카드 늘어나도 깨지지 않게 */
+.outbound-summary-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
+.outbound-row-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.outbound-reject-btn {
+  background: var(--c-danger-bg) !important;
+  color: var(--c-danger-ink) !important;
+  border-color: transparent !important;
+}
+.outbound-reject-btn:hover { background: #fbdada !important; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #c7d0dd; border-radius: 8px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #aab6c7; }
+::-webkit-scrollbar-track { background: transparent; }

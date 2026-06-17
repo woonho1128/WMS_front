@@ -1,0 +1,758 @@
+/* ==========================================================================
+   WMS Logistics Inspection Page Stylesheet (Standard Light Theme Integration)
+   ========================================================================== */
+
+/* 1. 레이아웃 컨테이너 및 기본 공통 스타일 */
+.inspection-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 기존 WMS 스타일인 app-surface를 통일 */
+.inspection-container .app-surface {
+  background: var(--color-card, #ffffff);
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* 2. 상단 통계 카드 그리드 */
+.inspection-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.inspection-stats-grid .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+}
+
+.inspection-container .stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 1.35rem;
+}
+
+/* 상태별 배경색 (WMS 라이트 모드 기준) */
+.inspection-container .stat-icon.info { background: #e0f2fe; color: #0284c7; }
+.inspection-container .stat-icon.warning { background: #fef3c7; color: #d97706; }
+.inspection-container .stat-icon.success { background: #dcfce7; color: #16a34a; }
+.inspection-container .stat-icon.primary { background: #dbeafe; color: #2563eb; }
+
+.inspection-container .stat-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inspection-container .stat-label {
+  font-size: 11px;
+  color: var(--color-text-secondary, #64748b);
+  font-weight: 700;
+}
+
+.inspection-container .stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.inspection-container .stat-value small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #64748b);
+  margin-left: 2px;
+}
+
+/* 3. 모바일 전용 탭 헤더 */
+.inspection-container .mobile-tabs-header {
+  display: none; /* 기본적으로 PC 화면에서는 안 보임 */
+  gap: 8px;
+  width: 100%;
+  background: #f1f5f9;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.inspection-container .tab-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #64748b);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.inspection-container .tab-btn.active {
+  background: var(--color-primary, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+}
+
+.inspection-container .tab-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 4. 메인 워크스페이스 레이아웃 */
+.inspection-main-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.inspection-container .card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border, #dce3ea);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+}
+
+.inspection-container .card-head strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.inspection-container .badge {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: var(--color-primary, #2563eb);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 5. 좌측 리스트 세션 스타일 */
+.inspection-search-box {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.inspection-search-box input {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--color-text, #0f172a);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.inspection-search-box input:focus {
+  border-color: var(--color-primary, #2563eb);
+}
+
+.inspection-container .search-btn {
+  background: var(--color-primary, #2563eb);
+  border: 1px solid var(--color-primary, #2563eb);
+  color: white;
+  padding: 0 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.inspection-container .search-btn:hover {
+  background: #1d4ed8;
+}
+
+.inspection-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+}
+
+/* 스크롤바 커스텀 */
+.inspection-list-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.inspection-list-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* 검수 항목 카드 */
+.inspection-item-card {
+  background: #ffffff;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.inspection-item-card:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.inspection-item-card.active {
+  background: #eff6ff;
+  border-color: var(--color-primary, #2563eb);
+}
+
+.inspection-container .card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.inspection-container .status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.inspection-container .status-badge.WAIT { background: #f1f5f9; color: #64748b; }
+.inspection-container .status-badge.IN_PROGRESS { background: #fef3c7; color: #d97706; }
+.inspection-container .status-badge.DONE { background: #dcfce7; color: #16a34a; }
+
+.item-sku {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.item-name {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: var(--color-text, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inspection-container .card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.inspection-container .qty-info strong {
+  color: var(--color-text, #0f172a);
+  font-size: 12px;
+}
+
+/* 진행 바 */
+.inspection-container .progress-bar-container {
+  width: 100%;
+  height: 4px;
+  background: #f1f5f9;
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.inspection-container .progress-bar-fill {
+  height: 100%;
+  background: var(--color-primary, #2563eb);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.inspection-item-card.status-DONE .progress-bar-fill {
+  background: var(--color-success, #22c55e);
+}
+
+.inspection-container .empty-state {
+  text-align: center;
+  padding: 30px 10px;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 12px;
+}
+
+/* 6. 우측 상세 입력 세션 스타일 */
+.barcode-tag {
+  background: #f1f5f9;
+  border: 1px solid var(--color-border, #dce3ea);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #64748b);
+  font-family: monospace;
+}
+
+.inspection-container .selected-item-info {
+  background: #f8fafc;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.inspection-container .info-main {
+  margin-bottom: 10px;
+}
+
+.inspection-container .info-main h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 2px 0;
+  color: var(--color-text, #0f172a);
+}
+
+.inspection-container .supplier-label {
+  font-size: 11px;
+  color: var(--color-primary, #2563eb);
+  font-weight: 700;
+}
+
+.inspection-container .info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.inspection-container .info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inspection-container .info-cell .label {
+  font-size: 10px;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.inspection-container .info-cell .value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.inspection-container .font-accent { color: var(--color-warning, #f59e0b) !important; }
+.inspection-container .font-primary { color: var(--color-primary, #2563eb) !important; }
+
+/* 7. 수량 입력 컨트롤러 */
+.inspection-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inspection-container .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inspection-container .section-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+  margin-bottom: 2px;
+}
+
+.inspection-container .qty-adjust-container {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.inspection-container .qty-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inspection-container .qty-box label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.inspection-container .qty-controller {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 42px;
+}
+
+.inspection-container .qty-controller.defect {
+  border-color: #fca5a5;
+}
+
+.inspection-container .qty-btn {
+  width: 42px;
+  height: 100%;
+  border: none;
+  background: #f8fafc;
+  color: var(--color-text, #0f172a);
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.inspection-container .qty-btn:hover {
+  background: #e2e8f0;
+}
+
+.inspection-container .qty-btn.minus { border-right: 1px solid var(--color-border, #dce3ea); }
+.inspection-container .qty-btn.plus { border-left: 1px solid var(--color-border, #dce3ea); }
+
+.inspection-container .qty-controller input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  text-align: center;
+  color: var(--color-text, #0f172a);
+  font-size: 14px;
+  font-weight: 700;
+  width: 100%;
+  outline: none;
+}
+
+.inspection-container .qty-controller input::-webkit-outer-spin-button,
+.inspection-container .qty-controller input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.btn-all-pass {
+  background: #eff6ff;
+  border: 1px dashed var(--color-primary, #2563eb);
+  color: var(--color-primary, #2563eb);
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 2px;
+}
+
+.btn-all-pass:hover {
+  background: var(--color-primary, #2563eb);
+  color: #ffffff;
+}
+
+/* 8. 품질 최종 판정 */
+.inspection-container .judgement-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.inspection-container .judge-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--color-border, #dce3ea);
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #ffffff;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.inspection-container .judge-btn.pass.active {
+  background: #dcfce7;
+  border-color: #22c55e;
+  color: #15803d;
+}
+
+.inspection-container .judge-btn.fail.active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.inspection-container .judge-btn.hold.active {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #b45309;
+}
+
+/* 불량 세부 정보 패널 */
+.defect-detail-panel {
+  background: #fff8f8;
+  border: 1px solid #fee2e2;
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.defect-reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.inspection-container .reason-chip {
+  padding: 8px 2px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--color-border, #dce3ea);
+  background: #ffffff;
+  color: var(--color-text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.inspection-container .reason-chip.active {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* 9. 사진 첨부 업로드 영역 */
+.inspection-container .photo-upload-box {
+  position: relative;
+  width: 100%;
+  height: 90px;
+  border: 1px dashed var(--color-border, #dce3ea);
+  background: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.inspection-container .photo-upload-box:hover {
+  border-color: var(--color-primary, #2563eb);
+}
+
+.inspection-container .upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-secondary, #64748b);
+  cursor: pointer;
+}
+
+.inspection-container .upload-icon {
+  font-size: 1.25rem;
+}
+
+.preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.inspection-container .delete-photo-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(239, 68, 68, 0.8);
+  border: none;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+/* 메모 */
+.inspection-memo {
+  background: #ffffff;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--color-text, #0f172a);
+  font-size: 12px;
+  outline: none;
+  resize: none;
+  width: 100%;
+}
+
+.inspection-memo:focus {
+  border-color: var(--color-primary, #2563eb);
+}
+
+/* 10. 최종 버튼 액션 */
+.inspection-container .form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.inspection-container .cancel-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #dce3ea);
+  background: #ffffff;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: none; /* PC에서는 필요 없음 */
+}
+
+.inspection-container .save-btn {
+  flex: 2;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--color-primary, #2563eb);
+  border: 1px solid var(--color-primary, #2563eb);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.inspection-container .save-btn:hover {
+  background: #1d4ed8;
+}
+
+.inspection-container .empty-workbench {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 260px);
+  color: var(--color-text-secondary, #64748b);
+  gap: 12px;
+}
+
+.inspection-container .empty-icon {
+  font-size: 2rem;
+}
+
+/* ==========================================================================
+   11. 모바일 기기(768px 이하) 대응 반응형 미디어 쿼리
+   ========================================================================== */
+@media (max-width: 768px) {
+  .inspection-stats-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2열 구조 */
+    gap: 8px;
+  }
+
+  .inspection-stats-grid .stat-card {
+    padding: 10px;
+  }
+
+  .inspection-container .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
+  }
+
+  .inspection-container .stat-value {
+    font-size: 1rem;
+  }
+
+  /* 모바일 탭 헤더 활성화 */
+  .inspection-container .mobile-tabs-header {
+    display: flex;
+  }
+
+  /* 메인 그리드를 모바일에서는 탭 선택에 따라 하나의 열로 렌더링 */
+  .inspection-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inspection-main-grid.show-list .inspection-detail-section {
+    display: none;
+  }
+
+  .inspection-main-grid.show-detail .inspection-list-section {
+    display: none;
+  }
+
+  .inspection-list-scroll {
+    max-height: calc(100vh - 280px); /* 스크롤 높이 최대 확보 */
+  }
+
+  /* 모바일 터치 최적화 버튼 및 요소 확대 */
+  .inspection-container .qty-controller {
+    height: 48px;
+  }
+
+  .inspection-container .qty-btn {
+    width: 48px;
+    font-size: 1.5rem;
+  }
+
+  .inspection-container .qty-controller input {
+    font-size: 16px;
+  }
+
+  .btn-all-pass {
+    padding: 12px;
+    font-size: 12px;
+  }
+
+  .inspection-container .judge-btn {
+    padding: 12px 6px;
+    font-size: 11px;
+  }
+
+  .defect-reasons-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .inspection-container .cancel-btn {
+    display: block; /* 모바일에서 목록으로 돌아갈 수 있게 함 */
+  }
+
+  .inspection-container .save-btn {
+    padding: 12px;
+    font-size: 13px;
+  }
+}

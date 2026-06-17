@@ -1,0 +1,4 @@
+﻿.u-muted { color: var(--c-text-2); }
+.u-caption { font-size: var(--fs-caption); }
+.u-dense { font-size: var(--fs-dense); }
+.u-row { height: var(--h-row); }

@@ -1,0 +1,19 @@
+﻿.wrap {
+  height: var(--h-input);
+  border: 1px solid var(--c-border);
+  border-radius: var(--rd-sm);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+.input {
+  border: 0;
+  outline: none;
+  flex: 1;
+  font-size: var(--fs-dense);
+  color: var(--c-text-1);
+  background: transparent;
+}
+.icon { color: var(--c-text-3); display: inline-flex; }

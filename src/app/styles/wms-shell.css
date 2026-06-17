@@ -1,0 +1,180 @@
+/* ============================================================
+   WMS — App shell (fixed sidebar + header)
+   디자인의 셸 구조. MainLayout 이 사용. wms- 접두사로 기존 레이아웃과 충돌 차단.
+   ============================================================ */
+
+.wms-app { display: flex; min-height: 100vh; background: var(--bg); }
+
+/* ---------- Sidebar ---------- */
+.wms-side {
+  width: var(--side-w);
+  flex: 0 0 var(--side-w);
+  background: linear-gradient(180deg, var(--side-top), var(--side-bottom));
+  color: var(--side-text);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+  z-index: 30;
+  transition: width .22s cubic-bezier(.4,0,.2,1), flex-basis .22s cubic-bezier(.4,0,.2,1);
+}
+.wms-app.collapsed .wms-side { width: 76px; flex-basis: 76px; }
+
+.wms-brand {
+  display: flex; align-items: center; gap: 11px;
+  padding: 0 18px;
+  min-height: var(--header-h);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.wms-brand-logo {
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 11px;
+  background: linear-gradient(150deg, #3b82f6, #2563eb);
+  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px;
+  box-shadow: 0 4px 12px -2px rgba(37,99,235,.55);
+}
+.wms-brand-text { display: flex; flex-direction: column; line-height: 1.2; overflow: hidden; white-space: nowrap; }
+.wms-brand-title { font-weight: 800; font-size: 16px; color: #fff; letter-spacing: -.2px; }
+.wms-brand-sub { font-size: 11.5px; color: var(--side-muted); margin-top: 2px; }
+.wms-app.collapsed .wms-brand-text { display: none; }
+.wms-app.collapsed .wms-brand { justify-content: center; padding: 0; }
+
+.wms-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 12px 8px; }
+.wms-nav::-webkit-scrollbar { width: 8px; }
+.wms-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 8px; border: none; }
+
+.wms-navsec {
+  font-size: 11px; font-weight: 700; letter-spacing: .4px;
+  color: var(--side-section); padding: 14px 12px 6px;
+}
+.wms-app.collapsed .wms-navsec { display: none; }
+
+.wms-navitem {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px; border-radius: var(--r-md);
+  color: var(--side-text); font-size: 14px; font-weight: 600;
+  position: relative; margin-bottom: 2px; width: 100%; text-align: left;
+  border: none; background: transparent; cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.wms-navitem:hover { background: var(--side-hover); color: #fff; }
+.wms-navitem.active { background: var(--side-active); color: #fff; box-shadow: 0 6px 16px -6px rgba(37,99,235,.7); }
+.wms-navitem .wms-ni-ico { width: 20px; height: 20px; flex: 0 0 20px; opacity: .92; display: grid; place-items: center; }
+.wms-navitem .wms-ni-ico svg { width: 20px; height: 20px; }
+.wms-navitem.active .wms-ni-ico { opacity: 1; }
+.wms-navitem .wms-ni-label { flex: 1; white-space: nowrap; overflow: hidden; }
+.wms-navitem .wms-ni-caret { width: 16px; height: 16px; flex: 0 0 16px; transition: transform .18s ease; opacity: .6; }
+.wms-navitem .wms-ni-caret svg { width: 16px; height: 16px; }
+.wms-navgroup.open > .wms-navitem .wms-ni-caret { transform: rotate(90deg); }
+.wms-app.collapsed .wms-navitem { justify-content: center; padding: 11px; }
+.wms-app.collapsed .wms-navitem .wms-ni-label,
+.wms-app.collapsed .wms-navitem .wms-ni-caret { display: none; }
+
+/* sub features */
+.wms-subtree { display: grid; gap: 1px; overflow: hidden; margin: 1px 0 4px; }
+.wms-app.collapsed .wms-subtree { display: none; }
+.wms-sublink {
+  display: block; padding: 8px 12px 8px 43px; border-radius: var(--r-sm);
+  color: var(--side-muted); font-size: 13px; font-weight: 600; text-decoration: none;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background .12s, color .12s;
+}
+.wms-sublink:hover { background: var(--side-hover); color: #fff; }
+.wms-sublink.active { color: #fff; background: rgba(37,99,235,.18); box-shadow: inset 3px 0 0 var(--primary); }
+
+.wms-user {
+  display: flex; align-items: center; gap: 11px;
+  padding: 14px 16px; border-top: 1px solid rgba(255,255,255,.07);
+}
+.wms-avatar {
+  width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px;
+  background: linear-gradient(150deg, #475569, #334155);
+  display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px;
+}
+.wms-user-text { display: flex; flex-direction: column; line-height: 1.25; overflow: hidden; }
+.wms-user-name { font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; }
+.wms-user-role { font-size: 11.5px; color: var(--side-muted); white-space: nowrap; }
+.wms-app.collapsed .wms-user-text { display: none; }
+.wms-app.collapsed .wms-user { justify-content: center; padding: 14px 0; }
+
+.wms-logout {
+  margin-left: auto; flex: 0 0 32px;
+  width: 32px; height: 32px; border-radius: 9px;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04);
+  color: var(--side-text); display: grid; place-items: center; cursor: pointer;
+  transition: background .14s, color .14s, border-color .14s;
+}
+.wms-logout:hover { background: var(--c-danger); border-color: var(--c-danger); color: #fff; }
+.wms-app.collapsed .wms-logout { display: none; }
+
+/* ---------- Main column ---------- */
+.wms-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.wms-header {
+  height: var(--header-h); flex: 0 0 var(--header-h);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 22px; position: sticky; top: 0; z-index: 20;
+}
+.wms-hbtn {
+  width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface); display: grid; place-items: center; color: var(--ink-muted);
+  cursor: pointer; transition: background .12s, color .12s;
+}
+.wms-hbtn:hover { background: var(--surface-3); color: var(--ink); }
+.wms-hbtn svg { width: 18px; height: 18px; }
+
+.wms-crumb { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.wms-crumb-top { font-size: 11.5px; color: var(--ink-faint); font-weight: 600; white-space: nowrap; }
+.wms-crumb-now { font-size: 17px; font-weight: 800; color: var(--ink-strong); letter-spacing: -.3px; white-space: nowrap; }
+.wms-spacer { flex: 1; }
+
+.wms-search {
+  display: flex; align-items: center; gap: 9px;
+  width: 320px; max-width: 32vw; height: 40px;
+  background: var(--surface-3); border: 1px solid transparent;
+  border-radius: 10px; padding: 0 13px; color: var(--ink-faint);
+  transition: border-color .14s, background .14s;
+}
+.wms-search:focus-within { background: #fff; border-color: var(--primary); }
+.wms-search svg { width: 17px; height: 17px; flex: 0 0 17px; }
+.wms-search input { border: none; background: transparent; outline: none; flex: 1; font-size: 13.5px; color: var(--ink); font-family: inherit; }
+.wms-search input::placeholder { color: var(--ink-faint); }
+
+.wms-role {
+  height: 40px; border: 1px solid var(--border-strong); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font-family: inherit; font-size: 13px;
+  font-weight: 600; padding: 0 10px; cursor: pointer;
+}
+
+.wms-bell { position: relative; }
+.wms-bell .wms-dot { position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-danger); border: 2px solid var(--surface); }
+
+.wms-content { flex: 1; overflow-y: auto; padding: 22px 24px 56px; min-width: 0; }
+
+/* ---------- mobile (off-canvas) ---------- */
+.wms-backdrop {
+  position: fixed; inset: 0; background: rgba(15,23,42,.45);
+  opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 29;
+}
+.wms-backdrop.show { opacity: 1; pointer-events: auto; }
+
+@media (max-width: 1024px) {
+  .wms-side {
+    position: fixed; left: 0; top: 0; height: 100vh;
+    transform: translateX(-100%); transition: transform .22s cubic-bezier(.4,0,.2,1);
+    width: var(--side-w) !important; flex-basis: var(--side-w) !important;
+  }
+  .wms-app.mobile-open .wms-side { transform: translateX(0); }
+  .wms-app.collapsed .wms-side { width: var(--side-w) !important; flex-basis: var(--side-w) !important; }
+  .wms-app.collapsed .wms-navsec,
+  .wms-app.collapsed .wms-navitem .wms-ni-label,
+  .wms-app.collapsed .wms-navitem .wms-ni-caret,
+  .wms-app.collapsed .wms-subtree,
+  .wms-app.collapsed .wms-brand-text,
+  .wms-app.collapsed .wms-user-text { display: revert; }
+  .wms-search { width: 180px; }
+}
+
+@media (max-width: 640px) {
+  .wms-search { display: none; }
+  .wms-content { padding: 16px 14px 48px; }
+  .wms-header { padding: 0 14px; gap: 10px; }
+}

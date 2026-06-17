@@ -1,0 +1,41 @@
+.alerts-page { display: grid; gap: 10px; }
+.alerts-top { min-height: 62px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button { border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+.tabs .active { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700; }
+.actions { display: flex; align-items: center; gap: 8px; }
+.actions button { height: 32px; border: 1px solid #d8e2ef; background: #fff; border-radius: 8px; padding: 0 10px; }
+.actions span { color: #16a34a; font-size: 13px; font-weight: 700; }
+
+.alerts-grid { display: grid; grid-template-columns: 1.6fr 0.68fr; gap: 10px; }
+.left { padding: 10px; }
+.filters { display: grid; grid-template-columns: 130px 130px 190px 1fr 78px; gap: 8px; margin-bottom: 10px; }
+.filters select, .filters input, .filters button { height: 34px; border: 1px solid #d8e2ef; border-radius: 8px; padding: 0 10px; background: #fff; }
+
+.alerts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.alerts-table th, .alerts-table td { padding: 10px 8px; border-bottom: 1px solid #edf2f7; text-align: left; }
+.alerts-table th { color: #64748b; font-size: 12px; font-weight: 700; background: #f8fafc; }
+
+.pill { display: inline-flex; min-width: 44px; justify-content: center; border-radius: 999px; font-size: 11px; padding: 3px 8px; font-weight: 700; }
+.pill.경고 { background: #fee2e2; color: #dc2626; }
+.pill.주의 { background: #fff7ed; color: #d97706; }
+.pill.정보 { background: #e0e7ff; color: #4f46e5; }
+.red { color: #dc2626; font-weight: 700; }
+.green { color: #16a34a; font-weight: 700; }
+
+.right { display: grid; gap: 10px; }
+.card { padding: 12px; }
+.head { margin-bottom: 10px; }
+.summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.summary > div { border: 1px solid #e5ebf3; border-radius: 10px; padding: 10px; text-align: center; }
+.summary b { display: block; font-size: 28px; }
+.summary span { color: #64748b; font-size: 12px; }
+.chart { min-height: 140px; border: 1px dashed #d8e2ef; border-radius: 10px; display: grid; place-items: center; color: #64748b; }
+.resolved { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.resolved li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.resolved b { color: #64748b; font-size: 12px; }
+
+@media (max-width: 1280px) {
+  .alerts-grid { grid-template-columns: 1fr; }
+  .filters { grid-template-columns: 1fr 1fr; }
+}

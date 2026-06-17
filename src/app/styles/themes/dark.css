@@ -1,0 +1,15 @@
+﻿[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg-app: #0b1220;
+  --c-bg-surface: #111827;
+  --c-bg-subtle: #0f172a;
+  --c-border: #1f2937;
+  --c-border-strong: #334155;
+  --c-text-1: #e5e7eb;
+  --c-text-2: #9ca3af;
+  --c-text-3: #64748b;
+  --c-sidebar-bg: #0f172a;
+  --c-sidebar-border: #1e293b;
+  --c-sidebar-text: #cbd5e1;
+  --c-sidebar-text-active: #ffffff;
+}

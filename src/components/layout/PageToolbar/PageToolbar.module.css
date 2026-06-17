@@ -1,0 +1,11 @@
+﻿.toolbar {
+  height: 44px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--rd-md);
+  background: var(--c-bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+.left, .right { display: inline-flex; align-items: center; gap: 8px; }

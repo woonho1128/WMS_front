@@ -1,0 +1,1 @@
+export { ErpBadge } from "./ErpBadge";

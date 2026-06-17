@@ -1,0 +1,116 @@
+.ifmon-page {
+  display: grid;
+  gap: 14px;
+}
+
+/* 요약 카드 */
+.ifmon-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.ifmon-kpi {
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+  border-left: 3px solid var(--border-strong);
+}
+.ifmon-kpi span {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.ifmon-kpi strong {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--ink-strong);
+  letter-spacing: -.5px;
+  font-variant-numeric: tabular-nums;
+}
+.ifmon-kpi.success { border-left-color: var(--c-success); }
+.ifmon-kpi.warning { border-left-color: var(--c-warning); }
+.ifmon-kpi.danger  { border-left-color: var(--c-danger); }
+.ifmon-kpi.info    { border-left-color: var(--c-info); }
+.ifmon-kpi.gray    { border-left-color: var(--c-gray); }
+
+/* 툴바 */
+.ifmon-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  flex-wrap: wrap;
+}
+.ifmon-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ifmon-filters label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.ifmon-filters select,
+.ifmon-filters input {
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: #fff;
+  padding: 0 11px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+}
+.ifmon-search input { min-width: 220px; }
+
+.ifmon-notice {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+/* 테이블 */
+.ifmon-table-wrap { overflow-x: auto; }
+.ifmon-table { width: 100%; min-width: 980px; }
+.ifmon-check-col { width: 40px; text-align: center; }
+.ifmon-msg { color: var(--ink-muted); }
+
+.ifmon-dir {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+}
+.ifmon-dir.recv { background: var(--c-info-bg); color: var(--c-info-ink); }
+.ifmon-dir.send { background: var(--c-teal-bg); color: var(--c-teal-ink); }
+
+.ifmon-resend {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ifmon-na { color: var(--ink-faint); font-size: 12.5px; }
+
+.ifmon-empty {
+  text-align: center;
+  padding: 36px 16px;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 1180px) {
+  .ifmon-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .ifmon-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

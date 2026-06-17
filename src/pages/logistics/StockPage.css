@@ -1,0 +1,564 @@
+/* ==========================================================================
+   WMS Logistics Stock Management Page Stylesheet (Light Theme & Mobile Optimized)
+   ========================================================================== */
+
+/* 1. 레이아웃 컨테이너 및 기본 공통 스타일 */
+.stock-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* WMS 공통 스타일인 app-surface를 통일 */
+.stock-page-container .app-surface {
+  background: var(--color-card, #ffffff);
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* 2. 상단 통계 카드 그리드 */
+.stock-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.stock-stats-grid .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+}
+
+.stock-page-container .stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 1.35rem;
+}
+
+.stock-page-container .stat-icon.primary { background: #dbeafe; color: #2563eb; }
+.stock-page-container .stat-icon.info { background: #e0f2fe; color: #0284c7; }
+.stock-page-container .stat-icon.warning { background: #fee2e2; color: #ef4444; }
+.stock-page-container .stat-icon.hold { background: #f1f5f9; color: #475569; }
+
+.stock-page-container .stat-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stock-page-container .stat-label {
+  font-size: 11px;
+  color: var(--color-text-secondary, #64748b);
+  font-weight: 700;
+}
+
+.stock-page-container .stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.stock-page-container .stat-value small {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #64748b);
+  margin-left: 2px;
+}
+
+.stock-page-container .text-danger { color: #ef4444 !important; }
+.stock-page-container .text-hold { color: #475569 !important; }
+
+/* 3. 검색 및 다중 조건 필터 영역 */
+.stock-filter-card {
+  padding: 14px 16px !important;
+}
+
+.stock-page-container .filter-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stock-page-container .filter-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.stock-page-container .mobile-filter-toggle-btn {
+  display: none; /* PC에서는 필요 없음 */
+  background: transparent;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 6px;
+  color: var(--color-text-secondary, #64748b);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stock-page-container .filter-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr auto;
+  gap: 12px;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+
+.stock-page-container .filter-inputs-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.stock-page-container .filter-inputs-grid span {
+  color: var(--color-text-secondary, #64748b);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.stock-page-container .filter-inputs-grid input,
+.stock-page-container .filter-inputs-grid select {
+  height: 34px;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--color-text, #0f172a);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.stock-page-container .filter-inputs-grid input:focus,
+.stock-page-container .filter-inputs-grid select:focus {
+  border-color: var(--color-primary, #2563eb);
+}
+
+.stock-page-container .filter-action-buttons {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.stock-page-container .ghost {
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #dce3ea);
+  background: #ffffff;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.stock-page-container .ghost:hover {
+  background: #f8fafc;
+  color: var(--color-text, #0f172a);
+}
+
+/* 4. 모바일 전용 탭 헤더 */
+.stock-page-container .mobile-tabs-header {
+  display: none; /* 기본적으로 PC 화면에서는 숨김 */
+  gap: 8px;
+  width: 100%;
+  background: #f1f5f9;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.stock-page-container .tab-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #64748b);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.stock-page-container .tab-btn.active {
+  background: var(--color-primary, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+}
+
+/* 5. 메인 뷰포트 레이아웃 */
+.stock-main-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.stock-page-container .card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border, #dce3ea);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+}
+
+.stock-page-container .card-head strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+/* 좌측 요약 패널 */
+.stock-page-container .summary-cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.stock-page-container .zone-summary-card {
+  background: #f8fafc;
+  border: 1px solid var(--color-border, #dce3ea);
+  border-radius: 8px;
+  padding: 12px;
+  transition: border-color 0.15s;
+}
+
+.stock-page-container .zone-summary-card:hover {
+  border-color: #cbd5e1;
+}
+
+.stock-page-container .zone-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.stock-page-container .zone-badge {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: var(--color-primary, #2563eb);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.stock-page-container .wh-name {
+  font-size: 10px;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.stock-page-container .zone-stats {
+  display: grid;
+  gap: 6px;
+}
+
+.stock-page-container .zone-stats div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.stock-page-container .zone-stats .label {
+  color: var(--color-text-secondary, #64748b);
+}
+
+.stock-page-container .zone-stats .val {
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.stock-page-container .zone-stats .val.highlight {
+  color: var(--color-primary, #2563eb);
+}
+
+/* 우측 상세 패널 */
+.stock-table-wrapper {
+  overflow-x: auto;
+}
+
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.stock-table th,
+.stock-table td {
+  border-bottom: 1px solid var(--color-border, #dce3ea);
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+
+.stock-table th {
+  background: #f8fafc;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.stock-table tbody tr {
+  transition: background 0.15s;
+}
+
+.stock-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* 안전재고 부족 품목 하이라이트 행 */
+.stock-table tr.row-warning {
+  background: #fff5f5;
+}
+
+.stock-table tr.row-warning:hover {
+  background: #fee2e2;
+}
+
+.item-name-cell {
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
+}
+
+.stock-page-container .font-mono { font-family: monospace; }
+.stock-page-container .font-bold { font-weight: 700; }
+.stock-page-container .text-right { text-align: right; }
+.stock-page-container .text-center { text-align: center; }
+
+.stock-page-container .text-muted {
+  color: var(--color-text-secondary, #64748b);
+}
+
+.stock-page-container .loc-badge {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+/* 상태 배지 */
+.stock-page-container .badge-status {
+  display: inline-flex;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.stock-page-container .badge-status.normal { background: #e9f8ec; color: #1f9d49; }
+.stock-page-container .badge-status.shortage { background: #fee2e2; color: #cb3a3a; }
+.stock-page-container .badge-status.hold { background: #f1f5f9; color: #475569; }
+
+.stock-page-container .empty-td {
+  padding: 40px 0 !important;
+  color: var(--color-text-secondary, #64748b);
+}
+
+.stock-page-container .empty-info {
+  text-align: center;
+  padding: 30px;
+  color: var(--color-text-secondary, #64748b);
+  font-size: 12px;
+}
+
+/* 모바일용 카드 리스트는 PC에서 숨김 */
+.stock-mobile-cards {
+  display: none;
+}
+
+
+/* ==========================================================================
+   6. 모바일 기기(768px 이하) 대응 반응형 미디어 쿼리
+   ========================================================================== */
+@media (max-width: 768px) {
+  .stock-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stock-stats-grid .stat-card {
+    padding: 10px;
+  }
+
+  .stock-page-container .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.15rem;
+  }
+
+  .stock-page-container .stat-value {
+    font-size: 1rem;
+  }
+
+  /* 모바일 필터 접이식 아코디언화 */
+  .stock-page-container .mobile-filter-toggle-btn {
+    display: block;
+  }
+
+  .stock-page-container .filter-inputs-grid {
+    grid-template-columns: 1fr; /* 세로 1열 정렬 */
+    gap: 10px;
+    margin-top: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s;
+  }
+
+  .stock-page-container .filter-inputs-grid.expanded {
+    max-height: 300px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--color-border, #dce3ea);
+  }
+
+  .stock-page-container .filter-inputs-grid label {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-page-container .filter-action-buttons {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .stock-page-container .filter-action-buttons button {
+    width: 100%;
+    height: 40px;
+  }
+
+  /* 모바일 탭 헤더 활성화 */
+  .stock-page-container .mobile-tabs-header {
+    display: flex;
+  }
+
+  /* 메인 그리드를 모바일에서는 탭 선택에 따라 하나의 열로 렌더링 */
+  .stock-main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-main-layout.show-list .stock-summary-panel {
+    display: none;
+  }
+
+  .stock-main-layout.show-summary .stock-list-panel {
+    display: none;
+  }
+
+  /* 테이블은 모바일에서 완전히 숨기고, 모바일 카드 활성화 */
+  .stock-table-wrapper {
+    display: none;
+  }
+
+  .stock-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* 모바일 재고 카드 스타일 */
+  .stock-page-container .mobile-stock-card {
+    background: #ffffff;
+    border: 1px solid var(--color-border, #dce3ea);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  }
+
+  .stock-page-container .mobile-stock-card.warning {
+    background: #fff5f5;
+    border-color: #fca5a5;
+  }
+
+  .stock-page-container .mobile-stock-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stock-page-container .mobile-stock-card .card-sku {
+    font-size: 10px;
+    font-family: monospace;
+    color: var(--color-text-secondary, #64748b);
+  }
+
+  .stock-page-container .card-title-text {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--color-text, #0f172a);
+  }
+
+  .stock-page-container .card-meta-info {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--color-text-secondary, #64748b);
+  }
+
+  .stock-page-container .card-location-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px dashed var(--color-border, #dce3ea);
+    border-bottom: 1px dashed var(--color-border, #dce3ea);
+    padding: 6px 0;
+    font-size: 11px;
+  }
+
+  .stock-page-container .card-location-details .wh-zone {
+    color: var(--color-text-secondary, #64748b);
+  }
+
+  .stock-page-container .card-location-details .loc-tag {
+    font-weight: 700;
+    color: var(--color-text, #0f172a);
+  }
+
+  .stock-page-container .card-quantities {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 2px;
+  }
+
+  .stock-page-container .qty-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .stock-page-container .qty-cell .label {
+    color: var(--color-text-secondary, #64748b);
+    font-size: 11px;
+  }
+
+  .stock-page-container .qty-cell .val {
+    font-size: 12px;
+  }
+}

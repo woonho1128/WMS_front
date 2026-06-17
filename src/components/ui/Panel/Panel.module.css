@@ -1,0 +1,16 @@
+﻿.panel {
+  background: var(--c-bg-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--rd-md);
+  box-shadow: var(--sh-soft);
+}
+.header {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--c-border);
+}
+.header h3 { font-size: var(--fs-body); font-weight: var(--fw-semibold); }
+.body { padding: 12px; }
