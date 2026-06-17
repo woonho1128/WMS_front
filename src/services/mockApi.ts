@@ -54,11 +54,11 @@ let locations = [
 ];
 
 const items = [
-  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, active: true },
-  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, active: true },
-  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, active: true },
-  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, active: true },
-  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, active: true }
+  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, category: "음향기기", consign: false, active: true },
+  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, category: "케이블", consign: false, active: true },
+  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, category: "배터리", consign: false, active: true },
+  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, category: "주방용품", consign: true, active: true },
+  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, category: "부자재", consign: false, active: true }
 ];
 
 let stocks = [
@@ -108,16 +108,16 @@ let outbounds = [
 ];
 
 const outboundLines: Record<number, AnyRecord[]> = {
-  46: [{ id: 1, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", orderQty: 5, pickedQty: 0, stockQty: 60, lotNo: "LOT260515-0008", locationCode: "PY-A-01", scanned: false }],
-  62: [{ id: 2, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", orderQty: 32, pickedQty: 32, stockQty: 215, lotNo: "LOT260407-0006", locationCode: "PC-A-01", scanned: true }],
-  70: [{ id: 3, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", orderQty: 84, pickedQty: 36, stockQty: 75, lotNo: "LOT260520-0014", locationCode: "PC-A-02", scanned: true }]
+  46: [{ id: 1, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", consign: false, orderQty: 5, pickedQty: 0, availableQty: 60, lotNo: "LOT260515-0008", locationCode: "PY-A-01", scanned: false }],
+  62: [{ id: 2, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", consign: false, orderQty: 32, pickedQty: 32, availableQty: 215, lotNo: "LOT260407-0006", locationCode: "PC-A-01", scanned: true }],
+  70: [{ id: 3, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", consign: false, orderQty: 84, pickedQty: 36, availableQty: 75, lotNo: "LOT260520-0014", locationCode: "PC-A-02", scanned: true }]
 };
 
 let carriers: AnyRecord[] = [
-  { id: 1, name: "CJ대한통운", region: "전국", active: true },
-  { id: 2, name: "롯데택배", region: "수도권", active: true },
-  { id: 3, name: "한진택배", region: "지방권", active: true },
-  { id: 4, name: "사내차량", region: "전국", active: true }
+  { id: 1, code: "CJ", name: "CJ대한통운", region: "전국", manager: "김배송", phone: "1588-1255", accountUser: "carrier_cj", portalRole: "배차공유", active: true },
+  { id: 2, code: "LOTTE", name: "롯데택배", region: "수도권", manager: "이수도", phone: "1588-2121", accountUser: "carrier_lotte", portalRole: "조회", active: true },
+  { id: 3, code: "HANJIN", name: "한진택배", region: "지방권", manager: "박지방", phone: "1588-0011", accountUser: "carrier_hanjin", portalRole: "조회", active: true },
+  { id: 4, code: "INHOUSE", name: "사내차량", region: "전국", manager: "물류팀", phone: "055-000-0000", accountUser: null, portalRole: "조회", active: true }
 ];
 
 let dispatched: AnyRecord[] = [
@@ -129,15 +129,25 @@ let notices = [
   { id: 2, category: "업무협조", title: "입고 확정 화면 버튼 흐름 확인 요청", content: "입고등록, 로케이션 지정, 확정 흐름을 검수해 주세요.", author: "입고담당", pinned: false, createdAt: "2026-06-16T15:20:00" }
 ];
 
+let returns = [
+  { id: 1, returnNo: "RT-260617-001", omsOrderNo: "OMS-RT-26061701", customerCode: "219475", customerName: "대림 스마트몰", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", qty: 3, reason: "초기불량", manager: "이지은", warehouseName: "용인물류센터", locationCode: "PY-A-01", status: "received", rejectReason: null, receivedAt: today + " 09:20", processedAt: null },
+  { id: 2, returnNo: "RT-260616-002", omsOrderNo: "OMS-RT-26061602", customerCode: "127419", customerName: "(주)코스트코리아", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", qty: 2, reason: "단순변심", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "rejected", rejectReason: "반품 기한 초과", receivedAt: "2026-06-16 14:10", processedAt: "2026-06-17 10:00" },
+  { id: 3, returnNo: "RT-260615-003", omsOrderNo: "OMS-RT-26061503", customerCode: "771205", customerName: "이마트 트레이더스", itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", qty: 10, reason: "오배송", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "approved", rejectReason: null, receivedAt: "2026-06-15 11:05", processedAt: "2026-06-16 09:30" }
+];
+
 let stocktakings: AnyRecord[] = [
   { id: 1, countDate: today, warehouseName: "창원공장", locationCode: "PC-A-01", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", lotNo: "LOT260407-0006", systemQty: 260, countedQty: 258, diff: -2, status: "COUNTED", memo: null, createdBy: "admin", adjustedAt: null },
   { id: 2, countDate: today, warehouseName: "용인물류센터", locationCode: "PY-A-01", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", lotNo: "LOT260515-0008", systemQty: 95, countedQty: 95, diff: 0, status: "COUNTED", memo: null, createdBy: "admin", adjustedAt: null }
 ];
 
 let policies = [
-  { policyKey: "AUTO_REPLENISH", name: "피킹존 자동 보충 감지", enabled: true, description: "가용재고가 안전재고 아래로 내려가면 보충 대상으로 표시합니다." },
-  { policyKey: "ERP_SEND_AFTER_SHIP", name: "출고확정 후 ERP 전송", enabled: true, description: "출고완료 시 중계서버로 출고 결과를 전송합니다." }
+  { policyKey: "reserve_reflect", label: "예약재고 반영", enabled: true, description: "예약(할당) 수량을 가용재고에서 차감합니다." },
+  { policyKey: "exclude_defect", label: "불량재고 제외", enabled: true, description: "불량 재고를 가용재고에서 제외합니다." },
+  { policyKey: "exclude_moving", label: "이동중 재고 제외", enabled: false, description: "이동중(창고간 이동) 재고를 가용재고에서 제외합니다." },
+  { policyKey: "exclude_putaway", label: "격납대기 재고 제외", enabled: true, description: "격납대기(입고 후 미격납) 재고를 가용재고에서 제외합니다." }
 ];
+
+const policyBuckets = { onHand: 2574, allocated: 107, defect: 12, moving: 50, putawayWait: 295 };
 
 const summary = {
   logistics: { todayInbound: 4, todayOutbound: 5, totalStock: 2574, working: 9 },
@@ -202,6 +212,17 @@ function stockTrace(q: string) {
   };
 }
 
+function chatbotAnswer(q: string) {
+  const text = q ?? "";
+  if (text.includes("쇼트") || text.includes("부족")) return { intent: "shortage", answer: "쇼트 예상 품목은 2건입니다 (USB-C 케이블, 볼트 M8).", rows: [{ label: "USB-C 케이블", value: "가용 60 / 안전 180 · 위험" }, { label: "볼트 M8", value: "가용 75 / 안전 300 · 위험" }] };
+  if (text.includes("출고")) return { intent: "outbound", answer: "금일 출고는 5건입니다.", rows: [{ label: "출고대기", value: "1건" }, { label: "피킹중", value: "1건" }, { label: "출고완료", value: "1건" }] };
+  if (text.includes("장기")) return { intent: "aging", answer: "장기재고(1년+)는 2건, 재고금액 ₩652,200입니다.", rows: [{ label: "장기재고", value: "2건" }, { label: "장기재고 금액", value: "₩652,200" }] };
+  if (text.includes("보충")) return { intent: "replenish", answer: "보충 대상은 2건입니다.", rows: [{ label: "보충 대상", value: "2건" }] };
+  if (text.includes("격납")) return { intent: "putaway", answer: "격납대기는 1건(295 EA)입니다.", rows: [{ label: "격납대기", value: "1건 / 295 EA" }] };
+  if (text.includes("입고")) return { intent: "inbound", answer: "금일 입고는 입고예정 1건, 입고확정 2건입니다.", rows: [{ label: "입고예정", value: "1건" }, { label: "입고확정", value: "2건" }] };
+  return { intent: "stock", answer: "현재 총 재고는 2,574 EA이고 보충 대상은 2건입니다.", rows: [{ label: "총 재고", value: "2,574 EA" }, { label: "보충 대상", value: "2건" }] };
+}
+
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -209,7 +230,9 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   const clean = stripQuery(url.pathname);
 
   if (method !== "GET") {
-    handleMutation(clean, init?.body ? JSON.parse(String(init.body)) : {});
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+    if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
+    handleMutation(clean, body);
     return copy({ ok: true }) as T;
   }
 
@@ -230,12 +253,19 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean.match(/^\/warehouses\/\d+\/locations$/)) return copy(asWarehouseLocations(Number(clean.split("/")[2]))) as T;
   if (clean === "/locations") return copy(locations) as T;
   if (clean === "/zones") return copy(zones) as T;
-  if (clean === "/items") return copy(items) as T;
+  if (clean === "/items") return copy(items.map((it) => ({ id: it.id, code: it.itemCode, name: it.itemName, category: it.category, unit: it.unit, safetyStock: it.safetyStock, consign: it.consign, active: it.active }))) as T;
   if (clean === "/carriers") return copy(carriers) as T;
   if (clean === "/dispatch/targets") return copy(dispatchTargets(url.searchParams.get("region") ?? "수도권")) as T;
   if (clean === "/dispatch") return copy(dispatched.filter((d) => !url.searchParams.get("region") || d.region === url.searchParams.get("region"))) as T;
-  if (clean === "/dispatch/deliveries") return copy(dispatched.map((d) => ({ ...d, deliveryNo: d.dispatchNo, invoiceNo: "MOCK-" + d.id }))) as T;
-  if (clean === "/analytics/aging") return copy(stocks.map((s, idx) => ({ ...s, agingDays: 25 + idx * 18, ageBucket: idx > 3 ? "90일+" : "30일" }))) as T;
+  if (clean === "/dispatch/deliveries") return copy(dispatched.map((d) => {
+    const o = outbounds.find((x) => x.outboundNo === d.outboundNo);
+    return { ...d, deliveryNo: d.dispatchNo, customerCode: o?.customerCode ?? null, invoiceNo: o?.invoiceNo ?? ("MOCK-" + d.id), qty: o?.qty ?? 0, scheduledDate: o?.scheduledDate ?? null };
+  })) as T;
+  if (clean === "/analytics/aging") return copy(stocks.map((s, idx) => {
+    const agingDays = 25 + idx * 60;
+    const unitPrice = 1500 + idx * 800;
+    return { itemCode: s.itemCode, itemName: s.itemName, warehouseName: s.warehouseName, locationCode: s.locationCode, lotNo: s.lotNo, receivedDate: s.receivedDate, agingDays, qty: s.onHand, unitPrice, amount: s.onHand * unitPrice, longTerm: agingDays >= 365 };
+  })) as T;
   if (clean === "/analytics/shortage") return copy([
     { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", safetyStock: 180, leadTime: 5, available: 60, out30: 540, avgDailyOut: 18, reorderPoint: 270, daysOfStock: 3.3, shortageEta: "2026-06-21", risk: "위험" },
     { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", safetyStock: 300, leadTime: 7, available: 75, out30: 900, avgDailyOut: 30, reorderPoint: 510, daysOfStock: 2.5, shortageEta: "2026-06-20", risk: "위험" },
@@ -246,10 +276,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/snapshots") return copy(items.slice(0, 4).map((item, idx) => ({ snapshotMonth: url.searchParams.get("month") ?? "2026-06", itemCode: item.itemCode, itemName: item.itemName, warehouseName: warehouses[idx]?.name ?? "창원공장", wmsQty: 120 + idx * 85, erpQty: 118 + idx * 85, diff: idx % 2 === 0 ? 2 : 0, capturedAt: "2026-06-17 10:00" }))) as T;
   if (clean === "/stocktakings") return copy(stocktakings) as T;
   if (clean === "/stocktakings/dates") return copy([today, "2026-06-16"]) as T;
-  if (clean === "/returns") return copy([
-    { id: 1, returnNo: "RT-260617-001", customerName: "대림 스마트몰", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", qty: 3, reason: "초기불량", status: "received", requestedAt: today, processedAt: null },
-    { id: 2, returnNo: "RT-260616-002", customerName: "(주)코스트코리아", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", qty: 2, reason: "단순변심", status: "rejected", requestedAt: "2026-06-16", processedAt: "2026-06-17" }
-  ]) as T;
+  if (clean === "/returns") return copy(returns) as T;
   if (clean === "/notices") return copy(notices) as T;
   if (clean === "/interfaces") return copy([
     { id: "IF-260617-001", type: "출고결과", direction: "SEND", refNo: "DN20260601019", state: "success", retry: 0, message: "ERP 전송 완료", createdAt: "2026-06-17 09:30" },
@@ -264,8 +291,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" }
   ]) as T;
   if (clean === "/transfers") return copy([]) as T;
-  if (clean === "/policies") return copy({ policies, buckets: { enabled: policies.filter((p) => p.enabled).length, disabled: policies.filter((p) => !p.enabled).length } }) as T;
-  if (clean === "/chatbot/ask") return copy({ answer: "mock 모드입니다. 현재 총 재고는 2,574 EA이고 보충 대상은 2건입니다.", cards: [{ label: "총 재고", value: "2,574 EA" }, { label: "보충 대상", value: "2건" }] }) as T;
+  if (clean === "/policies") return copy({ policies, buckets: policyBuckets }) as T;
+  // /chatbot/ask 는 POST 이므로 위 mutation 분기(chatbotAnswer)에서 처리합니다.
 
   return copy([]) as T;
 }
@@ -315,6 +342,12 @@ function handleMutation(clean: string, body: AnyRecord) {
       row.status = "ADJUSTED";
       row.adjustedAt = "2026-06-17 11:00";
     }
+  } else if (clean.match(/^\/returns\/\d+\/approve$/)) {
+    const row = returns.find((r) => r.id === Number(clean.split("/")[2]));
+    if (row) { row.status = "approved"; row.processedAt = today + " 11:30"; }
+  } else if (clean.match(/^\/returns\/\d+\/reject$/)) {
+    const row = returns.find((r) => r.id === Number(clean.split("/")[2]));
+    if (row) { row.status = "rejected"; row.rejectReason = body.reason ?? "반려"; row.processedAt = today + " 11:30"; }
   } else if (clean.match(/^\/policies\//)) {
     const key = decodeURIComponent(clean.split("/")[2]);
     const policy = policies.find((p) => p.policyKey === key);
