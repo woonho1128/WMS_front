@@ -38,6 +38,12 @@ jobs:
           VITE_USE_MOCK_API: "true"
           VITE_API_BASE_URL: ""
 
+      # SPA 폴백: GitHub Pages 는 깊은 경로(/login 등) 직접요청/새로고침 시 파일을
+      # 못 찾아 404 를 냅니다. 404.html 을 index.html 과 동일하게 두면 앱이 부팅돼
+      # 클라이언트 라우터가 경로를 처리합니다.
+      - name: SPA fallback (copy index.html to 404.html)
+        run: cp dist/index.html dist/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
