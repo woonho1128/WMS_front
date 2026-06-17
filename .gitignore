@@ -2,6 +2,11 @@ node_modules/
 dist/
 .claude/
 
+# 환경설정은 추적하지 않음 (배포 모드는 워크플로/.env.example 참고)
+.env
+.env.*
+!.env.example
+
 *.log
 *.tsbuildinfo
 

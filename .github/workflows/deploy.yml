@@ -33,6 +33,10 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # 배포본은 백엔드/DB 없이 항상 mock 데이터로 동작
+          VITE_USE_MOCK_API: "true"
+          VITE_API_BASE_URL: ""
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
