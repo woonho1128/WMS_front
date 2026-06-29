@@ -138,6 +138,11 @@ export const menuSections: MenuSection[] = [
   }
 ];
 
+// 좌측 메뉴에서 하위 화면을 펼치지 않고, 본문 상단 탭으로 전환하는 섹션.
+export const TABBED_SECTIONS = ["inbound", "outbound"];
+export const isTabbedSection = (slug?: string) =>
+  Boolean(slug) && TABBED_SECTIONS.includes(slug as string);
+
 export const findSection = (sectionSlug?: string) =>
   menuSections.find((section) => section.slug === sectionSlug);
 

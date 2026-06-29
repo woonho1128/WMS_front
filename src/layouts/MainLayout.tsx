@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { getMenuSectionsForRole } from "../app/menuConfig";
+import { getMenuSectionsForRole, isTabbedSection } from "../app/menuConfig";
 import { roleLabels, type UserRole } from "../app/roles";
 import { useUiStore } from "../app/store/uiStore";
 import { useAuthStore } from "../app/store/authStore";
@@ -47,6 +47,11 @@ export const MainLayout = () => {
   };
 
   const handleSectionClick = (slug: string, firstFeature?: string) => {
+    // 탭형 섹션(입고/출고)은 펼치지 않고 첫 화면으로 바로 이동 → 하위는 본문 탭에서 전환.
+    if (isTabbedSection(slug)) {
+      if (firstFeature) navigate(`/${slug}/${firstFeature}`);
+      return;
+    }
     if (collapsed && !isMobile()) {
       if (firstFeature) navigate(`/${slug}/${firstFeature}`);
       return;
@@ -70,7 +75,8 @@ export const MainLayout = () => {
         <nav className="wms-nav">
           {allowedMenuSections.map((section) => {
             const activeSection = sectionSlug === section.slug;
-            const open = expanded === section.slug || activeSection;
+            const tabbed = isTabbedSection(section.slug);
+            const open = !tabbed && (expanded === section.slug || activeSection);
             return (
               <div key={section.slug} className={`wms-navgroup${open ? " open" : ""}`}>
                 <button
@@ -83,9 +89,11 @@ export const MainLayout = () => {
                     <Icon path={section.iconPath} filled size={20} />
                   </span>
                   <span className="wms-ni-label">{section.label}</span>
-                  <span className="wms-ni-caret">
-                    <Icon name="chevR" size={16} />
-                  </span>
+                  {tabbed ? null : (
+                    <span className="wms-ni-caret">
+                      <Icon name="chevR" size={16} />
+                    </span>
+                  )}
                 </button>
                 {open ? (
                   <div className="wms-subtree">
