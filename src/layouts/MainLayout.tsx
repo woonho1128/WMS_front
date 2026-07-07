@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { getMenuSectionsForRole, isTabbedSection } from "../app/menuConfig";
+import { findSection, getMenuSectionsForRole } from "../app/menuConfig";
 import { roleLabels, type UserRole } from "../app/roles";
 import { useUiStore } from "../app/store/uiStore";
 import { useAuthStore } from "../app/store/authStore";
+import { useTabsStore } from "../app/store/tabsStore";
 import { Icon } from "../components/ui/Icon";
+import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
 
 const roleOptions = Object.entries(roleLabels) as Array<[UserRole, string]>;
 const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 1024px)").matches;
@@ -16,6 +18,7 @@ export const MainLayout = () => {
   const setCurrentRole = useUiStore((state) => state.setCurrentRole);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const openTab = useTabsStore((state) => state.openTab);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
@@ -41,17 +44,25 @@ export const MainLayout = () => {
     setMobileOpen(false);
   }, [sectionSlug, featureSlug]);
 
+  // 화면 이동 시 본문 상단 탭으로 등록(이미 있으면 유지). 좌측 메뉴 클릭 = 탭 열기.
+  useEffect(() => {
+    if (!sectionSlug) return;
+    const source = findSection(sectionSlug);
+    if (!source) return;
+    const sourceFeature = featureSlug
+      ? source.features.find((item) => item.slug === featureSlug)
+      : undefined;
+    openTab({ path: location.pathname, label: sourceFeature?.label ?? source.label });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   const toggleSidebar = () => {
     if (isMobile()) setMobileOpen((open) => !open);
     else setCollapsed(!collapsed);
   };
 
   const handleSectionClick = (slug: string, firstFeature?: string) => {
-    // 탭형 섹션(입고/출고)은 펼치지 않고 첫 화면으로 바로 이동 → 하위는 본문 탭에서 전환.
-    if (isTabbedSection(slug)) {
-      if (firstFeature) navigate(`/${slug}/${firstFeature}`);
-      return;
-    }
+    // 접힌 사이드바에서는 첫 화면으로 바로 이동, 그 외에는 하위 화면 목록을 펼친다.
     if (collapsed && !isMobile()) {
       if (firstFeature) navigate(`/${slug}/${firstFeature}`);
       return;
@@ -75,8 +86,7 @@ export const MainLayout = () => {
         <nav className="wms-nav">
           {allowedMenuSections.map((section) => {
             const activeSection = sectionSlug === section.slug;
-            const tabbed = isTabbedSection(section.slug);
-            const open = !tabbed && (expanded === section.slug || activeSection);
+            const open = expanded === section.slug || activeSection;
             return (
               <div key={section.slug} className={`wms-navgroup${open ? " open" : ""}`}>
                 <button
@@ -89,11 +99,9 @@ export const MainLayout = () => {
                     <Icon path={section.iconPath} filled size={20} />
                   </span>
                   <span className="wms-ni-label">{section.label}</span>
-                  {tabbed ? null : (
-                    <span className="wms-ni-caret">
-                      <Icon name="chevR" size={16} />
-                    </span>
-                  )}
+                  <span className="wms-ni-caret">
+                    <Icon name="chevR" size={16} />
+                  </span>
                 </button>
                 {open ? (
                   <div className="wms-subtree">
@@ -160,6 +168,8 @@ export const MainLayout = () => {
             <span className="wms-dot" />
           </button>
         </header>
+
+        <WorkspaceTabs activePath={location.pathname} />
 
         <main className="wms-content">
           <Outlet />

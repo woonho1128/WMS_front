@@ -1,7 +1,6 @@
 ﻿import { useParams } from "react-router-dom";
-import { findSection, getMenuSectionsForRole, isTabbedSection } from "../../app/menuConfig";
+import { findSection, getMenuSectionsForRole } from "../../app/menuConfig";
 import { useUiStore } from "../../app/store/uiStore";
-import { SectionTabs } from "../../components/layout/SectionTabs";
 import { WorkbenchPage } from "../workbench/WorkbenchPage";
 
 export const FeaturePage = () => {
@@ -18,15 +17,6 @@ export const FeaturePage = () => {
 
   if (!section || !feature) {
     return <section>접근 권한이 없습니다.</section>;
-  }
-
-  if (isTabbedSection(section.slug)) {
-    return (
-      <section className="wms-tabbed-section">
-        <SectionTabs sectionSlug={section.slug} />
-        <WorkbenchPage sectionSlug={section.slug} featureSlug={feature.slug} title={feature.label} />
-      </section>
-    );
   }
 
   return <WorkbenchPage sectionSlug={section.slug} featureSlug={feature.slug} title={feature.label} />;
