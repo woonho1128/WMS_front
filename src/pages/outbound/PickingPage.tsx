@@ -42,13 +42,15 @@ export const PickingPage = () => {
   const [linesByOutbound, setLinesByOutbound] = useState<Record<number, OutboundLine[]>>({});
   // 품목 QR 확인 입력: outboundId → lineId → 입력값
   const [qrChecks, setQrChecks] = useState<Record<number, Record<number, string>>>({});
+  // 스킵한 라인: outboundId → lineId[]
+  const [skipped, setSkipped] = useState<Record<number, number[]>>({});
   const [completeTarget, setCompleteTarget] = useState<OutboundRow | null>(null);
 
   const reload = () => {
     setLoading(true);
     return apiGet<OutboundRow[]>("/outbounds")
       .then(setRows)
-      .catch((e) => setNotice(`불러오기 실패: ${e instanceof Error ? e.message : e} (백엔드 8080 확인)`))
+      .catch((e) => setNotice(`불러오기 실패: ${e instanceof Error ? e.message : e} (백엔드 18080 확인)`))
       .finally(() => setLoading(false));
   };
   useEffect(() => {
@@ -122,7 +124,7 @@ export const PickingPage = () => {
     setBusy(true);
     try {
       await apiPost(`/outbounds/${id}/pick-start`, {});
-      setNotice("피킹 시작 — 라인별 로케이션 안내에 따라 품목 QR을 확인하세요.");
+      setNotice("피킹 시작 — 라인별 로케이션 안내에 따라 품목 QR을 확인하거나, 불가한 상품은 스킵하세요.");
       await reload();
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "피킹 시작 실패");
@@ -137,18 +139,49 @@ export const PickingPage = () => {
   const lineVerified = (outboundId: number, ln: OutboundLine) =>
     (qrChecks[outboundId]?.[ln.id] ?? "").trim().toLowerCase() === ln.itemCode.toLowerCase();
 
-  const allVerified = (row: OutboundRow) => {
+  const isSkipped = (outboundId: number, lineId: number) => (skipped[outboundId] ?? []).includes(lineId);
+
+  const toggleSkip = (outboundId: number, lineId: number) =>
+    setSkipped((prev) => {
+      const cur = prev[outboundId] ?? [];
+      return { ...prev, [outboundId]: cur.includes(lineId) ? cur.filter((x) => x !== lineId) : [...cur, lineId] };
+    });
+
+  /** 라인 충족 = 품목 QR 확인 OR 스킵 */
+  const lineSatisfied = (outboundId: number, ln: OutboundLine) =>
+    lineVerified(outboundId, ln) || isSkipped(outboundId, ln.id);
+
+  /** 피킹 완료 가능 = 모든 라인 충족(확인/스킵) + 최소 1건 실제 피킹 */
+  const canComplete = (row: OutboundRow) => {
     const lines = linesByOutbound[row.id] ?? [];
-    return lines.length > 0 && lines.every((ln) => lineVerified(row.id, ln));
+    if (lines.length === 0) return false;
+    const everySatisfied = lines.every((ln) => lineSatisfied(row.id, ln));
+    const anyPicked = lines.some((ln) => lineVerified(row.id, ln) && !isSkipped(row.id, ln.id));
+    return everySatisfied && anyPicked;
+  };
+
+  const counts = (row: OutboundRow) => {
+    const lines = linesByOutbound[row.id] ?? [];
+    const picked = lines.filter((ln) => lineVerified(row.id, ln) && !isSkipped(row.id, ln.id)).length;
+    const skip = lines.filter((ln) => isSkipped(row.id, ln.id)).length;
+    return { total: lines.length, picked, skip, wait: lines.length - picked - skip };
   };
 
   const doComplete = async () => {
     if (!completeTarget) return;
     setBusy(true);
+    const id = completeTarget.id;
+    const skippedIds = skipped[id] ?? [];
     try {
-      await apiPost(`/outbounds/${completeTarget.id}/pick-complete`, {});
-      setNotice(`${completeTarget.outboundNo} 피킹 완료 — 피킹재고(FIFO) 차감. 출고 확정 화면에서 송장 입력 후 확정하세요.`);
-      invalidate(completeTarget.id);
+      await apiPost(`/outbounds/${id}/pick-complete`, { skippedLineIds: skippedIds });
+      const skipMsg = skippedIds.length ? ` (스킵 ${skippedIds.length}건 — 보류/미출고 별도 처리 대상)` : "";
+      setNotice(`${completeTarget.outboundNo} 피킹 완료${skipMsg} — 피킹재고(FIFO) 차감. 출고 확정 화면에서 송장 입력 후 확정하세요.`);
+      invalidate(id);
+      setSkipped((prev) => {
+        const n = { ...prev };
+        delete n[id];
+        return n;
+      });
       setCompleteTarget(null);
       await reload();
     } catch (e) {
@@ -165,7 +198,7 @@ export const PickingPage = () => {
         title="피킹 작업 단계"
         steps={OUTBOUND_STEPS}
         current={1}
-        note="오더 QR 스캔 → 로케이션 안내 → 품목 QR 확인(수량 검증) → 피킹 완료 시 피킹재고 차감"
+        note="오더 QR 스캔 → 로케이션 안내 → 품목 QR 확인(또는 스킵) → 피킹 완료 시 피킹재고 차감"
       />
 
       <section className="outbound-summary-grid" aria-label="피킹 요약">
@@ -195,7 +228,7 @@ export const PickingPage = () => {
       <DashboardCard className="outbound-table-card" title={`피킹 대상 (${targets.length}건)`}>
         <div className="outbound-list-toolbar">
           <p className="outbound-notice">
-            {notice ?? "출고대기 건은 피킹 시작으로, 피킹중 건은 라인별 품목 QR 확인 후 피킹 완료하세요. (전량 피킹 원칙)"}
+            {notice ?? "출고대기 건은 피킹 시작으로, 피킹중 건은 라인별 품목 QR 확인 또는 스킵 후 피킹 완료하세요. (스킵 상품은 보류/미출고로 별도 처리)"}
           </p>
         </div>
         <div className="pc-only">
@@ -220,7 +253,8 @@ export const PickingPage = () => {
                 targets.map((row) => {
                   const expanded = expandedIds.includes(row.id);
                   const lines = linesByOutbound[row.id];
-                  const verified = allVerified(row);
+                  const ready = canComplete(row);
+                  const c = counts(row);
                   return (
                     <Fragment key={row.id}>
                       <tr className={`outbound-master-row${expanded ? " is-expanded" : ""}`} onClick={(e) => onRowClick(e, row.id)}>
@@ -243,8 +277,8 @@ export const PickingPage = () => {
                               <button
                                 type="button"
                                 className="btn-secondary"
-                                disabled={busy || !verified}
-                                title={verified ? undefined : "모든 라인의 품목 QR을 확인하세요"}
+                                disabled={busy || !ready}
+                                title={ready ? undefined : "모든 라인의 품목 QR을 확인하거나 스킵하세요 (최소 1건 피킹 필요)"}
                                 onClick={() => setCompleteTarget(row)}
                               >
                                 피킹 완료
@@ -261,7 +295,7 @@ export const PickingPage = () => {
                                 <strong>{row.outboundNo} · 피킹 라인 {lines ? `(${lines.length}건)` : ""}</strong>
                                 <span>
                                   {row.status === "피킹중"
-                                    ? `품목 QR 확인 ${lines ? lines.filter((ln) => lineVerified(row.id, ln)).length : 0}/${lines?.length ?? 0}`
+                                    ? `확인 ${c.picked} · 스킵 ${c.skip} · 대기 ${c.wait} / 총 ${c.total}`
                                     : "피킹 시작 후 QR 확인이 가능합니다"}
                                 </span>
                               </div>
@@ -276,15 +310,16 @@ export const PickingPage = () => {
                                       <th>상품명</th>
                                       <th className="num">지시수량</th>
                                       <th className="num">가용재고</th>
-                                      <th>품목 QR 확인</th>
+                                      <th>품목 QR 확인 / 스킵</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {lines.map((ln) => {
                                       const ok = lineVerified(row.id, ln);
+                                      const skip = isSkipped(row.id, ln.id);
                                       const short = ln.availableQty != null && ln.availableQty < ln.orderQty;
                                       return (
-                                        <tr key={ln.id}>
+                                        <tr key={ln.id} style={skip ? { opacity: 0.6 } : undefined}>
                                           <td><b>{ln.locationCode ?? "-"}</b></td>
                                           <td>
                                             {ln.itemCode}
@@ -297,15 +332,23 @@ export const PickingPage = () => {
                                           </td>
                                           <td>
                                             {row.status === "피킹중" ? (
-                                              <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-                                                <input
-                                                  value={qrChecks[row.id]?.[ln.id] ?? ""}
-                                                  onChange={(e) => setQr(row.id, ln.id, e.target.value)}
-                                                  placeholder={`${ln.itemCode} 스캔/입력`}
-                                                  style={{ width: 150 }}
-                                                />
-                                                {ok ? <StatusBadge tone="success">확인</StatusBadge> : <StatusBadge tone="gray">대기</StatusBadge>}
-                                              </span>
+                                              skip ? (
+                                                <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                                                  <StatusBadge tone="yellow">스킵됨</StatusBadge>
+                                                  <button type="button" className="btn-secondary" onClick={() => toggleSkip(row.id, ln.id)}>스킵 해제</button>
+                                                </span>
+                                              ) : (
+                                                <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                                                  <input
+                                                    value={qrChecks[row.id]?.[ln.id] ?? ""}
+                                                    onChange={(e) => setQr(row.id, ln.id, e.target.value)}
+                                                    placeholder={`${ln.itemCode} 스캔/입력`}
+                                                    style={{ width: 150 }}
+                                                  />
+                                                  {ok ? <StatusBadge tone="success">확인</StatusBadge> : <StatusBadge tone="gray">대기</StatusBadge>}
+                                                  <button type="button" className="btn-secondary" onClick={() => toggleSkip(row.id, ln.id)}>스킵</button>
+                                                </span>
+                                              )
                                             ) : (
                                               <span className="cell-mut">-</span>
                                             )}
@@ -346,8 +389,16 @@ export const PickingPage = () => {
       >
         <div className="ds-callout info">
           <Icon name="check" size={18} />
-          <span>전량 피킹으로 처리되며, 각 라인의 <b>피킹재고가 FIFO(LOT 입고일자순)로 차감</b>됩니다. 가용재고 부족 시 실패 — 거부 처리 대상입니다.</span>
+          <span>확인된 라인은 <b>피킹재고가 FIFO(LOT 입고일자순)로 차감</b>됩니다. 가용재고 부족 시 실패 — 거부 처리 대상입니다.</span>
         </div>
+        {completeTarget && (skipped[completeTarget.id]?.length ?? 0) > 0 ? (
+          <div className="ds-callout warning" style={{ marginTop: 8 }}>
+            <span>
+              스킵 <b>{skipped[completeTarget.id].length}건</b>은 이번 피킹에서 제외됩니다 — 보류/미출고로 별도 처리가 필요합니다.
+              (부분출고 정책 확정 전까지 임시 운영)
+            </span>
+          </div>
+        ) : null}
       </Modal>
     </section>
   );

@@ -21,9 +21,10 @@ type LocationRow = {
 
 type ZoneOption = { id: number; code: string; name: string; warehouseName: string };
 
-const TYPE_META: Record<string, { label: string; tone: "info" | "violet" | "danger" | "warning" }> = {
+const TYPE_META: Record<string, { label: string; tone: "info" | "violet" | "danger" | "warning" | "teal" }> = {
   PICKING: { label: "피킹", tone: "info" },
   RESERVE: { label: "보충", tone: "violet" },
+  CROSS_DOCK: { label: "직출", tone: "teal" },
   DEFECT: { label: "불량", tone: "danger" },
   DAMAGED: { label: "파손", tone: "warning" }
 };

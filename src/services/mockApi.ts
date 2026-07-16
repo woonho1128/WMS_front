@@ -45,8 +45,11 @@ let locations = [
   { id: 101, code: "PC-A-01", locationType: "PICKING", status: "가용", maxQty: 500, active: true, zoneId: 11, zoneName: "창원 A존", warehouseName: "창원공장", stockCount: 2 },
   { id: 102, code: "PC-A-02", locationType: "PICKING", status: "가용", maxQty: 500, active: true, zoneId: 11, zoneName: "창원 A존", warehouseName: "창원공장", stockCount: 1 },
   { id: 103, code: "PC-B-01", locationType: "RESERVE", status: "가용", maxQty: 900, active: true, zoneId: 12, zoneName: "창원 B존", warehouseName: "창원공장", stockCount: 2 },
+  { id: 105, code: "XD-C-01", locationType: "CROSS_DOCK", status: "가용", maxQty: 400, active: true, zoneId: 11, zoneName: "창원 A존", warehouseName: "창원공장", stockCount: 0 },
   { id: 201, code: "PJ-A-01", locationType: "PICKING", status: "가용", maxQty: 500, active: true, zoneId: 21, zoneName: "제천 A존", warehouseName: "제천공장", stockCount: 1 },
   { id: 202, code: "PJ-B-01", locationType: "RESERVE", status: "가용", maxQty: 900, active: true, zoneId: 21, zoneName: "제천 A존", warehouseName: "제천공장", stockCount: 1 },
+  { id: 203, code: "PJ-A-02", locationType: "PICKING", status: "가용", maxQty: 500, active: true, zoneId: 21, zoneName: "제천 A존", warehouseName: "제천공장", stockCount: 0 },
+  { id: 204, code: "XD-J-01", locationType: "CROSS_DOCK", status: "가용", maxQty: 300, active: true, zoneId: 21, zoneName: "제천 A존", warehouseName: "제천공장", stockCount: 0 },
   { id: 301, code: "PA-A-01", locationType: "PICKING", status: "가용", maxQty: 450, active: true, zoneId: 31, zoneName: "안산 A존", warehouseName: "안산공장", stockCount: 1 },
   { id: 401, code: "PY-A-01", locationType: "PICKING", status: "가용", maxQty: 650, active: true, zoneId: 41, zoneName: "용인 A존", warehouseName: "용인물류센터", stockCount: 1 },
   { id: 501, code: "OT-X-01", locationType: "PICKING", status: "가용", maxQty: 400, active: true, zoneId: 51, zoneName: "외주 X존", warehouseName: "외주공장", stockCount: 1 },
@@ -54,11 +57,11 @@ let locations = [
 ];
 
 const items = [
-  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, category: "음향기기", consign: false, active: true },
-  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, category: "케이블", consign: false, active: true },
-  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, category: "배터리", consign: false, active: true },
-  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, category: "주방용품", consign: true, active: true },
-  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, category: "부자재", consign: false, active: true }
+  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, category: "음향기기", consign: false, active: true },
+  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, category: "케이블", consign: false, active: true },
+  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, category: "배터리", consign: false, active: true },
+  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, category: "주방용품", consign: true, active: true },
+  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, category: "부자재", consign: false, active: true }
 ];
 
 let stocks = [
@@ -72,12 +75,45 @@ let stocks = [
   { stockId: 8, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", zoneName: "안산 A존", locationCode: "PA-A-01", locationType: "PICKING", lotNo: "LOT260610-0021", stockStatus: "DEFECT", receivedDate: "2026-06-10", onHand: 12, allocated: 0, available: 0, safetyStock: 180, unit: "EA" }
 ];
 
+// 격납 분할 배정 등으로 신규 생성되는 재고 행의 stockId 시퀀스
+let stockSeq = 9000;
+
+// BOM(세트) 구성 — 비운영 주문에서 세트 선택 시 필수 구성품 자동 전개용
+const boms: Record<string, { itemName: string; unit: string; components: { itemCode: string; itemName: string; qtyPer: number; unit: string }[] }> = {
+  "SET-GIFT-01": {
+    itemName: "명절 선물세트 (이어버드+케이블)", unit: "SET",
+    components: [
+      { itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", qtyPer: 1, unit: "EA" },
+      { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", qtyPer: 2, unit: "EA" }
+    ]
+  },
+  "SET-DESK-01": {
+    itemName: "데스크 정리세트", unit: "SET",
+    components: [
+      { itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", qtyPer: 1, unit: "EA" },
+      { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", qtyPer: 1, unit: "EA" },
+      { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", qtyPer: 4, unit: "EA" }
+    ]
+  }
+};
+
+// 비운영 주문(상품 선택 기반) 생성 결과 보관
+let manualOrders: AnyRecord[] = [
+  { id: 1, orderNo: "MO-260616-001", customerName: "대림 직영몰", createdAt: "2026-06-16", lineCount: 2, lines: [
+    { itemCode: "SET-GIFT-01", itemName: "명절 선물세트 (이어버드+케이블)", isBom: true, qty: 3, unit: "SET", parentCode: null },
+    { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", isBom: false, qty: 20, unit: "EA", parentCode: null }
+  ] }
+];
+
 let inbounds = [
   { id: 112, inboundNo: "IN-20260620-001", poNo: "PO-9018", supplierCode: "SUP001", supplierName: "한성테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "운송장 별도 확인", status: "scheduled", expectedAt: "2026-06-20", qty: 660 },
   { id: 113, inboundNo: "IN-20260613-001", poNo: "PO-9014", supplierCode: "SUP001", supplierName: "한성테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "긴급 입고", status: "registered", expectedAt: "2026-06-13", qty: 330 },
   { id: 111, inboundNo: "IN-20260607-001", poNo: "OPO-002", supplierCode: "OEM002", supplierName: "인천외주가공", warehouseId: 5, warehouseName: "외주공장", warehouseType: "외주", type: "외주", inTypeCode: "OEM", inTypeName: "외주입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: null, status: "located", expectedAt: "2026-06-07", qty: 120 },
   { id: 116, inboundNo: "IN-20260606-003", poNo: "PO-9003", supplierCode: "SUP001", supplierName: "한성테크놀로지", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "분할 납품 1차", status: "confirmed", expectedAt: "2026-06-05", qty: 420 },
-  { id: 125, inboundNo: "IN-20260530-001", poNo: "PO-9006", supplierCode: "SUP003", supplierName: "대성정밀공업", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", type: "일반", inTypeCode: "IMP", inTypeName: "수입입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "통관 완료분", status: "confirmed", expectedAt: "2026-05-30", qty: 600 }
+  { id: 125, inboundNo: "IN-20260530-001", poNo: "PO-9006", supplierCode: "SUP003", supplierName: "대성정밀공업", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", type: "일반", inTypeCode: "IMP", inTypeName: "수입입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "통관 완료분", status: "confirmed", expectedAt: "2026-05-30", qty: 600 },
+  // 공장 간 재고 이동 → 입고 프로세스로 처리(이동입고). 일반입고와 구분(type=이동, MVR).
+  { id: 140, inboundNo: "IN-MV-20260616-001", poNo: null, moveRef: "MV-20260616-001", supplierCode: "WH-CW", supplierName: "창원공장(출발)", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "창원→제천 공장 간 재고 이동 (로케이션 지정 완료)", status: "located", expectedAt: "2026-06-16", qty: 150 },
+  { id: 141, inboundNo: "IN-MV-20260617-002", poNo: null, moveRef: "MV-20260617-002", supplierCode: "WH-AS", supplierName: "안산공장(출발)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "안산→창원 공장 간 재고 이동 (입고예정)", status: "scheduled", expectedAt: today, qty: 80 }
 ];
 
 const inboundLines: Record<number, AnyRecord[]> = {
@@ -96,6 +132,12 @@ const inboundLines: Record<number, AnyRecord[]> = {
   ],
   125: [
     { id: 1006, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", consign: false, locationCode: "PA-A-01", locationId: 301, trackingNo: "TR-IN-125", inspected: true, expectedQty: 600, receivedQty: 590 }
+  ],
+  140: [
+    { id: 1007, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", consign: false, locationCode: "PJ-A-01", locationId: 201, trackingNo: "MV-140", inspected: true, expectedQty: 150, receivedQty: 0 }
+  ],
+  141: [
+    { id: 1008, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", consign: false, locationCode: null, locationId: null, trackingNo: "MV-141", inspected: false, expectedQty: 80, receivedQty: 0 }
   ]
 };
 
@@ -110,7 +152,10 @@ let outbounds = [
 const outboundLines: Record<number, AnyRecord[]> = {
   46: [{ id: 1, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", consign: false, orderQty: 5, pickedQty: 0, availableQty: 60, lotNo: "LOT260515-0008", locationCode: "PY-A-01", scanned: false }],
   62: [{ id: 2, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", consign: false, orderQty: 32, pickedQty: 32, availableQty: 215, lotNo: "LOT260407-0006", locationCode: "PC-A-01", scanned: true }],
-  70: [{ id: 3, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", consign: false, orderQty: 84, pickedQty: 36, availableQty: 75, lotNo: "LOT260520-0014", locationCode: "PC-A-02", scanned: true }]
+  70: [
+    { id: 3, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", consign: false, orderQty: 84, pickedQty: 36, availableQty: 75, lotNo: "LOT260520-0014", locationCode: "PC-A-02", scanned: true },
+    { id: 4, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", consign: false, orderQty: 10, pickedQty: 0, availableQty: 215, lotNo: "LOT260407-0006", locationCode: "PC-A-01", scanned: false }
+  ]
 };
 
 let carriers: AnyRecord[] = [
@@ -223,6 +268,78 @@ function chatbotAnswer(q: string) {
   return { intent: "stock", answer: "현재 총 재고는 2,574 EA이고 보충 대상은 2건입니다.", rows: [{ label: "총 재고", value: "2,574 EA" }, { label: "보충 대상", value: "2건" }] };
 }
 
+function orderProducts() {
+  return [
+    ...items.map((it) => ({ itemCode: it.itemCode, itemName: it.itemName, unit: it.unit, isBom: false, components: [] as AnyRecord[] })),
+    ...Object.entries(boms).map(([code, b]) => ({ itemCode: code, itemName: b.itemName, unit: b.unit, isBom: true, components: b.components }))
+  ];
+}
+
+// B-1: 보충 대상 = 파레트 구성 기준. 피킹 로케이션 재고가 파레트 배수가 아니면(낱개 발생)
+// 다음 파레트를 채우기 위한 부족 수량을 산정하고, 동일 품목 보충(RESERVE) FIFO 재고를 출발지로 추천.
+function computeReplenishment() {
+  const rows: AnyRecord[] = [];
+  stocks.filter((s) => s.stockStatus === "AVAILABLE" && s.locationType === "PICKING").forEach((s) => {
+    const item = items.find((it) => it.itemCode === s.itemCode);
+    const upp = item?.unitsPerPallet ?? 0;
+    if (!upp) return;
+    const loose = s.onHand % upp;
+    if (loose === 0) return; // 파레트 정합 — 보충 불필요
+    const shortQty = upp - loose;
+    const source = stocks
+      .filter((x) => x.itemCode === s.itemCode && x.stockStatus === "AVAILABLE" && x.locationType === "RESERVE" && x.available > 0)
+      .sort((a, b) => (a.receivedDate ?? "").localeCompare(b.receivedDate ?? ""))[0];
+    const targetLoc = locations.find((l) => l.code === s.locationCode);
+    rows.push({
+      itemCode: s.itemCode, itemName: s.itemName, unit: s.unit, warehouseName: s.warehouseName,
+      unitsPerPallet: upp, pickingLocationCode: s.locationCode, pickingQty: s.onHand,
+      wholePallets: Math.floor(s.onHand / upp), looseQty: loose, shortQty, suggestQty: shortQty,
+      sourceStockId: source?.stockId ?? null, sourceLocationCode: source?.locationCode ?? null,
+      sourceLot: source?.lotNo ?? null, sourceReceivedDate: source?.receivedDate ?? null, sourceAvail: source?.available ?? 0,
+      targetLocationId: targetLoc?.id ?? null, targetLocationCode: s.locationCode
+    });
+  });
+  return rows.sort((a, b) => b.shortQty - a.shortQty);
+}
+
+// B-2: ERP/WMS 시점 재고 비교 — 일별(과거 날짜 지정), 상품·로케이션·수량별 차이. 시드 불일치 3건.
+const erpDiffSeed: Record<string, number> = { "SKU-10241|PC-A-01": 2, "SKU-10822|PY-A-01": -3, "SKU-30001|PC-A-02": 5 };
+function erpCompareRows(date: string) {
+  return stocks
+    .filter((s) => s.stockStatus === "AVAILABLE")
+    .map((s) => {
+      const diff = erpDiffSeed[`${s.itemCode}|${s.locationCode}`] ?? 0;
+      return {
+        compareDate: date, itemCode: s.itemCode, itemName: s.itemName,
+        warehouseName: s.warehouseName, locationCode: s.locationCode, lotNo: s.lotNo,
+        wmsQty: s.onHand, erpQty: s.onHand - diff, diff // diff = wms - erp
+      };
+    })
+    .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+}
+
+// B-3: 선입선출 현황(파레트 단위, 관리용). 품목별 가용 재고를 입고일 오름차순으로 나열, FIFO 순번 부여.
+function fifoRows() {
+  const byItem: Record<string, AnyRecord[]> = {};
+  stocks.filter((s) => s.stockStatus === "AVAILABLE").forEach((s) => {
+    (byItem[s.itemCode] ??= []).push(s);
+  });
+  const out: AnyRecord[] = [];
+  Object.values(byItem).forEach((list) => {
+    list.sort((a, b) => (a.receivedDate ?? "").localeCompare(b.receivedDate ?? ""));
+    list.forEach((s, idx) => {
+      const upp = items.find((it) => it.itemCode === s.itemCode)?.unitsPerPallet ?? 0;
+      out.push({
+        itemCode: s.itemCode, itemName: s.itemName, unit: s.unit, lotNo: s.lotNo,
+        receivedDate: s.receivedDate, warehouseName: s.warehouseName, locationCode: s.locationCode,
+        qty: s.onHand, unitsPerPallet: upp, pallets: upp ? Math.ceil(s.onHand / upp) : null,
+        fifoRank: idx + 1, priorityOut: idx === 0
+      });
+    });
+  });
+  return out.sort((a, b) => a.itemCode.localeCompare(b.itemCode) || (a.receivedDate ?? "").localeCompare(b.receivedDate ?? ""));
+}
+
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -244,10 +361,10 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/stocks") return copy(stocks) as T;
   if (clean === "/stocks/putaway") return copy(stocks.filter((s) => s.stockStatus === "PUTAWAY_WAIT").map(({ allocated, available, safetyStock, ...s }) => ({ ...s, qty: s.onHand }))) as T;
-  if (clean === "/stocks/replenishment") return copy([
-    { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", safetyStock: 180, pickingAvail: 60, shortQty: 120, suggestQty: 160, sourceStockId: 2, sourceLocationCode: "PC-B-01", sourceLot: "LOT260418-0005", sourceReceivedDate: "2026-04-18", targetLocationId: 401, targetLocationCode: "PY-A-01" },
-    { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", safetyStock: 300, pickingAvail: 75, shortQty: 225, suggestQty: 300, sourceStockId: 6, sourceLocationCode: "PC-B-01", sourceLot: "LOT260405-0013", sourceReceivedDate: "2026-04-05", targetLocationId: 102, targetLocationCode: "PC-A-02" }
-  ]) as T;
+  if (clean === "/stocks/replenishment") return copy(computeReplenishment()) as T;
+  if (clean === "/stocks/fifo") return copy(fifoRows()) as T;
+  if (clean === "/erp-compare/dates") return copy([today, "2026-06-16", "2026-06-15"]) as T;
+  if (clean === "/erp-compare") return copy(erpCompareRows(url.searchParams.get("date") ?? today)) as T;
   if (clean === "/stocks/trace") return copy(stockTrace(url.searchParams.get("q") ?? "")) as T;
   if (clean === "/warehouses") return copy(warehouses) as T;
   if (clean.match(/^\/warehouses\/\d+\/locations$/)) return copy(asWarehouseLocations(Number(clean.split("/")[2]))) as T;
@@ -277,6 +394,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/stocktakings") return copy(stocktakings) as T;
   if (clean === "/stocktakings/dates") return copy([today, "2026-06-16"]) as T;
   if (clean === "/returns") return copy(returns) as T;
+  if (clean === "/order-products") return copy(orderProducts()) as T;
+  if (clean === "/manual-orders") return copy(manualOrders) as T;
   if (clean === "/notices") return copy(notices) as T;
   if (clean === "/interfaces") return copy([
     { id: "IF-260617-001", type: "출고결과", direction: "SEND", refNo: "DN20260601019", state: "success", retry: 0, message: "ERP 전송 완료", createdAt: "2026-06-17 09:30" },
@@ -288,7 +407,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   ]) as T;
   if (clean.startsWith("/history/")) return copy([
     { id: 1, refType: "OUTBOUND", refNo: "DN20260601019", action: "출고확정", detail: "출고확정 및 ERP 전송", erpSent: true, operator: "outbound", createdAt: "2026-06-17 09:30" },
-    { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" }
+    { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" },
+    { id: 3, refType: "INBOUND", refNo: "IN-MV-20260616-001", action: "공장간이동 입고확정", detail: "창원→제천 이동입고 · 격납대기 생성 (일반입고와 구분, ERP 미전송)", erpSent: false, operator: "logistics", createdAt: "2026-06-16 15:20" }
   ]) as T;
   if (clean === "/transfers") return copy([]) as T;
   if (clean === "/policies") return copy({ policies, buckets: policyBuckets }) as T;
@@ -305,8 +425,40 @@ function handleMutation(clean: string, body: AnyRecord) {
     const row = inbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) row.status = "located";
   } else if (clean.match(/^\/inbounds\/\d+\/confirm$/)) {
-    const row = inbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) row.status = "confirmed";
+    const id = Number(clean.split("/")[2]);
+    const row = inbounds.find((r) => r.id === id);
+    if (row) {
+      row.status = "confirmed";
+      // 입고확정 → 검수 수량만큼 격납대기(PUTAWAY_WAIT) 재고 생성 (LOT = LOT-{입고번호})
+      // 일반/외주/이동입고(공장간이동) 모두 동일하게 격납대기로 이동
+      const recvLines: AnyRecord[] = Array.isArray(body.lines) ? body.lines : [];
+      (inboundLines[id] ?? []).forEach((ln) => {
+        const recv = recvLines.find((x) => x.lineId === ln.id);
+        const qty = recv ? Number(recv.receivedQty) : ln.expectedQty;
+        if (!qty || qty <= 0) return;
+        const loc = locations.find((l) => l.id === ln.locationId);
+        const wh = warehouses.find((w) => w.id === row.warehouseId) || warehouses.find((w) => w.name === loc?.warehouseName);
+        stocks.push({
+          stockId: ++stockSeq,
+          itemCode: ln.itemCode,
+          itemName: ln.itemName,
+          warehouseId: row.warehouseId ?? wh?.id ?? 1,
+          warehouseName: row.warehouseName ?? loc?.warehouseName ?? "-",
+          warehouseType: row.warehouseType ?? wh?.type ?? "일반",
+          zoneName: loc?.zoneName ?? "-",
+          locationCode: loc?.code ?? ln.locationCode ?? "-",
+          locationType: loc?.locationType ?? "PICKING",
+          lotNo: `LOT-${row.inboundNo}`,
+          stockStatus: "PUTAWAY_WAIT",
+          receivedDate: today,
+          onHand: qty,
+          allocated: 0,
+          available: 0,
+          safetyStock: items.find((it) => it.itemCode === ln.itemCode)?.safetyStock ?? 0,
+          unit: ln.unit
+        });
+      });
+    }
   } else if (clean.match(/^\/outbounds\/\d+\/pick-start$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) row.status = "피킹중";
@@ -342,6 +494,63 @@ function handleMutation(clean: string, body: AnyRecord) {
       row.status = "ADJUSTED";
       row.adjustedAt = "2026-06-17 11:00";
     }
+  } else if (clean.match(/^\/stocks\/putaway\/\d+\/complete$/)) {
+    // 격납 확정 — 단일 또는 다중(분할) 로케이션 배정 지원
+    const stockId = Number(clean.split("/")[3]);
+    const src = stocks.find((s) => s.stockId === stockId);
+    if (src) {
+      const rawAssigns: AnyRecord[] = Array.isArray(body.assignments) && body.assignments.length
+        ? body.assignments
+        : [{ toLocationId: body.toLocationId, qty: src.onHand }];
+      let moved = 0;
+      rawAssigns.forEach((a) => {
+        const loc = locations.find((l) => l.id === Number(a.toLocationId));
+        const qty = Number(a.qty) || 0;
+        if (!loc || qty <= 0) return;
+        const wh = warehouses.find((w) => w.name === loc.warehouseName);
+        moved += qty;
+        stocks.push({
+          stockId: ++stockSeq,
+          itemCode: src.itemCode,
+          itemName: src.itemName,
+          warehouseId: wh?.id ?? src.warehouseId,
+          warehouseName: loc.warehouseName,
+          warehouseType: wh?.type ?? src.warehouseType,
+          zoneName: loc.zoneName,
+          locationCode: loc.code,
+          locationType: loc.locationType,
+          lotNo: src.lotNo,
+          stockStatus: "AVAILABLE",
+          receivedDate: src.receivedDate,
+          onHand: qty,
+          allocated: 0,
+          available: qty,
+          safetyStock: src.safetyStock,
+          unit: src.unit
+        });
+        loc.stockCount += 1;
+      });
+      if (moved >= src.onHand) {
+        stocks = stocks.filter((s) => s.stockId !== stockId);
+      } else if (moved > 0) {
+        src.onHand -= moved;
+      }
+    }
+  } else if (clean === "/stocks/replenishment/complete") {
+    // 보충 이동 — 출발(RESERVE) 재고 차감 → 도착(피킹) 로케이션 재고 가산 (파레트 정합 복원)
+    const src = stocks.find((s) => s.stockId === body.sourceStockId);
+    const targetLoc = locations.find((l) => l.id === body.toLocationId);
+    const qty = Number(body.qty) || 0;
+    if (src && targetLoc && qty > 0) {
+      src.onHand -= qty; src.available = Math.max(0, src.available - qty);
+      const tgt = stocks.find((s) => s.itemCode === src.itemCode && s.locationCode === targetLoc.code && s.stockStatus === "AVAILABLE");
+      if (tgt) { tgt.onHand += qty; tgt.available += qty; }
+    }
+  } else if (clean === "/manual-orders") {
+    const seq = String(manualOrders.length + 1).padStart(3, "0");
+    const orderNo = `MO-${today.replace(/-/g, "").slice(2)}-${seq}`;
+    const lines: AnyRecord[] = Array.isArray(body.lines) ? body.lines : [];
+    manualOrders.unshift({ id: ++stockSeq, orderNo, customerName: body.customerName || "비운영 고객", createdAt: today, lineCount: lines.length, lines });
   } else if (clean.match(/^\/returns\/\d+\/approve$/)) {
     const row = returns.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) { row.status = "approved"; row.processedAt = today + " 11:30"; }

@@ -310,6 +310,7 @@ export const DashboardInbound = () => {
               <option value="">전체</option>
               <option value="일반">일반</option>
               <option value="외주">외주</option>
+              <option value="이동">이동입고(공장간)</option>
             </select>
           </label>
           <label>
@@ -381,7 +382,9 @@ export const DashboardInbound = () => {
                         <td>
                           {row.type === "외주"
                             ? <StatusBadge tone="consign">외주</StatusBadge>
-                            : <StatusBadge tone="gray">일반</StatusBadge>}
+                            : row.type === "이동"
+                              ? <StatusBadge tone="teal">이동입고</StatusBadge>
+                              : <StatusBadge tone="gray">일반</StatusBadge>}
                         </td>
                         <td>{row.expectedAt ?? "-"}</td>
                         <td className="num">{row.qty.toLocaleString()}</td>

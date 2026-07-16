@@ -20,6 +20,7 @@ const InboundConfirmPage = lazy(() => import("../inbound/InboundConfirmPage").th
 const ReturnSchedulePage = lazy(() => import("../inbound/ReturnSchedulePage").then((m) => ({ default: m.ReturnSchedulePage })));
 const ReturnConfirmPage = lazy(() => import("../inbound/ReturnConfirmPage").then((m) => ({ default: m.ReturnConfirmPage })));
 const PickingPage = lazy(() => import("../outbound/PickingPage").then((m) => ({ default: m.PickingPage })));
+const ManualOrderPage = lazy(() => import("../outbound/ManualOrderPage").then((m) => ({ default: m.ManualOrderPage })));
 const OutboundConfirmPage = lazy(() => import("../outbound/OutboundConfirmPage").then((m) => ({ default: m.OutboundConfirmPage })));
 const DeliveryNotePage = lazy(() => import("../outbound/DeliveryNotePage").then((m) => ({ default: m.DeliveryNotePage })));
 const CarrierMasterPage = lazy(() => import("../master/CarrierMasterPage").then((m) => ({ default: m.CarrierMasterPage })));
@@ -35,6 +36,8 @@ const AvailableStockPage = lazy(() => import("../stock/AvailableStockPage").then
 const BarcodeLookupPage = lazy(() => import("../stock/BarcodeLookupPage").then((m) => ({ default: m.BarcodeLookupPage })));
 const StocktakingPage = lazy(() => import("../stock/StocktakingPage").then((m) => ({ default: m.StocktakingPage })));
 const MonthlyStockPage = lazy(() => import("../stock/MonthlyStockPage").then((m) => ({ default: m.MonthlyStockPage })));
+const ErpComparePage = lazy(() => import("../stock/ErpComparePage").then((m) => ({ default: m.ErpComparePage })));
+const FifoStatusPage = lazy(() => import("../stock/FifoStatusPage").then((m) => ({ default: m.FifoStatusPage })));
 const InventoryLocationPage = lazy(() => import("../inventory/InventoryLocationPage").then((m) => ({ default: m.InventoryLocationPage })));
 const InventoryItemPage = lazy(() => import("../inventory/InventoryItemPage").then((m) => ({ default: m.InventoryItemPage })));
 const StockPage = lazy(() => import("../logistics/StockPage").then((m) => ({ default: m.StockPage })));
@@ -64,7 +67,10 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
     "return-confirm": <ReturnConfirmPage />,
     putaway: <PutawayPage />,
     replenishment: <ReplenishmentPage />,
+    "fifo-status": <FifoStatusPage />,
+    "erp-compare": <ErpComparePage />,
     "outbound-order": <DashboardOutbound />,
+    "manual-order": <ManualOrderPage />,
     picking: <PickingPage />,
     "outbound-confirm": <OutboundConfirmPage />,
     "delivery-note": <DeliveryNotePage />,

@@ -11,26 +11,31 @@ type ReplenishRow = {
   itemCode: string;
   itemName: string;
   unit: string;
-  safetyStock: number;
-  pickingAvail: number;
+  warehouseName: string;
+  unitsPerPallet: number;
+  pickingLocationCode: string;
+  pickingQty: number;
+  wholePallets: number;
+  looseQty: number;
   shortQty: number;
   suggestQty: number;
-  sourceStockId: number;
-  sourceLocationCode: string;
-  sourceLot: string;
+  sourceStockId: number | null;
+  sourceLocationCode: string | null;
+  sourceLot: string | null;
   sourceReceivedDate: string | null;
-  targetLocationId: number;
+  sourceAvail: number;
+  targetLocationId: number | null;
   targetLocationCode: string;
 };
 
 const REPLENISH_STEPS = [
-  { key: "detect", label: "부족 감지" },
+  { key: "detect", label: "파레트 부족 감지" },
   { key: "fifo", label: "FIFO 추천" },
   { key: "qr", label: "QR 검증" },
   { key: "done", label: "보충 완료" }
 ];
 
-/** 보충 작업 — 피킹재고 부족 자동감지 + FIFO 추천 + 출발/도착 QR 검증 + 보충 이동 */
+/** 보충 작업 — 파레트 구성 기준 부족 감지 + FIFO 추천 + 출발/도착 QR 검증 + 보충 이동 */
 export const ReplenishmentPage = () => {
   const [rows, setRows] = useState<ReplenishRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +63,7 @@ export const ReplenishmentPage = () => {
     () => ({
       count: rows.length,
       totalShort: rows.reduce((acc, r) => acc + r.shortQty, 0),
-      totalSuggest: rows.reduce((acc, r) => acc + r.suggestQty, 0)
+      noSource: rows.filter((r) => r.sourceStockId == null).length
     }),
     [rows]
   );
@@ -70,11 +75,11 @@ export const ReplenishmentPage = () => {
     setToQr("");
   };
 
-  const fromOk = target != null && fromQr.trim().toUpperCase() === target.sourceLocationCode.toUpperCase();
+  const fromOk = target != null && target.sourceLocationCode != null && fromQr.trim().toUpperCase() === target.sourceLocationCode.toUpperCase();
   const toOk = target != null && toQr.trim().toUpperCase() === target.targetLocationCode.toUpperCase();
 
   const doComplete = async () => {
-    if (!target) return;
+    if (!target || target.sourceStockId == null) return;
     setBusy(true);
     try {
       await apiPost("/stocks/replenishment/complete", {
@@ -82,7 +87,7 @@ export const ReplenishmentPage = () => {
         toLocationId: target.targetLocationId,
         qty
       });
-      setNotice(`${target.itemCode} 보충 완료 — ${target.sourceLocationCode} → ${target.targetLocationCode} ${qty.toLocaleString()}${target.unit} (LOT ${target.sourceLot})`);
+      setNotice(`${target.itemCode} 보충 완료 — ${target.sourceLocationCode} → ${target.targetLocationCode} ${qty.toLocaleString()}${target.unit} (파레트 정합 복원)`);
       setTarget(null);
       await load();
     } catch (e) {
@@ -99,19 +104,19 @@ export const ReplenishmentPage = () => {
         title="보충 작업 단계"
         steps={REPLENISH_STEPS}
         current={1}
-        note="피킹 가용재고 < 안전재고 자동감지 → 보충(RESERVE) 재고 FIFO 추천 → 출발/도착 QR 검증 → 보충 이동"
+        note="피킹 로케이션 재고가 파레트 배수가 아닐 때(낱개 발생) 다음 파레트를 채우기 위한 부족 수량 산정 → 보충(RESERVE) 재고 FIFO 추천 → 출발/도착 QR 검증 → 보충 이동"
       />
 
       <section className="outbound-summary-grid" aria-label="보충 요약">
-        <article className="app-surface outbound-summary-card"><span>보충 대상 품목</span><strong>{summary.count}건</strong></article>
+        <article className="app-surface outbound-summary-card"><span>보충 대상 (파레트 부족)</span><strong>{summary.count}건</strong></article>
         <article className="app-surface outbound-summary-card"><span>부족 수량 합계</span><strong>{summary.totalShort.toLocaleString()}</strong></article>
-        <article className="app-surface outbound-summary-card"><span>보충 제안 합계</span><strong>{summary.totalSuggest.toLocaleString()}</strong></article>
+        <article className="app-surface outbound-summary-card"><span>보충재고 없음</span><strong style={{ color: summary.noSource ? "var(--c-danger)" : undefined }}>{summary.noSource}건</strong></article>
       </section>
 
-      <DashboardCard className="outbound-table-card" title={`보충 대상 (${rows.length}건) — 자동 감지`}>
+      <DashboardCard className="outbound-table-card" title={`보충 대상 (${rows.length}건) — 파레트 구성 기준`}>
         <div className="outbound-list-toolbar">
           <p className="outbound-notice">
-            {notice ?? "피킹 로케이션 가용재고가 안전재고 미만인 품목입니다. FIFO(입고일 오름차순) LOT이 출발지로 추천됩니다."}
+            {notice ?? "피킹 로케이션 재고가 파레트 구성수량의 배수가 아닌(낱개가 남은) 품목입니다. 부족 = 다음 파레트를 채우는 데 필요한 수량. FIFO(입고일 오름차순) 보충재고가 출발지로 추천됩니다."}
           </p>
           <div className="outbound-expand-actions">
             <button type="button" className="btn-secondary" onClick={load}>새로고침</button>
@@ -119,7 +124,7 @@ export const ReplenishmentPage = () => {
         </div>
         {error ? (
           <div className="ds-callout danger" style={{ marginBottom: 12 }}>
-            <span>불러오기 실패: {error} — 백엔드(8080) 확인</span>
+            <span>불러오기 실패: {error} — 백엔드(18080) 확인</span>
           </div>
         ) : null}
         <div className="pc-only">
@@ -128,39 +133,55 @@ export const ReplenishmentPage = () => {
               <tr>
                 <th>SKU</th>
                 <th>품목명</th>
-                <th className="num">피킹 가용</th>
-                <th className="num">안전재고</th>
-                <th className="num">부족</th>
+                <th>피킹 로케이션</th>
+                <th className="num">파레트 구성</th>
+                <th className="num">현재고</th>
+                <th className="num">완성 파레트</th>
+                <th className="num">낱개</th>
+                <th className="num">부족(파레트 채움)</th>
                 <th>출발 (FIFO 추천)</th>
-                <th>도착 (피킹)</th>
-                <th className="num">보충 제안</th>
                 <th>처리</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={10} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>보충 대상이 없습니다 — 모든 품목의 피킹 가용재고가 안전재고 이상입니다.</td></tr>
+                <tr><td colSpan={10} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>보충 대상이 없습니다 — 모든 피킹 로케이션 재고가 파레트 구성에 정합합니다.</td></tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={`${r.itemCode}-${r.sourceStockId}`}>
+                  <tr key={`${r.itemCode}-${r.pickingLocationCode}`}>
                     <td>{r.itemCode}</td>
                     <td>{r.itemName}</td>
-                    <td className="num is-short">{r.pickingAvail.toLocaleString()}</td>
-                    <td className="num">{r.safetyStock.toLocaleString()}</td>
+                    <td><b>{r.pickingLocationCode}</b> <span className="cell-mut" style={{ fontSize: 12 }}>{r.warehouseName}</span></td>
+                    <td className="num">{r.unitsPerPallet.toLocaleString()} {r.unit}/PLT</td>
+                    <td className="num">{r.pickingQty.toLocaleString()}</td>
+                    <td className="num">{r.wholePallets.toLocaleString()} PLT</td>
+                    <td className="num is-short">{r.looseQty.toLocaleString()}</td>
                     <td className="num"><b>{r.shortQty.toLocaleString()}</b></td>
                     <td>
-                      <b>{r.sourceLocationCode}</b>
-                      <div className="cell-mut" style={{ fontSize: 12 }}>
-                        {r.sourceLot}{r.sourceReceivedDate ? ` · ${r.sourceReceivedDate}` : ""}
-                      </div>
+                      {r.sourceLocationCode ? (
+                        <>
+                          <b>{r.sourceLocationCode}</b>
+                          <div className="cell-mut" style={{ fontSize: 12 }}>
+                            {r.sourceLot}{r.sourceReceivedDate ? ` · ${r.sourceReceivedDate}` : ""} · 가용 {r.sourceAvail.toLocaleString()}
+                          </div>
+                        </>
+                      ) : (
+                        <StatusBadge tone="danger">보충재고 없음</StatusBadge>
+                      )}
                     </td>
-                    <td><b>{r.targetLocationCode}</b></td>
-                    <td className="num">{r.suggestQty.toLocaleString()} {r.unit}</td>
                     <td>
                       <div className="outbound-row-actions">
-                        <button type="button" className="btn-secondary" disabled={busy} onClick={() => openModal(r)}>보충</button>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={busy || r.sourceStockId == null}
+                          title={r.sourceStockId == null ? "동일 품목 보충(RESERVE) 재고가 없어 발주 대상입니다" : undefined}
+                          onClick={() => openModal(r)}
+                        >
+                          보충
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -174,7 +195,7 @@ export const ReplenishmentPage = () => {
       <Modal
         open={target !== null}
         title="보충 이동"
-        desc={target ? `${target.itemCode} · ${target.sourceLocationCode} → ${target.targetLocationCode}` : ""}
+        desc={target ? `${target.itemCode} · ${target.sourceLocationCode} → ${target.targetLocationCode} · 파레트 채움 ${target.shortQty}${target.unit}` : ""}
         icon="warehouse"
         iconBg="var(--c-info-bg)"
         iconColor="var(--c-info)"
@@ -196,6 +217,12 @@ export const ReplenishmentPage = () => {
       >
         {target ? (
           <>
+            <div className="ds-callout" style={{ marginBottom: 10 }}>
+              <span>
+                현재 <b>{target.pickingQty.toLocaleString()}{target.unit}</b> = {target.wholePallets} 파레트 + 낱개 {target.looseQty} ·
+                다음 파레트 완성까지 <b>{target.shortQty.toLocaleString()}{target.unit}</b> 부족
+              </span>
+            </div>
             <label className="ds-field">
               <span>보충 수량 (제안 {target.suggestQty.toLocaleString()}{target.unit})</span>
               <input

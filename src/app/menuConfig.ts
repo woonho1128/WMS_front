@@ -51,11 +51,13 @@ export const menuSections: MenuSection[] = [
     iconPath: "M12 3 3 7.5 12 12l9-4.5L12 3zm-9 7.5V17l9 4.5V15l-9-4.5zm18 0L12 15v6.5L21 17v-6.5z",
     description: "격납·보충·이동과 재고 조회·실사를 관리합니다.",
     features: [
-      { slug: "putaway", label: "격납 대기", description: "격납대기 목록과 피킹/보충 로케이션 격납을 처리합니다." },
-      { slug: "replenishment", label: "보충 작업", description: "피킹재고 부족 감지와 FIFO 보충 이동을 처리합니다." },
+      { slug: "putaway", label: "격납 대기", description: "격납대기 목록과 피킹/보충/직출 로케이션 격납(다중 분할 배정)을 처리합니다." },
+      { slug: "replenishment", label: "보충 작업", description: "피킹 로케이션 파레트 구성 부족 감지와 FIFO 보충 이동을 처리합니다." },
+      { slug: "fifo-status", label: "선입선출 현황", description: "파레트 단위 선입선출(입고일자) 우선출고 현황을 관리용으로 조회합니다." },
       { slug: "transfer", label: "재고 이동", description: "일반 재고이동 등록·확정과 이동이력을 관리합니다." },
       { slug: "stock-realtime", label: "실시간 재고 조회", description: "창고·로케이션·품목·LOT별 재고를 조회합니다." },
       { slug: "stock-available", label: "가용 재고 조회", description: "가용재고를 창고·로케이션·품목·LOT별로 조회합니다." },
+      { slug: "erp-compare", label: "ERP 재고 비교", description: "일별 ERP-WMS 재고 차이를 상품·로케이션별로 비교하고 과거 이력을 조회합니다." },
       { slug: "stock-monthly", label: "월말 재고 조회", description: "월말 스냅샷 조회와 ERP 재고 비교를 제공합니다." },
       { slug: "stocktaking", label: "일일 재고 실사", description: "실사결과 입력과 차이분석, 재고조정을 처리합니다." },
       { slug: "barcode-lookup", label: "바코드 조회", description: "QR/바코드로 입고일자·LOT·이동이력을 추적합니다." }
@@ -69,6 +71,7 @@ export const menuSections: MenuSection[] = [
     description: "출고요청 수신부터 피킹·출고확정·배송까지 관리합니다.",
     features: [
       { slug: "outbound-order", label: "출고 요청서", description: "OMS 오더 수신·조회와 오더라벨 출력, 상태관리를 처리합니다." },
+      { slug: "manual-order", label: "비운영 주문 등록", description: "상품 선택 기반 비운영 주문 등록과 BOM 구성품 자동 전개를 제공합니다." },
       { slug: "picking", label: "피킹 작업", description: "오더 QR 스캔과 로케이션 안내, 피킹재고 차감을 처리합니다." },
       { slug: "outbound-confirm", label: "출고 확정", description: "출고확정과 ERP I/F 전송, 실패건 예외처리를 관리합니다." },
       { slug: "delivery-note", label: "배송 내역서", description: "일일 출고·배송·운송정보 조회와 내역서 출력을 제공합니다." }
@@ -93,7 +96,7 @@ export const menuSections: MenuSection[] = [
     description: "품목·로케이션·배송사·재고정책 기준정보를 관리합니다.",
     features: [
       { slug: "item-master", label: "품목 마스터", description: "품목 등록·수정과 TI/HI·중량·부피·안전재고를 관리합니다." },
-      { slug: "location-master", label: "로케이션 관리", description: "로케이션 생성·수정과 상태(피킹/보충/불량/파손)를 관리합니다." },
+      { slug: "location-master", label: "로케이션 관리", description: "로케이션 생성·수정과 유형(피킹/보충/직출/불량/파손)을 관리합니다." },
       { slug: "carrier-master", label: "배송사 관리", description: "배송사 등록·수정·삭제와 계정 권한을 관리합니다." },
       { slug: "stock-policy", label: "가용재고 정책관리", description: "예약·불량·이동중 재고 반영 설정과 계산식을 관리합니다." }
     ]
