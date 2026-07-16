@@ -1,0 +1,35 @@
+/* 격납 분할 배정 모달 — 좁은 모달(≈398px 콘텐츠 폭) 안에서
+   로케이션/수량/삭제 한 줄이 넘치지 않도록 폭을 제어한다. */
+.pa-assign {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: grid;
+  gap: 8px;
+}
+.pa-assign-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.pa-assign .ds-field {
+  margin-bottom: 0;
+}
+/* 로케이션 셀렉트는 남는 폭을 채우고, 옵션 텍스트가 길어도 줄어들 수 있게 min-width:0 */
+.pa-assign-loc {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pa-assign-qty {
+  flex: 0 0 84px;
+}
+.pa-assign-del {
+  flex: 0 0 auto;
+}
+.pa-assign select,
+.pa-assign input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}

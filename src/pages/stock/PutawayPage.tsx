@@ -7,6 +7,7 @@ import { Icon } from "../../components/ui/Icon";
 import { PUTAWAY_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
+import "./PutawayPage.css"; // 격납 분할 배정 모달 레이아웃
 
 type PutawayRow = {
   stockId: number;
@@ -260,13 +261,9 @@ export const PutawayPage = () => {
           const loc = locations.find((l) => l.id === a.lid);
           const verified = rowVerified(a);
           return (
-            <div
-              key={i}
-              className="app-surface"
-              style={{ padding: 12, marginBottom: 10, display: "grid", gap: 8 }}
-            >
-              <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-                <label className="ds-field" style={{ flex: 2 }}>
+            <div key={i} className="pa-assign">
+              <div className="pa-assign-line">
+                <label className="ds-field pa-assign-loc">
                   <span>로케이션 #{i + 1} (피킹/보충/직출)</span>
                   <select
                     value={a.lid}
@@ -284,7 +281,7 @@ export const PutawayPage = () => {
                     })}
                   </select>
                 </label>
-                <label className="ds-field" style={{ flex: 1 }}>
+                <label className="ds-field pa-assign-qty">
                   <span>수량</span>
                   <input
                     type="number"
@@ -295,7 +292,7 @@ export const PutawayPage = () => {
                 </label>
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="btn-secondary pa-assign-del"
                   style={{ color: "var(--c-danger)" }}
                   disabled={assigns.length <= 1}
                   onClick={() => removeRow(i)}
