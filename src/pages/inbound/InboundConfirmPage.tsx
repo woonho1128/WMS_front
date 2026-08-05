@@ -7,6 +7,7 @@ import { Icon } from "../../components/ui/Icon";
 import { QrBox } from "../../components/ui/QrBox";
 import { INBOUND_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
+import { todayStr } from "../../shared/appDate";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터/펼침 스타일 재사용
 
 type InboundRow = {
@@ -36,9 +37,6 @@ type InboundLine = {
   expectedQty: number;
   receivedQty: number;
 };
-
-const fmtDate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export const InboundConfirmPage = () => {
   const [rows, setRows] = useState<InboundRow[]>([]);
@@ -96,7 +94,7 @@ export const InboundConfirmPage = () => {
     });
   };
 
-  const today = fmtDate(new Date());
+  const today = todayStr();
   const filtered = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
     const status = tab === "wait" ? "located" : "confirmed";

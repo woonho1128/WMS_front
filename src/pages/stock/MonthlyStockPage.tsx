@@ -3,6 +3,7 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
+import { currentMonth } from "../../shared/appDate";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type SnapRow = {
@@ -16,10 +17,7 @@ type SnapRow = {
   capturedAt: string;
 };
 
-const curMonth = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
+const curMonth = currentMonth;
 
 export const MonthlyStockPage = () => {
   const [months, setMonths] = useState<string[]>([]);

@@ -7,6 +7,7 @@ import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
 import { OUTBOUND_STEPS, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet } from "../../services/http";
+import { shiftDays } from "../../shared/appDate";
 import "./DashboardOutbound.css";
 
 type OutboundRow = {
@@ -38,16 +39,6 @@ type OutboundLine = {
 
 const isFinal = (s: string) => s === "출고완료" || s === "거부";
 const PAGE_SIZE = 10;
-
-// 로컬 기준 yyyy-MM-dd 포맷 (toISOString 의 UTC 밀림 방지)
-const fmtDate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-// 오늘 기준 n일 이동한 날짜 문자열 (출고예정일 기본 범위용)
-const shiftDays = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return fmtDate(d);
-};
 
 /** 출고 요청서 — OMS 오더 수신 내역 조회 / 오더라벨 출력 / 단계별 상태관리 (피킹·확정은 전용 화면) */
 export const DashboardOutbound = () => {

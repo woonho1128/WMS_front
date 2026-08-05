@@ -6,6 +6,7 @@ import { StatusBadge, type BadgeTone } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { INBOUND_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost, apiPut } from "../../services/http";
+import { shiftDays } from "../../shared/appDate";
 import "./DashboardOutbound.css"; // 공용 테이블/필터/페이지네이션/펼침 스타일 재사용
 import "./DashboardInbound.css";
 
@@ -56,14 +57,6 @@ const STATUS_MAP: Record<string, { label: string; tone: BadgeTone }> = {
 const STATUS_OPTIONS = ["scheduled", "registered", "located", "confirmed"];
 
 const PAGE_SIZE = 10;
-// 로컬 기준 yyyy-MM-dd (UTC 밀림 방지)
-const fmtDate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const shiftDays = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return fmtDate(d);
-};
 
 export const DashboardInbound = () => {
   const navigate = useNavigate();

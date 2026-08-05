@@ -3,6 +3,7 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { apiGet, apiPost, apiPut } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
+import { todayStr } from "../../shared/appDate";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type CountRow = {
@@ -24,10 +25,7 @@ type CountRow = {
 
 type WarehouseOption = { id: number; name: string };
 
-const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const today = todayStr;
 
 export const StocktakingPage = () => {
   const [rows, setRows] = useState<CountRow[]>([]);

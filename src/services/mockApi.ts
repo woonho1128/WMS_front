@@ -1,10 +1,12 @@
+import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
 
 type AnyRecord = Record<string, any>;
 
 const delay = (ms = 180) => new Promise((resolve) => setTimeout(resolve, ms));
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
-const today = "2026-06-17";
+// 시드 기준일 — 화면 날짜 필터 기본값도 같은 값을 쓴다(shared/appDate)
+const today = MOCK_TODAY;
 
 export const mockAccounts: Record<string, { password: string; user: LoginResult["user"] }> = {
   admin: { password: "1234", user: { id: "admin", name: "관리자", role: "admin" } },

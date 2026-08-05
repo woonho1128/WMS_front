@@ -3,6 +3,7 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
+import { shiftDays } from "../../shared/appDate";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type LogRow = {
@@ -14,14 +15,6 @@ type LogRow = {
   erpSent: boolean;
   operator: string | null;
   createdAt: string;
-};
-
-const fmtDate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-const shiftDays = (n: number) => {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return fmtDate(d);
 };
 
 const actionTone = (action: string): "info" | "success" | "danger" | "violet" | "gray" => {
