@@ -1,180 +1,413 @@
 /* ============================================================
-   WMS — App shell (fixed sidebar + header)
-   디자인의 셸 구조. MainLayout 이 사용. wms- 접두사로 기존 레이아웃과 충돌 차단.
+   NEXUS WMS — App shell
+   ------------------------------------------------------------
+   사이드바 + 헤더 + 작업탭 + 콘텐츠. MainLayout 이 사용한다.
+   wms- 접두사로 기존 레이아웃 CSS 와 충돌을 차단한다.
    ============================================================ */
 
-.wms-app { display: flex; min-height: 100vh; background: var(--bg); }
+.wms-app {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg);
+  position: relative;
+  isolation: isolate;
+}
+/* 관제 화면 특유의 은은한 광원 (라이트 테마에서는 none) */
+.wms-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--app-aurora);
+}
 
-/* ---------- Sidebar ---------- */
+/* ============================================================
+   Sidebar
+   ============================================================ */
 .wms-side {
   width: var(--side-w);
   flex: 0 0 var(--side-w);
   background: linear-gradient(180deg, var(--side-top), var(--side-bottom));
+  border-right: 1px solid var(--border);
   color: var(--side-text);
-  display: flex; flex-direction: column;
-  position: sticky; top: 0; height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
   z-index: 30;
-  transition: width .22s cubic-bezier(.4,0,.2,1), flex-basis .22s cubic-bezier(.4,0,.2,1);
+  transition: width var(--dur-2) var(--ease), flex-basis var(--dur-2) var(--ease);
 }
-.wms-app.collapsed .wms-side { width: 76px; flex-basis: 76px; }
+.wms-app.collapsed .wms-side { width: var(--side-w-mini); flex-basis: var(--side-w-mini); }
 
+/* ---------- brand ---------- */
 .wms-brand {
-  display: flex; align-items: center; gap: 11px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 0 18px;
   min-height: var(--header-h);
-  border-bottom: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid var(--side-line);
 }
 .wms-brand-logo {
-  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 11px;
-  background: linear-gradient(150deg, #3b82f6, #2563eb);
-  display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 15px;
-  box-shadow: 0 4px 12px -2px rgba(37,99,235,.55);
+  width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, var(--primary-hover), var(--primary));
+  display: grid; place-items: center;
+  color: var(--ink-on-accent);
+  box-shadow: var(--glow-primary), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  position: relative;
 }
+.wms-brand-logo svg { width: 20px; height: 20px; }
 .wms-brand-text { display: flex; flex-direction: column; line-height: 1.2; overflow: hidden; white-space: nowrap; }
-.wms-brand-title { font-weight: 800; font-size: 16px; color: #fff; letter-spacing: -.2px; }
-.wms-brand-sub { font-size: 11.5px; color: var(--side-muted); margin-top: 2px; }
+.wms-brand-title {
+  font-weight: 800; font-size: 15.5px; color: var(--ink-on-dark);
+  letter-spacing: 0.4px;
+}
+.wms-brand-sub {
+  font-size: 9.5px; font-weight: 700; color: var(--side-muted);
+  margin-top: 3px; letter-spacing: 1.5px;
+}
 .wms-app.collapsed .wms-brand-text { display: none; }
 .wms-app.collapsed .wms-brand { justify-content: center; padding: 0; }
 
+/* ---------- menu search ----------
+   사이드바는 두 테마 모두 어두우므로 --side-* / --ink-on-dark 고정 토큰만 쓴다 */
+.wms-menusearch { padding: 12px 12px 2px; }
+.wms-menusearch-box {
+  display: flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 7px 0 11px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--side-line);
+  color: var(--side-muted);
+  cursor: text;
+  transition: border-color var(--dur-1), background var(--dur-1), box-shadow var(--dur-1);
+}
+.wms-menusearch-box:hover { background: rgba(255, 255, 255, 0.065); }
+.wms-menusearch-box:focus-within {
+  border-color: var(--side-active);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 3px var(--side-active-soft);
+  color: var(--ink-on-dark);
+}
+.wms-menusearch-box svg { flex: 0 0 auto; }
+/* wms-theme 의 전역 input 스타일(면/테두리/포커스 링)을 끈다 */
+.wms-menusearch-box input,
+.wms-menusearch-box input:focus {
+  flex: 1; min-width: 0; height: 100%;
+  padding: 0; border: none; border-radius: 0;
+  background: transparent; box-shadow: none; outline: none;
+  color: var(--ink-on-dark); font-family: inherit; font-size: 13px; font-weight: 600;
+}
+.wms-menusearch-box input::placeholder { color: var(--side-muted); font-weight: 500; }
+
+.wms-menusearch-kbd {
+  flex: 0 0 auto;
+  padding: 2px 5px; border-radius: 5px;
+  border: 1px solid var(--side-line); background: rgba(255, 255, 255, 0.04);
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--side-section); white-space: nowrap;
+}
+.wms-menusearch-clear {
+  flex: 0 0 22px; width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border: none; border-radius: 6px; padding: 0;
+  background: rgba(255, 255, 255, 0.08); color: var(--side-text); cursor: pointer;
+}
+.wms-menusearch-clear:hover { background: rgba(255, 255, 255, 0.16); color: var(--ink-on-dark); }
+
+.wms-menusearch-meta {
+  padding: 7px 4px 0;
+  font-size: 11px; font-weight: 600; color: var(--side-section);
+}
+.wms-menusearch-meta b { color: var(--ink-on-dark-muted); }
+
+/* 접힌 사이드바에서는 돋보기 버튼만 */
+.wms-menusearch-mini {
+  display: none;
+  width: 44px; height: 40px; margin: 0 auto;
+  place-items: center;
+  border: 1px solid var(--side-line); border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.04); color: var(--side-text); cursor: pointer;
+}
+.wms-menusearch-mini:hover { background: var(--side-hover); color: var(--ink-on-dark); }
+.wms-app.collapsed .wms-menusearch { padding: 12px 0 2px; }
+.wms-app.collapsed .wms-menusearch-box,
+.wms-app.collapsed .wms-menusearch-meta { display: none; }
+.wms-app.collapsed .wms-menusearch-mini { display: grid; }
+
+/* 검색 결과 강조 */
+.wms-hl {
+  background: rgba(47, 107, 255, 0.34);
+  color: var(--ink-on-dark);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.wms-navitem.active .wms-hl { background: rgba(255, 255, 255, 0.24); color: var(--ink-on-accent); }
+
+.wms-nav-empty {
+  display: grid; justify-items: center; gap: 10px;
+  padding: 34px 14px; text-align: center;
+  color: var(--side-muted); font-size: 12px; line-height: 1.6;
+}
+.wms-nav-empty svg { opacity: 0.5; }
+
+/* ---------- nav ---------- */
 .wms-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px 12px 8px; }
-.wms-nav::-webkit-scrollbar { width: 8px; }
-.wms-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 8px; border: none; }
+.wms-nav::-webkit-scrollbar { width: 6px; }
+.wms-nav::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: var(--r-sm); border: none; }
+.wms-nav::-webkit-scrollbar-track { background: transparent; }
 
 .wms-navsec {
-  font-size: 11px; font-weight: 700; letter-spacing: .4px;
-  color: var(--side-section); padding: 14px 12px 6px;
+  font-size: 10px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase;
+  color: var(--side-section); padding: 16px 12px 7px;
 }
 .wms-app.collapsed .wms-navsec { display: none; }
 
 .wms-navitem {
-  display: flex; align-items: center; gap: 11px;
+  display: flex; align-items: center; gap: 12px;
   padding: 10px 12px; border-radius: var(--r-md);
   color: var(--side-text); font-size: 14px; font-weight: 600;
   position: relative; margin-bottom: 2px; width: 100%; text-align: left;
   border: none; background: transparent; cursor: pointer;
-  transition: background .14s, color .14s;
+  transition: background var(--dur-1), color var(--dur-1);
 }
-.wms-navitem:hover { background: var(--side-hover); color: #fff; }
-.wms-navitem.active { background: var(--side-active); color: #fff; box-shadow: 0 6px 16px -6px rgba(37,99,235,.7); }
-.wms-navitem .wms-ni-ico { width: 20px; height: 20px; flex: 0 0 20px; opacity: .92; display: grid; place-items: center; }
+.wms-navitem:hover { background: var(--side-hover); color: var(--ink-on-dark); }
+.wms-navitem.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-press));
+  color: var(--ink-on-accent);
+  box-shadow: var(--glow-primary);
+}
+.wms-navitem .wms-ni-ico { width: 20px; height: 20px; flex: 0 0 20px; opacity: 0.9; display: grid; place-items: center; }
 .wms-navitem .wms-ni-ico svg { width: 20px; height: 20px; }
 .wms-navitem.active .wms-ni-ico { opacity: 1; }
-.wms-navitem .wms-ni-label { flex: 1; white-space: nowrap; overflow: hidden; }
-.wms-navitem .wms-ni-caret { width: 16px; height: 16px; flex: 0 0 16px; transition: transform .18s ease; opacity: .6; }
-.wms-navitem .wms-ni-caret svg { width: 16px; height: 16px; }
+.wms-navitem .wms-ni-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wms-navitem .wms-ni-caret { width: 15px; height: 15px; flex: 0 0 15px; transition: transform var(--dur-2) var(--ease); opacity: 0.55; }
+.wms-navitem .wms-ni-caret svg { width: 15px; height: 15px; }
 .wms-navgroup.open > .wms-navitem .wms-ni-caret { transform: rotate(90deg); }
 .wms-app.collapsed .wms-navitem { justify-content: center; padding: 11px; }
 .wms-app.collapsed .wms-navitem .wms-ni-label,
 .wms-app.collapsed .wms-navitem .wms-ni-caret { display: none; }
 
-/* sub features */
-.wms-subtree { display: grid; gap: 1px; overflow: hidden; margin: 1px 0 4px; }
+/* ---------- sub features ---------- */
+.wms-subtree {
+  display: grid; gap: 1px; overflow: hidden; margin: 2px 0 6px;
+  position: relative; padding-left: 21px;
+}
+/* 하위 메뉴를 묶는 가이드 라인 */
+.wms-subtree::before {
+  content: ""; position: absolute; left: 21px; top: 4px; bottom: 4px;
+  width: 1px; background: rgba(255, 255, 255, 0.09);
+}
 .wms-app.collapsed .wms-subtree { display: none; }
 .wms-sublink {
-  display: block; padding: 8px 12px 8px 43px; border-radius: var(--r-sm);
+  display: block; padding: 8px 12px 8px 18px; border-radius: var(--r-sm);
   color: var(--side-muted); font-size: 13px; font-weight: 600; text-decoration: none;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: background .12s, color .12s;
+  transition: background var(--dur-1), color var(--dur-1);
+  position: relative;
 }
-.wms-sublink:hover { background: var(--side-hover); color: #fff; }
-.wms-sublink.active { color: #fff; background: rgba(37,99,235,.18); box-shadow: inset 3px 0 0 var(--primary); }
+.wms-sublink-label,
+.wms-sublink-desc { display: block; overflow: hidden; text-overflow: ellipsis; }
+.wms-sublink-desc {
+  margin-top: 2px;
+  font-size: 11px; font-weight: 500; color: var(--side-section);
+}
+.wms-sublink:hover { background: var(--side-hover); color: var(--ink-on-dark); }
+/* 설명 일치 그룹 — 트리 밖 평면 목록 */
+.wms-deschits { margin-top: 6px; padding-top: 4px; border-top: 1px dashed var(--side-line); }
+.wms-deschits .wms-sublink { padding-left: 12px; }
+.wms-sublink-sec { color: var(--side-section); font-weight: 600; }
+/* 검색 결과 키보드 커서 */
+.wms-sublink.is-cursor {
+  background: var(--side-hover);
+  color: var(--ink-on-dark);
+  box-shadow: inset 0 0 0 1px rgba(47, 107, 255, 0.55);
+}
+/* 사이드바는 두 테마 모두 어두우므로 브랜드 틴트는 고정값을 쓴다
+   (--primary-bg 는 라이트에서 흰색에 가까워져 글자가 사라진다) */
+.wms-sublink.active { color: var(--ink-on-dark); background: var(--side-active-soft); }
+.wms-sublink.active::before {
+  content: ""; position: absolute; left: -1px; top: 50%; transform: translateY(-50%);
+  width: 2px; height: 15px; border-radius: 2px; background: var(--primary);
+  box-shadow: 0 0 8px 0 var(--primary);
+}
 
+/* ---------- system status ---------- */
+.wms-sysstat {
+  margin: 8px 12px 0;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--side-line);
+}
+.wms-sysstat-title {
+  font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px;
+  color: var(--side-section); margin-bottom: 7px;
+}
+.wms-sysstat-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 700; color: var(--side-text);
+}
+.wms-sysdot {
+  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px;
+  background: var(--c-success); animation: nx-pulse 2.4s infinite;
+}
+.wms-sysdot.warn { background: var(--c-warning); }
+.wms-app.collapsed .wms-sysstat { display: none; }
+
+/* ---------- user ---------- */
 .wms-user {
   display: flex; align-items: center; gap: 11px;
-  padding: 14px 16px; border-top: 1px solid rgba(255,255,255,.07);
+  padding: 14px 16px; margin-top: 8px;
+  border-top: 1px solid var(--side-line);
 }
 .wms-avatar {
-  width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px;
-  background: linear-gradient(150deg, #475569, #334155);
-  display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px;
+  width: 36px; height: 36px; flex: 0 0 36px; border-radius: 11px;
+  background: linear-gradient(150deg, var(--primary), var(--p-violet-500));
+  display: grid; place-items: center; color: var(--ink-on-accent); font-weight: 800; font-size: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .wms-user-text { display: flex; flex-direction: column; line-height: 1.25; overflow: hidden; }
-.wms-user-name { font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap; }
+.wms-user-name { font-size: 13.5px; font-weight: 700; color: var(--ink-on-dark); white-space: nowrap; }
 .wms-user-role { font-size: 11.5px; color: var(--side-muted); white-space: nowrap; }
 .wms-app.collapsed .wms-user-text { display: none; }
 .wms-app.collapsed .wms-user { justify-content: center; padding: 14px 0; }
 
 .wms-logout {
   margin-left: auto; flex: 0 0 32px;
-  width: 32px; height: 32px; border-radius: 9px;
-  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04);
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  border: 1px solid var(--side-line); background: rgba(255, 255, 255, 0.04);
   color: var(--side-text); display: grid; place-items: center; cursor: pointer;
-  transition: background .14s, color .14s, border-color .14s;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
 }
-.wms-logout:hover { background: var(--c-danger); border-color: var(--c-danger); color: #fff; }
+.wms-logout:hover { background: var(--c-danger); border-color: var(--c-danger); color: var(--ink-on-accent); }
 .wms-app.collapsed .wms-logout { display: none; }
 
-/* ---------- Main column ---------- */
+/* ============================================================
+   Main column
+   ============================================================ */
 .wms-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 .wms-header {
-  height: var(--header-h); flex: 0 0 var(--header-h);
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 16px;
-  padding: 0 22px; position: sticky; top: 0; z-index: 20;
+  min-height: var(--header-h); flex: 0 0 var(--header-h);
+  background: var(--surface-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; position: sticky; top: 0; z-index: 20;
 }
+
 .wms-hbtn {
-  width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--border);
-  background: var(--surface); display: grid; place-items: center; color: var(--ink-muted);
-  cursor: pointer; transition: background .12s, color .12s;
+  width: 36px; height: 36px; border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--surface-2); display: grid; place-items: center; color: var(--ink-muted);
+  cursor: pointer; transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
 }
-.wms-hbtn:hover { background: var(--surface-3); color: var(--ink); }
+.wms-hbtn:hover { background: var(--surface-3); color: var(--ink-strong); border-color: var(--border-strong); }
 .wms-hbtn svg { width: 18px; height: 18px; }
 
-.wms-crumb { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-.wms-crumb-top { font-size: 11.5px; color: var(--ink-faint); font-weight: 600; white-space: nowrap; }
-.wms-crumb-now { font-size: 17px; font-weight: 800; color: var(--ink-strong); letter-spacing: -.3px; white-space: nowrap; }
+.wms-crumb { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.wms-crumb-top {
+  font-size: 11px; color: var(--ink-faint); font-weight: 700; white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+.wms-crumb-now {
+  font-size: 17px; font-weight: 800; color: var(--ink-strong);
+  letter-spacing: -0.4px; white-space: nowrap;
+}
 .wms-spacer { flex: 1; }
 
 .wms-search {
   display: flex; align-items: center; gap: 9px;
-  width: 320px; max-width: 32vw; height: 40px;
-  background: var(--surface-3); border: 1px solid transparent;
-  border-radius: 10px; padding: 0 13px; color: var(--ink-faint);
-  transition: border-color .14s, background .14s;
+  width: 330px; max-width: 30vw; height: 40px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-pill); padding: 0 15px; color: var(--ink-faint);
+  transition: border-color var(--dur-1), background var(--dur-1), box-shadow var(--dur-1);
 }
-.wms-search:focus-within { background: #fff; border-color: var(--primary); }
-.wms-search svg { width: 17px; height: 17px; flex: 0 0 17px; }
-.wms-search input { border: none; background: transparent; outline: none; flex: 1; font-size: 13.5px; color: var(--ink); font-family: inherit; }
+.wms-search:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
+.wms-search svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.wms-search input {
+  border: none; background: transparent; outline: none; flex: 1;
+  font-size: 13px; color: var(--ink); font-family: inherit;
+  box-shadow: none;
+}
+.wms-search input:focus { box-shadow: none; border: none; }
 .wms-search input::placeholder { color: var(--ink-faint); }
 
 .wms-role {
-  height: 40px; border: 1px solid var(--border-strong); border-radius: 10px;
-  background: var(--surface); color: var(--ink); font-family: inherit; font-size: 13px;
-  font-weight: 600; padding: 0 10px; cursor: pointer;
+  height: 36px; border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface-2); color: var(--ink); font-family: inherit; font-size: 12.5px;
+  font-weight: 700; padding: 0 10px; cursor: pointer;
 }
 
 .wms-bell { position: relative; }
-.wms-bell .wms-dot { position: absolute; top: 7px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-danger); border: 2px solid var(--surface); }
+.wms-bell .wms-dot {
+  position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: var(--r-pill); background: var(--c-danger); color: var(--ink-on-accent);
+  font-size: 10px; font-weight: 800; line-height: 17px; text-align: center;
+  border: 2px solid var(--bg);
+}
+
+/* 사용자 칩 */
+.wms-userchip {
+  display: flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 12px 0 6px;
+  border-radius: var(--r-pill); border: 1px solid var(--border);
+  background: var(--surface-2); cursor: pointer;
+  transition: border-color var(--dur-1), background var(--dur-1);
+}
+.wms-userchip:hover { background: var(--surface-3); border-color: var(--border-strong); }
+.wms-userchip .wms-avatar { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; font-size: 12px; }
+.wms-userchip-text { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
+.wms-userchip-name { font-size: 12.5px; font-weight: 800; color: var(--ink-strong); white-space: nowrap; }
+.wms-userchip-role { font-size: 10.5px; font-weight: 600; color: var(--ink-faint); white-space: nowrap; }
 
 .wms-content { flex: 1; overflow-y: auto; padding: 22px 24px 56px; min-width: 0; }
 
-/* ---------- mobile (off-canvas) ---------- */
+/* ============================================================
+   Mobile (off-canvas)
+   ============================================================ */
 .wms-backdrop {
-  position: fixed; inset: 0; background: rgba(15,23,42,.45);
-  opacity: 0; pointer-events: none; transition: opacity .18s ease; z-index: 29;
+  position: fixed; inset: 0; background: rgba(3, 6, 13, 0.6);
+  opacity: 0; pointer-events: none; transition: opacity var(--dur-2) var(--ease); z-index: 29;
 }
 .wms-backdrop.show { opacity: 1; pointer-events: auto; }
+
+@media (max-width: 1180px) {
+  .wms-userchip-text { display: none; }
+  .wms-userchip { padding: 0 6px; }
+}
 
 @media (max-width: 1024px) {
   .wms-side {
     position: fixed; left: 0; top: 0; height: 100vh;
-    transform: translateX(-100%); transition: transform .22s cubic-bezier(.4,0,.2,1);
+    transform: translateX(-100%); transition: transform var(--dur-2) var(--ease);
     width: var(--side-w) !important; flex-basis: var(--side-w) !important;
   }
-  .wms-app.mobile-open .wms-side { transform: translateX(0); }
+  .wms-app.mobile-open .wms-side { transform: translateX(0); box-shadow: var(--sh-modal); }
   .wms-app.collapsed .wms-side { width: var(--side-w) !important; flex-basis: var(--side-w) !important; }
   .wms-app.collapsed .wms-navsec,
   .wms-app.collapsed .wms-navitem .wms-ni-label,
   .wms-app.collapsed .wms-navitem .wms-ni-caret,
   .wms-app.collapsed .wms-subtree,
+  .wms-app.collapsed .wms-sysstat,
   .wms-app.collapsed .wms-brand-text,
-  .wms-app.collapsed .wms-user-text { display: revert; }
-  .wms-search { width: 180px; }
+  .wms-app.collapsed .wms-user-text,
+  .wms-app.collapsed .wms-menusearch-meta { display: revert; }
+  /* 모바일 드로어는 항상 펼친 형태 — 접힘 전용 돋보기 버튼 대신 검색창 */
+  .wms-app.collapsed .wms-menusearch { padding: 12px 12px 2px; }
+  .wms-app.collapsed .wms-menusearch-box { display: flex; }
+  .wms-app.collapsed .wms-menusearch-mini { display: none; }
+  .wms-search { width: 200px; }
+  .wms-role { display: none; }
 }
 
 @media (max-width: 640px) {
   .wms-search { display: none; }
   .wms-content { padding: 16px 14px 48px; }
   .wms-header { padding: 0 14px; gap: 10px; }
+  .wms-crumb-now { font-size: 15px; }
 }

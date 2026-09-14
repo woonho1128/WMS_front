@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { findSection, getMenuSectionsForRole } from "../app/menuConfig";
 import { roleLabels, type UserRole } from "../app/roles";
 import { useUiStore } from "../app/store/uiStore";
@@ -7,6 +7,7 @@ import { useAuthStore } from "../app/store/authStore";
 import { useTabsStore } from "../app/store/tabsStore";
 import { Icon } from "../components/ui/Icon";
 import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
+import { SideMenu } from "../components/layout/SideMenu";
 
 const roleOptions = Object.entries(roleLabels) as Array<[UserRole, string]>;
 const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 1024px)").matches;
@@ -16,6 +17,8 @@ export const MainLayout = () => {
   const setCollapsed = useUiStore((state) => state.setSidebarCollapsed);
   const currentRole = useUiStore((state) => state.currentRole);
   const setCurrentRole = useUiStore((state) => state.setCurrentRole);
+  const theme = useUiStore((state) => state.theme);
+  const toggleTheme = useUiStore((state) => state.toggleTheme);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const openTab = useTabsStore((state) => state.openTab);
@@ -30,17 +33,14 @@ export const MainLayout = () => {
     navigate("/login", { replace: true });
   };
 
-  const allowedMenuSections = getMenuSectionsForRole(currentRole);
+  const allowedMenuSections = useMemo(() => getMenuSectionsForRole(currentRole), [currentRole]);
   const [sectionSlug, featureSlug] = location.pathname.split("/").filter(Boolean);
   const currentSection = allowedMenuSections.find((section) => section.slug === sectionSlug);
   const currentFeature = currentSection?.features.find((feature) => feature.slug === featureSlug);
   const currentLabel = currentFeature?.label ?? currentSection?.label ?? "대시보드";
 
-  const [expanded, setExpanded] = useState<string>(sectionSlug ?? "dashboard");
-
-  // 경로 이동 시 해당 섹션 자동 펼침 + 모바일 드로어 닫기
+  // 경로 이동 시 모바일 드로어 닫기
   useEffect(() => {
-    if (sectionSlug) setExpanded(sectionSlug);
     setMobileOpen(false);
   }, [sectionSlug, featureSlug]);
 
@@ -61,14 +61,11 @@ export const MainLayout = () => {
     else setCollapsed(!collapsed);
   };
 
-  const handleSectionClick = (slug: string, firstFeature?: string) => {
-    // 접힌 사이드바에서는 첫 화면으로 바로 이동, 그 외에는 하위 화면 목록을 펼친다.
-    if (collapsed && !isMobile()) {
-      if (firstFeature) navigate(`/${slug}/${firstFeature}`);
-      return;
-    }
-    setExpanded((prev) => (prev === slug ? "" : slug));
-  };
+  // 메뉴 검색 진입 시 사이드바가 보이도록 연다 (Ctrl+K 에서 쓰므로 참조를 고정)
+  const openSidebar = useCallback(() => {
+    if (isMobile()) setMobileOpen(true);
+    else setCollapsed(false);
+  }, [setCollapsed]);
 
   const appClass = `wms-app${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`;
 
@@ -76,50 +73,30 @@ export const MainLayout = () => {
     <div className={appClass}>
       <aside className="wms-side">
         <div className="wms-brand">
-          <div className="wms-brand-logo">W</div>
+          <div className="wms-brand-logo">
+            <Icon name="cube3d" size={20} />
+          </div>
           <div className="wms-brand-text">
             <div className="wms-brand-title">DAELIM WMS</div>
-            <div className="wms-brand-sub">창고관리시스템</div>
+            <div className="wms-brand-sub">SMART FULFILLMENT</div>
           </div>
         </div>
 
-        <nav className="wms-nav">
-          {allowedMenuSections.map((section) => {
-            const activeSection = sectionSlug === section.slug;
-            const open = expanded === section.slug || activeSection;
-            return (
-              <div key={section.slug} className={`wms-navgroup${open ? " open" : ""}`}>
-                <button
-                  type="button"
-                  className={`wms-navitem${activeSection ? " active" : ""}`}
-                  onClick={() => handleSectionClick(section.slug, section.features[0]?.slug)}
-                  title={section.label}
-                >
-                  <span className="wms-ni-ico">
-                    <Icon path={section.iconPath} filled size={20} />
-                  </span>
-                  <span className="wms-ni-label">{section.label}</span>
-                  <span className="wms-ni-caret">
-                    <Icon name="chevR" size={16} />
-                  </span>
-                </button>
-                {open ? (
-                  <div className="wms-subtree">
-                    {section.features.map((feature) => (
-                      <NavLink
-                        key={feature.slug}
-                        to={`/${section.slug}/${feature.slug}`}
-                        className={({ isActive }) => `wms-sublink${isActive ? " active" : ""}`}
-                      >
-                        {feature.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </nav>
+        <SideMenu
+          sections={allowedMenuSections}
+          activeSection={sectionSlug}
+          collapsed={collapsed}
+          isMobile={isMobile}
+          onRequestOpen={openSidebar}
+        />
+
+        <div className="wms-sysstat">
+          <div className="wms-sysstat-title">SYSTEM STATUS</div>
+          <div className="wms-sysstat-row">
+            <span className="wms-sysdot" />
+            모든 연동 정상
+          </div>
+        </div>
 
         <div className="wms-user">
           <div className="wms-avatar">{userName.charAt(0)}</div>
@@ -145,6 +122,11 @@ export const MainLayout = () => {
 
           <div className="wms-spacer" />
 
+          <div className="wms-search">
+            <Icon name="search" size={16} />
+            <input placeholder="작업번호, 거래처, 로케이션 검색" />
+          </div>
+
           <select
             className="wms-role"
             value={currentRole}
@@ -158,14 +140,27 @@ export const MainLayout = () => {
             ))}
           </select>
 
-          <div className="wms-search">
-            <Icon name="search" size={17} />
-            <input placeholder="SKU, 출고번호, 거래처 검색" />
-          </div>
+          <button
+            type="button"
+            className="wms-hbtn"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+            aria-label="테마 전환"
+          >
+            <Icon name={theme === "dark" ? "sun" : "moon"} size={18} />
+          </button>
 
-          <button type="button" className="wms-hbtn wms-bell" aria-label="알림">
+          <button type="button" className="wms-hbtn wms-bell" aria-label="알림 3건">
             <Icon name="bell" size={18} />
-            <span className="wms-dot" />
+            <span className="wms-dot">3</span>
+          </button>
+
+          <button type="button" className="wms-userchip" onClick={handleLogout} title="로그아웃">
+            <span className="wms-avatar">{userName.charAt(0)}</span>
+            <span className="wms-userchip-text">
+              <span className="wms-userchip-name">{userName}</span>
+              <span className="wms-userchip-role">{roleLabels[currentRole]}</span>
+            </span>
           </button>
         </header>
 

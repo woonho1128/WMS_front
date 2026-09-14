@@ -1,4 +1,2 @@
-﻿:root,
-[data-theme="light"] {
-  color-scheme: light;
-}
+/* DEPRECATED — 2026-09 디자인 재설계로 대체됨.
+   라이트 테마는 tokens/semantic.css 의 :root[data-theme="light"] 블록에서 관리한다. */

@@ -2,7 +2,7 @@
   height: var(--h-input);
   border: 1px solid var(--c-border);
   border-radius: var(--rd-sm);
-  background: #fff;
+  background: var(--surface);
   display: flex;
   align-items: center;
   gap: 8px;

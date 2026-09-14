@@ -1,13 +1,35 @@
-﻿@import "./tokens/color.css";
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+/* ============================================================
+   NEXUS WMS — 스타일 진입점
+   ------------------------------------------------------------
+   로드 순서가 곧 설계다. 아래 순서를 바꾸지 말 것.
+
+   1) tokens    원시 팔레트 → 의미 토큰(테마) → 타이포/여백
+   2) globals   리셋 / 기본 엘리먼트 / 유틸
+   3) legacy    기존 화면 CSS (전부 토큰 참조로 마이그레이션 완료)
+   4) theme     컴포넌트 톤 레이어 (공통 클래스의 최종 외형)
+   5) shell     앱 셸(사이드바/헤더/탭/콘텐츠)
+   ============================================================ */
+
+/* 1) tokens */
+@import "./tokens/palette.css";
+@import "./tokens/semantic.css";
 @import "./tokens/typography.css";
 @import "./tokens/spacing.css";
-@import "./themes/light.css";
-@import "./themes/dark.css";
+
+/* 2) globals */
 @import "./globals/reset.css";
 @import "./globals/base.css";
 @import "./globals/utilities.css";
+
+/* 3) legacy screens */
 @import "./global.base.css";
 @import "./global.layout-legacy.css";
 @import "./global.tail.css";
+
+/* 4) component tone */
 @import "./wms-theme.css";
+
+/* 5) app shell */
 @import "./wms-shell.css";

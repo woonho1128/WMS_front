@@ -1,0 +1,104 @@
+/* ============================================================
+   NEXUS WMS — Primitive palette (raw scales)
+   ------------------------------------------------------------
+   여기에는 "의미"가 없는 원색만 둔다.
+   화면에서 직접 쓰지 말 것. semantic.css 의 의미 토큰을 쓴다.
+   ============================================================ */
+
+:root {
+  /* ---------- Cool neutral (light 계열) ---------- */
+  --p-slate-25:  #fbfcfe;
+  --p-slate-50:  #f7f9fc;
+  --p-slate-100: #f1f5f9;
+  --p-slate-150: #eaeff6;
+  --p-slate-200: #e2e8f0;
+  --p-slate-250: #d8e0ec;
+  --p-slate-300: #cbd5e1;
+  --p-slate-400: #94a3b8;
+  --p-slate-500: #64748b;
+  --p-slate-600: #475569;
+  --p-slate-700: #334155;
+  --p-slate-800: #1e293b;
+  --p-slate-900: #0f172a;
+
+  /* ---------- Night (다크 관제 톤 - blue black) ---------- */
+  --p-night-0: #04070e;
+  --p-night-1: #070c17;
+  --p-night-2: #0b1220;
+  --p-night-3: #0e1626;
+  --p-night-4: #131d30;
+  --p-night-5: #182236;
+  --p-night-6: #1d2841;
+  --p-night-7: #2d3b5a;
+  --p-night-8: #3d4f74;
+
+  /* ---------- Brand blue ---------- */
+  --p-blue-50:  #eff5ff;
+  --p-blue-100: #dbe7fe;
+  --p-blue-200: #bfdbfe;
+  --p-blue-300: #93c5fd;
+  --p-blue-400: #60a5fa;
+  --p-blue-450: #4a82ff;
+  --p-blue-500: #3b82f6;
+  --p-blue-550: #2f6bff;
+  --p-blue-600: #2563eb;
+  --p-blue-700: #1d4ed8;
+  --p-blue-800: #1e40af;
+  --p-blue-900: #1e3a8a;
+
+  /* ---------- Cyan (라이브/실시간 액센트) ---------- */
+  --p-cyan-300: #67e8f9;
+  --p-cyan-400: #22d3ee;
+  --p-cyan-500: #06b6d4;
+
+  /* ---------- Status hues ---------- */
+  --p-green-300: #86efac;
+  --p-green-400: #4ade80;
+  --p-green-500: #22c55e;
+  --p-green-600: #16a34a;
+  --p-green-700: #15803d;
+  --p-green-900: #11703a;
+
+  --p-amber-300: #fcd34d;
+  --p-amber-400: #fbbf24;
+  --p-amber-500: #f59e0b;
+  --p-amber-600: #d97706;
+  --p-amber-800: #9a5108;
+
+  --p-yellow-400: #fde047;
+  --p-yellow-500: #eab308;
+  --p-yellow-600: #ca8a04;
+  --p-yellow-800: #8a6308;
+
+  --p-red-300: #fca5a5;
+  --p-red-400: #f87171;
+  --p-red-500: #ef4444;
+  --p-red-600: #dc2626;
+  --p-red-700: #b91c1c;
+  --p-red-900: #a3161a;
+
+  --p-violet-300: #c4b5fd;
+  --p-violet-400: #a78bfa;
+  --p-violet-500: #8b5cf6;
+  --p-violet-600: #7c3aed;
+  --p-violet-800: #5b21b6;
+
+  --p-purple-300: #d8b4fe;
+  --p-purple-500: #a855f7;
+  --p-purple-600: #9333ea;
+  --p-purple-800: #6b21a8;
+
+  --p-teal-300: #5eead4;
+  --p-teal-500: #14b8a6;
+  --p-teal-600: #0d9488;
+  --p-teal-800: #0a6b62;
+
+  --p-indigo-300: #a5b4fc;
+  --p-indigo-500: #6366f1;
+  --p-indigo-600: #4f46e5;
+  --p-indigo-800: #3730a3;
+
+  /* ---------- 불변색 (테마와 무관) ---------- */
+  --p-white: #ffffff;
+  --p-black: #000000;
+}

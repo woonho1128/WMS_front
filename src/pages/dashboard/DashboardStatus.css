@@ -42,7 +42,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 18px 20px;
-  border-left: 4px solid var(--line, #e5e7eb);
+  border-left: 4px solid var(--line);
 }
 .dstat-card .dstat-label {
   font-size: 13px;
@@ -75,10 +75,10 @@
 }
 
 /* 톤 */
-.dstat-card.tone-info { border-left-color: var(--c-info, #3b82f6); }
-.dstat-card.tone-success { border-left-color: var(--c-success, #16a34a); }
-.dstat-card.tone-warning { border-left-color: var(--c-warning, #d97706); }
-.dstat-card.tone-danger { border-left-color: var(--c-danger, #dc2626); }
-.dstat-card.tone-violet { border-left-color: #7c3aed; }
-.dstat-card.tone-danger .dstat-value { color: var(--c-danger, #dc2626); }
-.dstat-card.tone-warning .dstat-value { color: var(--c-warning, #d97706); }
+.dstat-card.tone-info { border-left-color: var(--c-info); }
+.dstat-card.tone-success { border-left-color: var(--c-success); }
+.dstat-card.tone-warning { border-left-color: var(--c-warning); }
+.dstat-card.tone-danger { border-left-color: var(--c-danger); }
+.dstat-card.tone-violet { border-left-color: var(--c-violet); }
+.dstat-card.tone-danger .dstat-value { color: var(--c-danger); }
+.dstat-card.tone-warning .dstat-value { color: var(--c-warning); }

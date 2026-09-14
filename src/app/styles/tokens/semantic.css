@@ -1,0 +1,268 @@
+/* ============================================================
+   NEXUS WMS — Semantic tokens (theme aware)
+   ------------------------------------------------------------
+   :root                    = DARK (기본, 관제 톤)
+   :root[data-theme=light]  = LIGHT (밝은 사무 환경용)
+
+   화면/컴포넌트 CSS 는 반드시 이 레이어의 토큰만 사용한다.
+   맨 아래 "레거시 별칭"은 기존 화면 CSS(--color-*, --c-*)가
+   자동으로 새 톤을 따라오게 하는 호환 계층이다.
+   ============================================================ */
+
+/* ============================================================
+   1. DARK — 기본 테마
+   ============================================================ */
+:root {
+  color-scheme: dark;
+
+  /* ---------- Surface ---------- */
+  --bg:              var(--p-night-1);   /* 앱 배경 */
+  --bg-sunken:       var(--p-night-0);   /* 더 깊은 배경(트랙, 웰) */
+  --surface:         var(--p-night-3);   /* 카드/패널 */
+  --surface-2:       var(--p-night-4);   /* 테이블 헤더, 인풋, 살짝 떠 있는 면 */
+  --surface-3:       var(--p-night-5);   /* hover / inset */
+  --surface-4:       var(--p-night-6);   /* 강조 inset, 진행바 트랙 */
+  --surface-glass:   rgba(14, 22, 38, 0.72);
+  --surface-inverse:   var(--p-night-2);  /* 항상 어두운 칩/배지 바닥 */
+  --surface-inverse-2: var(--p-night-6);
+
+  /* ---------- Line ---------- */
+  --border:          var(--p-night-6);
+  --border-soft:     #151e30;
+  --border-strong:   var(--p-night-7);
+
+  /* ---------- Ink ---------- */
+  --ink-strong:      #f2f6fd;
+  --ink:             #d3dcec;
+  --ink-muted:       #8b99b4;
+  --ink-faint:       #64728f;
+  --ink-on-dark:       #e9f0fa;   /* 어두운 면 위 텍스트(테마 불변) */
+  --ink-on-dark-muted: #a9b6cc;
+  --ink-on-accent:     #ffffff;   /* 솔리드 컬러 버튼 위 텍스트(테마 불변) */
+
+  /* ---------- Brand ---------- */
+  --primary:         var(--p-blue-550);
+  --primary-hover:   var(--p-blue-450);
+  --primary-press:   var(--p-blue-600);
+  --primary-ink:     #8fb5ff;                      /* 어두운 면 위 브랜드 텍스트 */
+  --primary-bg:      rgba(47, 107, 255, 0.14);     /* 틴트 */
+  --primary-line:    rgba(47, 107, 255, 0.34);
+  --accent:          var(--p-cyan-400);            /* 라이브/실시간 */
+  --accent-ink:      var(--p-cyan-300);
+  --accent-bg:       rgba(34, 211, 238, 0.13);
+
+  /* ---------- Status ---------- */
+  --c-success: var(--p-green-500); --c-success-ink: #5fe39a; --c-success-bg: rgba(34, 197, 94, 0.13);  --c-success-line: rgba(34, 197, 94, 0.30);
+  --c-warning: var(--p-amber-500); --c-warning-ink: #fbbf24; --c-warning-bg: rgba(245, 158, 11, 0.13); --c-warning-line: rgba(245, 158, 11, 0.30);
+  --c-danger:  var(--p-red-500);   --c-danger-ink:  #ff8d8d; --c-danger-bg:  rgba(239, 68, 68, 0.13);  --c-danger-line:  rgba(239, 68, 68, 0.30);
+  --c-danger-hover: var(--p-red-400);
+  --c-yellow:  var(--p-yellow-500);--c-yellow-ink:  #fde047; --c-yellow-bg:  rgba(234, 179, 8, 0.13);  --c-yellow-line:  rgba(234, 179, 8, 0.30);
+  --c-info:    var(--primary);     --c-info-ink:    #8fb5ff; --c-info-bg:    rgba(47, 107, 255, 0.14); --c-info-line:    rgba(47, 107, 255, 0.34);
+  --c-gray:    var(--p-slate-500); --c-gray-ink:    #a7b4cb; --c-gray-bg:    rgba(148, 163, 184, 0.12);--c-gray-line:    rgba(148, 163, 184, 0.26);
+  --c-violet:  var(--p-violet-500);--c-violet-ink:  #c4b5fd; --c-violet-bg:  rgba(139, 92, 246, 0.15); --c-violet-line:  rgba(139, 92, 246, 0.32);
+  --c-indigo:  var(--p-indigo-500);--c-indigo-ink:  #a5b4fc; --c-indigo-bg:  rgba(99, 102, 241, 0.15); --c-indigo-line:  rgba(99, 102, 241, 0.32);
+  --c-teal:    var(--p-teal-500);  --c-teal-ink:    #5eead4; --c-teal-bg:    rgba(20, 184, 166, 0.13); --c-teal-line:    rgba(20, 184, 166, 0.30);
+
+  /* 외주(ERP 미연동) 전용 액센트 */
+  --consign:      var(--p-purple-500);
+  --consign-ink:  var(--p-purple-300);
+  --consign-bg:   rgba(168, 85, 247, 0.15);
+  --consign-line: rgba(168, 85, 247, 0.34);
+
+  /* ---------- Sidebar ---------- */
+  --side-top:     #0a1020;
+  --side-bottom:  #05090f;
+  --side-text:    #c2cde0;
+  --side-muted:   #7386a3;
+  --side-section: #56678a;
+  --side-hover:   rgba(255, 255, 255, 0.055);
+  --side-active:  var(--primary);
+  --side-active-soft: rgba(47, 107, 255, 0.22);
+  --side-line:    rgba(255, 255, 255, 0.07);
+
+  /* ---------- Elevation ---------- */
+  --sh-card:  0 1px 2px rgba(0, 0, 0, 0.40), 0 10px 28px -20px rgba(0, 0, 0, 0.95);
+  --sh-pop:   0 18px 44px -14px rgba(0, 0, 0, 0.80), 0 2px 8px rgba(0, 0, 0, 0.45);
+  --sh-modal: 0 40px 90px -24px rgba(0, 0, 0, 0.88);
+  --sh-soft:  0 1px 2px rgba(0, 0, 0, 0.35);
+  --glow-primary: 0 8px 26px -10px rgba(47, 107, 255, 0.75);
+  --glow-accent:  0 0 18px -2px rgba(34, 211, 238, 0.55);
+  --ring:         0 0 0 3px rgba(47, 107, 255, 0.30);
+  --hairline-top: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+
+  /* 패널 상단의 미세한 광택 (다크에서만 의미 있음) */
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 120px);
+  --grid-line: rgba(120, 160, 255, 0.055);
+
+  /* 앱 배경 광원 */
+  --app-aurora:
+    radial-gradient(900px 520px at 16% -12%, rgba(47, 107, 255, 0.13), transparent 62%),
+    radial-gradient(760px 460px at 102% -6%, rgba(34, 211, 238, 0.075), transparent 58%),
+    radial-gradient(700px 520px at 78% 108%, rgba(109, 92, 246, 0.07), transparent 60%);
+}
+
+/* ============================================================
+   2. LIGHT
+   ============================================================ */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:              #eef1f6;
+  --bg-sunken:       #e4e9f1;
+  --surface:         var(--p-white);
+  --surface-2:       var(--p-slate-50);
+  --surface-3:       var(--p-slate-100);
+  --surface-4:       var(--p-slate-200);
+  --surface-glass:   rgba(255, 255, 255, 0.78);
+  --surface-inverse:   var(--p-slate-800);
+  --surface-inverse-2: var(--p-slate-700);
+
+  --border:          #e5e9f0;
+  --border-soft:     #eef2f7;
+  --border-strong:   #d3dae5;
+
+  --ink-strong:      var(--p-slate-900);
+  --ink:             #1e293b;
+  --ink-muted:       var(--p-slate-500);
+  --ink-faint:       var(--p-slate-400);
+  --ink-on-dark:       #e9f0fa;
+  --ink-on-dark-muted: #a9b6cc;
+  --ink-on-accent:     #ffffff;
+
+  --primary:         var(--p-blue-600);
+  --primary-hover:   var(--p-blue-700);
+  --primary-press:   var(--p-blue-800);
+  --primary-ink:     var(--p-blue-700);
+  --primary-bg:      var(--p-blue-50);
+  --primary-line:    var(--p-blue-100);
+  --accent:          var(--p-cyan-500);
+  --accent-ink:      #0e7490;
+  --accent-bg:       #e0f7fb;
+
+  --c-success: var(--p-green-600); --c-success-ink: var(--p-green-900); --c-success-bg: #e7f7ec; --c-success-line: #c3ebd0;
+  --c-warning: var(--p-amber-600); --c-warning-ink: var(--p-amber-800); --c-warning-bg: #fdf2e3; --c-warning-line: #f5ddb8;
+  --c-danger:  var(--p-red-600);   --c-danger-ink:  var(--p-red-900);   --c-danger-bg:  #fdeaea; --c-danger-line:  #f6cccc;
+  --c-danger-hover: var(--p-red-700);
+  --c-yellow:  var(--p-yellow-600);--c-yellow-ink:  var(--p-yellow-800);--c-yellow-bg:  #fbf4d6; --c-yellow-line:  #f0e2a8;
+  --c-info:    var(--p-blue-600);  --c-info-ink:    #1c4fc0;            --c-info-bg:    #e6effe; --c-info-line:    #cbdcfb;
+  --c-gray:    var(--p-slate-500); --c-gray-ink:    var(--p-slate-600); --c-gray-bg:    #eef1f6; --c-gray-line:    #dde3ec;
+  --c-violet:  var(--p-violet-600);--c-violet-ink:  var(--p-violet-800);--c-violet-bg:  #f1ebfe; --c-violet-line:  #ddd0fb;
+  --c-indigo:  var(--p-indigo-600);--c-indigo-ink:  var(--p-indigo-800);--c-indigo-bg:  #eaeafe; --c-indigo-line:  #d3d3fa;
+  --c-teal:    var(--p-teal-600);  --c-teal-ink:    var(--p-teal-800);  --c-teal-bg:    #d9f3f0; --c-teal-line:    #b6e6e0;
+
+  --consign:      var(--p-purple-600);
+  --consign-ink:  var(--p-purple-800);
+  --consign-bg:   #f6edfe;
+  --consign-line: #e6d4fb;
+
+  --side-top:     #1f2a3d;
+  --side-bottom:  #0f1727;
+  --side-text:    #c7d2e0;
+  --side-muted:   #6b7a90;
+  --side-section: #5b6b82;
+  --side-hover:   rgba(255, 255, 255, 0.06);
+  --side-active:  var(--primary);
+  --side-active-soft: rgba(37, 99, 235, 0.30);
+  --side-line:    rgba(255, 255, 255, 0.07);
+
+  --sh-card:  0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --sh-pop:   0 12px 32px -8px rgba(16, 24, 40, 0.18), 0 4px 10px -4px rgba(16, 24, 40, 0.10);
+  --sh-modal: 0 24px 64px -12px rgba(15, 23, 42, 0.34);
+  --sh-soft:  0 1px 2px rgba(15, 23, 42, 0.05);
+  --glow-primary: 0 6px 14px -6px rgba(37, 99, 235, 0.60);
+  --glow-accent:  0 6px 16px -8px rgba(6, 182, 212, 0.55);
+  --ring:         0 0 0 3px rgba(37, 99, 235, 0.18);
+  --hairline-top: none;
+
+  --sheen: none;
+  --grid-line: rgba(15, 23, 42, 0.04);
+  --app-aurora: none;
+}
+
+/* ============================================================
+   3. 테마 무관 토큰 (형태 / 타이포 / 모션 / 레이아웃)
+   ============================================================ */
+:root {
+  /* radius */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 24px;
+  --r-pill: 999px;
+
+  /* motion */
+  --dur-1: 0.12s;
+  --dur-2: 0.2s;
+  --dur-3: 0.32s;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-pop: cubic-bezier(0.3, 1.2, 0.5, 1);
+
+  /* layout */
+  --side-w: 244px;
+  --side-w-mini: 76px;
+  --header-h: 64px;
+
+  /* type */
+  --font: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont,
+          "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Roboto Mono", Menlo, monospace;
+}
+
+/* ============================================================
+   4. 레거시 별칭 — 기존 화면 CSS 호환 계층
+   기존 코드가 쓰던 토큰명을 새 의미 토큰으로 연결한다.
+   (신규 코드에서는 사용 금지)
+   ============================================================ */
+:root {
+  /* global.base.css 계열 */
+  --color-primary:        var(--primary);
+  --color-sidebar:        var(--side-bottom);
+  --color-bg:             var(--bg);
+  --color-card:           var(--surface);
+  --color-border:         var(--border);
+  --color-text:           var(--ink-strong);
+  --color-text-secondary: var(--ink-muted);
+  --color-success:        var(--c-success);
+  --color-warning:        var(--c-warning);
+  --color-danger:         var(--c-danger);
+
+  /* tokens/color.css 계열 (Button/Badge/Panel 등 UI 컴포넌트) */
+  --c-bg-app:        var(--bg);
+  --c-bg-surface:    var(--surface);
+  --c-bg-subtle:     var(--surface-2);
+  --c-border:        var(--border);
+  --c-border-strong: var(--border-strong);
+  --c-text-1:        var(--ink-strong);
+  --c-text-2:        var(--ink-muted);
+  --c-text-3:        var(--ink-faint);
+  --c-primary-50:    var(--primary-bg);
+  --c-primary-100:   var(--primary-line);
+  --c-primary-500:   var(--primary-hover);
+  --c-primary-600:   var(--primary);
+  --c-success-fg:    var(--c-success);
+  --c-warning-fg:    var(--c-warning);
+  --c-danger-fg:     var(--c-danger);
+  --c-info-fg:       var(--c-info);
+  --c-sidebar-bg:          var(--side-bottom);
+  --c-sidebar-border:      var(--side-line);
+  --c-sidebar-text:        var(--side-text);
+  --c-sidebar-text-active: var(--ink-on-dark);
+
+  /* wms-theme.css 구버전 별칭 */
+  --primary-tint:  var(--primary-bg);
+  --primary-tint2: var(--primary-line);
+
+  /* global.base.css 가 참조하지만 정의가 없던 토큰 */
+  --radius-md:          var(--r-md);
+  --color-text-primary: var(--ink-strong);
+  /* 일부 화면이 쓰는 선 색 별칭 */
+  --line: var(--border);
+
+  /* spacing.css 계열 */
+  --rd-sm: var(--r-sm);
+  --rd-md: var(--r-md);
+  --rd-lg: var(--r-lg);
+}

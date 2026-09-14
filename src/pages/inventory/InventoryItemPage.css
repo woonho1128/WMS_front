@@ -1,8 +1,8 @@
 .item-page {
-  --line: #dbe4ef;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --blue: #2f6df6;
+  --line: var(--border);
+  --text: var(--ink-strong);
+  --muted: var(--ink-muted);
+  --blue: var(--primary);
   display: grid;
   gap: 14px;
 }
@@ -22,7 +22,7 @@
 
 .item-head-card p {
   margin: 6px 0 0;
-  color: #8692a7;
+  color: var(--ink-faint);
   font-size: 12px;
 }
 
@@ -32,7 +32,7 @@
   height: 34px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   padding: 0 12px;
   font-weight: 700;
   font-size: 12px;
@@ -46,7 +46,7 @@
 .item-filter-actions .primary {
   background: var(--blue);
   border-color: var(--blue);
-  color: #fff;
+  color: var(--ink-on-accent);
 }
 
 .item-filter-card {
@@ -79,7 +79,7 @@
   height: 34px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   padding: 0 10px;
   color: var(--text);
   font-size: 12px;
@@ -103,14 +103,14 @@
 
 .item-table th,
 .item-table td {
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--border);
   padding: 10px 8px;
   white-space: nowrap;
 }
 
 .item-table th {
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--surface-2);
+  color: var(--ink-muted);
   font-size: 11px;
   text-align: left;
 }
@@ -118,7 +118,7 @@
 .item-code-link {
   border: 0;
   background: transparent;
-  color: #2f6df6;
+  color: var(--primary-ink);
   font-weight: 700;
   padding: 0;
 }
@@ -135,18 +135,18 @@
 }
 
 .type.normal {
-  background: #f1f5f9;
-  color: #5b6474;
+  background: var(--surface-2);
+  color: var(--ink-muted);
 }
 
 .type.cold {
-  background: #dbeafe;
-  color: #2a63d4;
+  background: var(--primary-bg);
+  color: var(--primary-ink);
 }
 
 .state.on {
-  background: #e9f8ec;
-  color: #1f9d49;
+  background: var(--c-success-bg);
+  color: var(--c-success-ink);
 }
 
 .item-pagination {
@@ -162,19 +162,19 @@
   height: 26px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   font-size: 12px;
 }
 
 .item-pagination button.active {
-  background: #eef4ff;
-  border-color: #c8d7ff;
-  color: #2f6df6;
+  background: var(--primary-bg);
+  border-color: var(--primary-line);
+  color: var(--primary-ink);
   font-weight: 700;
 }
 
 .item-pagination span {
-  color: #8a95a8;
+  color: var(--ink-faint);
   font-size: 12px;
 }
 

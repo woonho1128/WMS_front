@@ -8,7 +8,7 @@ type Props = {
   title: string;
 };
 
-const LogisticsStatusPage = lazy(() => import("../dashboard/DashboardStatus").then((m) => ({ default: m.LogisticsStatusPage })));
+const ControlTowerPage = lazy(() => import("../dashboard/ControlTower").then((m) => ({ default: m.ControlTowerPage })));
 const InboundStatusPage = lazy(() => import("../dashboard/DashboardStatus").then((m) => ({ default: m.InboundStatusPage })));
 const OutboundStatusPage = lazy(() => import("../dashboard/DashboardStatus").then((m) => ({ default: m.OutboundStatusPage })));
 const StockStatusPage = lazy(() => import("../dashboard/DashboardStatus").then((m) => ({ default: m.StockStatusPage })));
@@ -56,7 +56,7 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
   const fallbackConfig = getFeatureScreenConfig(featureSlug);
   // 화면설계(9모듈) 슬러그 ↔ 구현 화면 매핑. 없는 슬러그는 featureScreenConfig 기반 "준비중" 패널.
   const featureScreens: Record<string, JSX.Element> = {
-    "logistics-status": <LogisticsStatusPage />,
+    "logistics-status": <ControlTowerPage />,
     "inbound-status": <InboundStatusPage />,
     "outbound-status": <OutboundStatusPage />,
     "stock-status": <StockStatusPage />,

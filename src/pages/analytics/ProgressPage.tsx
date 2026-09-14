@@ -8,7 +8,8 @@ type ProgressData = { inbound: Funnel; outbound: Funnel };
 
 const REFRESH_MS = 5 * 60 * 1000; // 5분 주기 자동갱신
 
-const STAGE_TONES = ["#94a3b8", "#3b82f6", "#7c3aed", "#16a34a", "#dc2626"];
+// 단계별 색 — 테마 토큰을 그대로 쓴다(다크/라이트 자동 대응)
+const STAGE_TONES = ["var(--c-gray)", "var(--primary)", "var(--c-violet)", "var(--c-success)", "var(--c-danger)"];
 
 const FunnelCard = ({ title, funnel, stages }: { title: string; funnel: Funnel | undefined; stages: string[] }) => {
   const total = funnel?.total ?? 0;
@@ -16,15 +17,15 @@ const FunnelCard = ({ title, funnel, stages }: { title: string; funnel: Funnel |
   return (
     <DashboardCard className="outbound-table-card" title={`${title} · 진행률 ${funnel?.progressPct ?? 0}%`}>
       <div style={{ padding: "4px 6px" }}>
-        <div style={{ height: 10, borderRadius: 5, background: "var(--line, #e5e7eb)", overflow: "hidden", marginBottom: 14 }}>
-          <div style={{ width: `${funnel?.progressPct ?? 0}%`, height: "100%", background: "var(--c-success, #16a34a)", transition: "width .4s" }} />
+        <div style={{ height: 10, borderRadius: 5, background: "var(--surface-4)", overflow: "hidden", marginBottom: 14 }}>
+          <div style={{ width: `${funnel?.progressPct ?? 0}%`, height: "100%", background: "var(--c-success)", transition: "width .4s" }} />
         </div>
         {stages.map((s, i) => {
           const v = (funnel?.[s] as number) ?? 0;
           return (
             <div key={s} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <span style={{ width: 110, fontSize: 13, color: "var(--ink-faint)" }}>{s}</span>
-              <div style={{ flex: 1, height: 18, background: "var(--surface-2, #f1f5f9)", borderRadius: 4, overflow: "hidden" }}>
+              <div style={{ flex: 1, height: 18, background: "var(--surface-3)", borderRadius: 4, overflow: "hidden" }}>
                 <div style={{ width: `${Math.round((v / max) * 100)}%`, height: "100%", background: STAGE_TONES[i % STAGE_TONES.length], minWidth: v > 0 ? 3 : 0, transition: "width .4s" }} />
               </div>
               <b style={{ width: 48, textAlign: "right" }}>{v.toLocaleString()}</b>

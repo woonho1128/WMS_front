@@ -59,7 +59,7 @@
   height: 38px;
   border: 1px solid var(--border-strong);
   border-radius: var(--r-md);
-  background: #fff;
+  background: var(--surface);
   padding: 0 11px;
   font-family: inherit;
   font-size: 13px;

@@ -18,7 +18,7 @@
 
 .transfer-head p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--ink-muted);
   font-size: 13px;
 }
 
@@ -29,13 +29,13 @@
 }
 
 .transfer-kpis article {
-  border: 1px solid #dce5f2;
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
 }
 
 .transfer-kpis span {
-  color: #64748b;
+  color: var(--ink-muted);
   font-size: 12px;
 }
 
@@ -70,10 +70,10 @@
 .transfer-form-grid select,
 .transfer-note input {
   height: 38px;
-  border: 1px solid #d8e2ef;
+  border: 1px solid var(--border);
   border-radius: 9px;
   padding: 0 10px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .transfer-table,
@@ -86,7 +86,7 @@
 .transfer-table td,
 .transfer-history-table th,
 .transfer-history-table td {
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--border);
   text-align: left;
   padding: 10px 8px;
   font-size: 13px;
@@ -94,8 +94,8 @@
 
 .transfer-table th,
 .transfer-history-table th {
-  background: #f7faff;
-  color: #64748b;
+  background: var(--surface-2);
+  color: var(--ink-muted);
   font-size: 12px;
 }
 
@@ -113,7 +113,7 @@
 
 .transfer-form-grid span,
 .transfer-note span {
-  color: #64748b;
+  color: var(--ink-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -157,7 +157,7 @@
   .transfer-form-actions {
     position: sticky;
     bottom: 0;
-    background: #f5f7fb;
+    background: var(--surface-2);
     padding-top: 8px;
   }
 
@@ -181,10 +181,10 @@
 
   .transfer-mobile-item,
   .transfer-history-mobile article {
-    border: 1px solid #e6edf6;
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 10px;
-    background: #fcfdff;
+    background: var(--surface);
     display: grid;
     gap: 6px;
   }
@@ -200,7 +200,7 @@
   .transfer-mobile-item small,
   .transfer-history-mobile p {
     margin: 0;
-    color: #475569;
+    color: var(--ink);
     font-size: 13px;
   }
 

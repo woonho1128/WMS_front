@@ -1,21 +1,73 @@
 /* ============================================================
-   WMS — 전역 작업 탭 바 (본문 상단, 헤더 아래)
-   좌측 메뉴에서 연 화면을 탭으로 유지/전환/닫기.
+   전역 작업 탭 (본문 상단, 헤더 아래)
+   좌측 메뉴에서 연 화면을 탭으로 유지/전환/닫기 한다.
    ============================================================ */
 
 .wms-tabs {
   display: flex;
   align-items: flex-end;
-  gap: 3px;
+  gap: 10px;
   flex: 0 0 auto;
-  padding: 7px 16px 0;
-  background: var(--surface);
+  padding: 8px 12px 0 16px;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+.wms-tabs-scroll {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
   overflow-x: auto;
   overflow-y: hidden;
 }
-.wms-tabs::-webkit-scrollbar { height: 6px; }
-.wms-tabs::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; }
+.wms-tabs-scroll::-webkit-scrollbar { height: 5px; }
+.wms-tabs-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-sm); border: none; }
+
+/* ---------- 우측: 탭 수 + 전체 닫기 ---------- */
+.wms-tabs-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 5px;
+}
+.wms-tabs-count {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.wms-tabs-closeall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.wms-tabs-closeall:hover:not(:disabled) {
+  background: var(--c-danger-bg);
+  border-color: var(--c-danger-line);
+  color: var(--c-danger-ink);
+}
+.wms-tabs-closeall:disabled { opacity: 0.45; cursor: default; }
 
 .wms-tab {
   position: relative;
@@ -24,26 +76,38 @@
   gap: 4px;
   height: 34px;
   padding: 0 8px 0 14px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-bottom: none;
-  border-radius: 9px 9px 0 0;
-  background: var(--surface-3);
-  color: var(--ink-muted);
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  background: transparent;
+  color: var(--ink-faint);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
 }
-.wms-tab:hover { background: var(--surface); color: var(--ink); }
+.wms-tab:hover { background: var(--surface-2); color: var(--ink); }
 
 .wms-tab.active {
   background: var(--surface);
-  color: var(--primary);
-  box-shadow: inset 0 2px 0 var(--primary);
+  border-color: var(--border);
+  color: var(--ink-strong);
 }
-/* 활성 탭이 아래 본문과 이어져 보이도록 하단 경계선을 덮는다. */
+/* 상단 액센트 */
+.wms-tab.active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--primary);
+  box-shadow: 0 0 10px 0 var(--primary);
+}
+/* 활성 탭이 아래 본문과 이어져 보이도록 하단 경계선을 덮는다 */
 .wms-tab.active::after {
   content: "";
   position: absolute;
@@ -69,17 +133,96 @@
   flex: 0 0 18px;
   padding: 0;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--r-xs);
   background: transparent;
   color: var(--ink-faint);
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background var(--dur-1), color var(--dur-1);
 }
-.wms-tab-close:hover { background: var(--surface-3); color: var(--c-danger); }
-.wms-tab.active .wms-tab-close:hover { background: var(--bg); }
+.wms-tab-close:hover { background: var(--c-danger-bg); color: var(--c-danger-ink); }
 .wms-tab-close svg { width: 13px; height: 13px; }
+
+/* 우클릭 메뉴가 열린 탭 */
+.wms-tab.is-menu:not(.active) { background: var(--surface-2); color: var(--ink); border-color: var(--border); }
+
+/* ============================================================
+   탭 우클릭 메뉴 (body 포털)
+   ============================================================ */
+.wms-ctxmenu {
+  position: fixed;
+  z-index: 300;
+  min-width: 208px;
+  padding: 5px;
+  background: var(--surface);
+  background-image: var(--sheen);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-pop);
+  animation: wms-ctx-in 0.12s var(--ease-out);
+  font-family: var(--font);
+}
+@keyframes wms-ctx-in {
+  from { opacity: 0; transform: translateY(-3px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.wms-ctxmenu-head {
+  max-width: 240px;
+  padding: 6px 10px 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wms-ctxmenu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.wms-ctxmenu-item svg { flex: 0 0 auto; color: var(--ink-muted); }
+.wms-ctxmenu-item:hover:not(:disabled),
+.wms-ctxmenu-item:focus-visible {
+  background: var(--surface-3);
+  color: var(--ink-strong);
+  outline: none;
+  box-shadow: none;
+}
+.wms-ctxmenu-item:hover:not(:disabled) svg,
+.wms-ctxmenu-item:focus-visible svg { color: var(--ink-strong); }
+.wms-ctxmenu-item:disabled { opacity: 0.4; cursor: default; }
+.wms-ctxmenu-item.is-danger { color: var(--c-danger-ink); }
+.wms-ctxmenu-item.is-danger svg { color: var(--c-danger-ink); }
+.wms-ctxmenu-item.is-danger:hover:not(:disabled),
+.wms-ctxmenu-item.is-danger:focus-visible { background: var(--c-danger-bg); color: var(--c-danger-ink); }
+.wms-ctxmenu-count {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.wms-ctxmenu-sep { height: 1px; margin: 5px 4px; background: var(--border); }
 
 @media (max-width: 640px) {
   .wms-tabs { padding: 6px 10px 0; }
   .wms-tab-label { max-width: 120px; }
+  .wms-tabs-count { display: none; }
 }

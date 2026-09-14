@@ -32,10 +32,12 @@ export const LoginPage = () => {
     <div className="login-stage">
       <form className="login-card" onSubmit={onSubmit}>
         <div className="login-brand">
-          <div className="login-logo">W</div>
+          <div className="login-logo">
+            <Icon name="cube3d" size={24} />
+          </div>
           <div>
             <div className="login-title">DAELIM WMS</div>
-            <div className="login-sub">창고관리시스템</div>
+            <div className="login-sub">SMART FULFILLMENT · 창고관리시스템</div>
           </div>
         </div>
 

@@ -1,3 +1,8 @@
+/* QR 은 라벨 인쇄/스캔 대상이라 테마와 무관하게 흑/백 고정이다.
+   (테마 토큰을 쓰면 다크 모드에서 대비가 무너져 스캔이 불가능해진다) */
+const QR_DARK = "#0f172a";
+const QR_LIGHT = "#ffffff";
+
 /** 데모용 QR 미리보기 (값 기반 결정적 패턴 — 실제 스캔용 아님) */
 export const QrBox = ({ value, size = 108 }: { value: string; size?: number }) => {
   const n = 21;
@@ -12,14 +17,14 @@ export const QrBox = ({ value, size = 108 }: { value: string; size?: number }) =
   const cell = size / n;
   const finder = (cx: number, cy: number) => (
     <>
-      <rect x={cx * cell} y={cy * cell} width={cell * 7} height={cell * 7} fill="var(--ink, #111)" />
-      <rect x={(cx + 1) * cell} y={(cy + 1) * cell} width={cell * 5} height={cell * 5} fill="#fff" />
-      <rect x={(cx + 2) * cell} y={(cy + 2) * cell} width={cell * 3} height={cell * 3} fill="var(--ink, #111)" />
+      <rect x={cx * cell} y={cy * cell} width={cell * 7} height={cell * 7} fill={QR_DARK} />
+      <rect x={(cx + 1) * cell} y={(cy + 1) * cell} width={cell * 5} height={cell * 5} fill={QR_LIGHT} />
+      <rect x={(cx + 2) * cell} y={(cy + 2) * cell} width={cell * 3} height={cell * 3} fill={QR_DARK} />
     </>
   );
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`QR: ${value}`}>
-      <rect width={size} height={size} fill="#fff" />
+      <rect width={size} height={size} fill={QR_LIGHT} />
       {cells.map((on, i) =>
         on ? (
           <rect
@@ -28,7 +33,7 @@ export const QrBox = ({ value, size = 108 }: { value: string; size?: number }) =
             y={Math.floor(i / n) * cell}
             width={cell}
             height={cell}
-            fill="var(--ink, #111)"
+            fill={QR_DARK}
           />
         ) : null
       )}

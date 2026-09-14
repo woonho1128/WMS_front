@@ -1,8 +1,8 @@
 .loc-page {
-  --line: #dbe4ef;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --blue: #2f6df6;
+  --line: var(--border);
+  --text: var(--ink-strong);
+  --muted: var(--ink-muted);
+  --blue: var(--primary);
   display: grid;
   gap: 14px;
 }
@@ -24,7 +24,7 @@
 
 .loc-head-card p {
   margin: 6px 0 0;
-  color: #8692a7;
+  color: var(--ink-faint);
   font-size: 12px;
 }
 
@@ -39,7 +39,7 @@
   height: 34px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   padding: 0 12px;
   font-weight: 700;
   font-size: 12px;
@@ -49,12 +49,12 @@
 .loc-filter-actions .primary {
   border-color: var(--blue);
   background: var(--blue);
-  color: #fff;
+  color: var(--ink-on-accent);
 }
 
 .loc-head-actions .ghost,
 .loc-filter-actions .ghost {
-  color: #475569;
+  color: var(--ink);
 }
 
 .loc-filter-card {
@@ -88,7 +88,7 @@
   height: 34px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   padding: 0 10px;
   color: var(--text);
   font-size: 12px;
@@ -123,7 +123,7 @@
 }
 
 .loc-tree li.active {
-  background: #e8f0ff;
+  background: var(--primary-bg);
 }
 
 .loc-tree li.child {
@@ -132,12 +132,12 @@
 
 .loc-tree b {
   font-size: 12px;
-  color: #334155;
+  color: var(--ink);
 }
 
 .loc-tree span {
   font-size: 11px;
-  color: #64748b;
+  color: var(--ink-muted);
 }
 
 .loc-map-wrap {
@@ -159,15 +159,15 @@
   height: 30px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   font-size: 11px;
 }
 
 .loc-map-grid {
-  border: 1px solid #d8dce4;
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--surface-2);
   display: grid;
   gap: 8px;
 }
@@ -183,28 +183,28 @@
 .loc-col-head span {
   text-align: center;
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--ink-faint);
 }
 
 .loc-row b {
   text-align: center;
-  color: #6b7280;
+  color: var(--ink-muted);
 }
 
 .loc-cell {
   height: 42px;
-  border: 1px solid #dde3ee;
+  border: 1px solid var(--border);
   border-radius: 3px;
-  background: #fff;
+  background: var(--surface);
   font-size: 11px;
-  color: #334155;
+  color: var(--ink);
 }
 
-.loc-cell.usable { background: #edf8ef; }
-.loc-cell.partial { background: #fff5d9; }
-.loc-cell.using { background: #ffe1e1; }
-.loc-cell.inspect { background: #e6f0ff; }
-.loc-cell.blocked { background: #efefef; color: #98a2b3; }
+.loc-cell.usable { background: var(--surface-3); }
+.loc-cell.partial { background: var(--c-warning-bg); }
+.loc-cell.using { background: var(--c-danger-bg); }
+.loc-cell.inspect { background: var(--primary-bg); }
+.loc-cell.blocked { background: var(--surface-3); color: var(--ink-faint); }
 
 .loc-legend {
   display: flex;
@@ -213,7 +213,7 @@
   gap: 14px;
   margin-top: 12px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--ink-muted);
 }
 
 .loc-legend span {
@@ -227,14 +227,14 @@
   height: 10px;
   border-radius: 2px;
   display: inline-block;
-  border: 1px solid #d5dce8;
+  border: 1px solid var(--border);
 }
 
-.loc-legend i.usable { background: #edf8ef; }
-.loc-legend i.partial { background: #fff5d9; }
-.loc-legend i.using { background: #ffe1e1; }
-.loc-legend i.inspect { background: #e6f0ff; }
-.loc-legend i.blocked { background: #efefef; }
+.loc-legend i.usable { background: var(--surface-3); }
+.loc-legend i.partial { background: var(--c-warning-bg); }
+.loc-legend i.using { background: var(--c-danger-bg); }
+.loc-legend i.inspect { background: var(--primary-bg); }
+.loc-legend i.blocked { background: var(--surface-3); }
 
 .loc-table-tools {
   display: inline-flex;
@@ -245,7 +245,7 @@
   height: 34px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--surface);
   padding: 0 10px;
   font-size: 12px;
 }
@@ -263,14 +263,14 @@
 
 .loc-table th,
 .loc-table td {
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--border);
   padding: 11px 10px;
   white-space: nowrap;
 }
 
 .loc-table th {
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--surface-2);
+  color: var(--ink-muted);
   font-size: 11px;
   text-align: left;
 }
@@ -278,7 +278,7 @@
 .loc-link {
   border: 0;
   background: transparent;
-  color: #2f6df6;
+  color: var(--primary-ink);
   font-weight: 700;
   padding: 0;
 }
@@ -294,13 +294,13 @@
 }
 
 .state.usable {
-  background: #e9f8ec;
-  color: #1f9d49;
+  background: var(--c-success-bg);
+  color: var(--c-success-ink);
 }
 
 .state.partial {
-  background: #fff4d8;
-  color: #c98a10;
+  background: var(--c-warning-bg);
+  color: var(--c-warning-ink);
 }
 
 .actions {
@@ -312,7 +312,7 @@
   height: 24px;
   border: 1px solid var(--line);
   border-radius: 5px;
-  background: #fff;
+  background: var(--surface);
   font-size: 11px;
   padding: 0 8px;
 }

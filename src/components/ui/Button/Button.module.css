@@ -5,45 +5,46 @@
   gap: 7px;
   height: 40px;
   padding: 0 16px;
-  border-radius: var(--r-md, 10px);
+  border-radius: var(--r-md);
   border: 1px solid transparent;
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: background .13s, border-color .13s, color .13s, box-shadow .13s, transform .04s;
+  transition: background var(--dur-1), border-color var(--dur-1), color var(--dur-1),
+    box-shadow var(--dur-1), transform 0.04s;
 }
-.btn:active { transform: translateY(.5px); }
-.btn:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+.btn:active { transform: translateY(0.5px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-.sm { height: 34px; padding: 0 12px; font-size: 12.5px; border-radius: var(--r-sm, 8px); }
+.sm { height: 34px; padding: 0 12px; font-size: 12.5px; border-radius: var(--r-sm); }
 .md { height: 40px; }
 
 .solid {
-  background: var(--primary, #2563eb);
-  border-color: var(--primary, #2563eb);
-  color: #fff;
-  box-shadow: 0 6px 14px -6px rgba(37, 99, 235, .6);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--ink-on-accent);
+  box-shadow: var(--glow-primary);
 }
-.solid:hover { background: var(--primary-hover, #1d4ed8); border-color: var(--primary-hover, #1d4ed8); }
+.solid:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
 
 .outline {
-  background: var(--surface, #fff);
-  border-color: var(--border-strong, #d3dae5);
-  color: var(--ink, #1e293b);
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--ink);
 }
-.outline:hover { background: var(--surface-3, #f1f5f9); }
+.outline:hover { background: var(--surface-3); border-color: var(--border-strong); }
 
-.ghost { background: transparent; border-color: transparent; color: var(--ink-muted, #64748b); }
-.ghost:hover { background: var(--surface-3, #f1f5f9); color: var(--ink, #1e293b); }
+.ghost { background: transparent; border-color: transparent; color: var(--ink-muted); }
+.ghost:hover { background: var(--surface-3); color: var(--ink); }
 
 .danger {
-  background: var(--c-danger, #dc2626);
-  border-color: var(--c-danger, #dc2626);
-  color: #fff;
-  box-shadow: 0 6px 14px -6px rgba(220, 38, 38, .5);
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+  color: var(--ink-on-accent);
+  box-shadow: 0 8px 20px -12px var(--c-danger);
 }
-.danger:hover { background: #c01d1d; }
+.danger:hover { background: var(--c-danger-hover); border-color: var(--c-danger-hover); }
 
 .icon { display: inline-flex; }

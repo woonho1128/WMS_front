@@ -1,105 +1,14 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
-
 /* ============================================================
-   WMS — Design tone overlay
-   "WMS (standalone)" 디자인 톤을 과장님 프로젝트에 입히는 레이어.
-   index.css 의 가장 마지막에서 로드되어 기존 토큰/공통 클래스를 덮어쓴다.
+   NEXUS WMS — Component tone layer
+   ------------------------------------------------------------
+   기존 화면들이 공통으로 쓰는 클래스(.card / .data-table / .kpi-card ...)의
+   최종 외형을 여기서 정의한다. 화면 CSS 를 건드리지 않고 톤을 바꾸기 위한 레이어.
+   색은 전부 tokens/semantic.css 의 의미 토큰만 사용한다.
    ============================================================ */
 
-:root {
-  /* surfaces */
-  --bg:            #eef1f6;
-  --surface:       #ffffff;
-  --surface-2:     #f8fafc;
-  --surface-3:     #f1f5f9;
-
-  /* sidebar */
-  --side-top:      #1f2a3d;
-  --side-bottom:   #0f1727;
-  --side-text:     #c7d2e0;
-  --side-muted:    #6b7a90;
-  --side-section:  #5b6b82;
-  --side-hover:    rgba(255,255,255,.06);
-  --side-active:   #2563eb;
-
-  /* text */
-  --ink:           #1e293b;
-  --ink-strong:    #0f172a;
-  --ink-muted:     #64748b;
-  --ink-faint:     #94a3b8;
-
-  /* lines */
-  --border:        #e5e9f0;
-  --border-soft:   #eef2f7;
-  --border-strong: #d3dae5;
-
-  /* brand */
-  --primary:       #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-press: #1e40af;
-  --primary-tint:  #eff5ff;
-  --primary-tint2: #dbe7fe;
-
-  /* status palette */
-  --c-success:  #16a34a;  --c-success-bg:  #e7f7ec;  --c-success-ink:#11703a;
-  --c-danger:   #dc2626;  --c-danger-bg:   #fdeaea;  --c-danger-ink: #a3161a;
-  --c-warning:  #d97706;  --c-warning-bg:  #fdf2e3;  --c-warning-ink:#9a5108;
-  --c-yellow:   #ca8a04;  --c-yellow-bg:   #fbf4d6;  --c-yellow-ink: #8a6308;
-  --c-info:     #2563eb;  --c-info-bg:     #e6effe;  --c-info-ink:   #1c4fc0;
-  --c-gray:     #64748b;  --c-gray-bg:     #eef1f6;  --c-gray-ink:   #475569;
-  --c-violet:   #7c3aed;  --c-violet-bg:   #f1ebfe;  --c-violet-ink: #5b21b6;
-  --c-indigo:   #4f46e5;  --c-indigo-bg:   #eaeafe;  --c-indigo-ink: #3730a3;
-  --c-teal:     #0d9488;  --c-teal-bg:     #d9f3f0;  --c-teal-ink:   #0a6b62;
-
-  /* 외주(ERP 미연동) accent */
-  --consign:      #9333ea;
-  --consign-bg:   #f6edfe;
-  --consign-ink:  #6b21a8;
-  --consign-line: #e6d4fb;
-
-  /* radii / shadow */
-  --r-sm: 7px;  --r-md: 10px;  --r-lg: 14px;  --r-xl: 18px;
-  --sh-card: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
-  --sh-pop:  0 12px 32px -8px rgba(16,24,40,.18), 0 4px 10px -4px rgba(16,24,40,.10);
-  --sh-modal:0 24px 64px -12px rgba(15,23,42,.34);
-
-  --side-w: 236px;
-  --header-h: 62px;
-  --font: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont,
-          "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-
-  /* ---- 기존 프로젝트 토큰을 디자인 팔레트로 remap ---- */
-  /* global.base.css 계열 (--color-*) : 페이지들이 광범위하게 사용 */
-  --color-primary: #2563eb;
-  --color-sidebar: #0f1727;
-  --color-bg: #eef1f6;
-  --color-card: #ffffff;
-  --color-border: #e5e9f0;
-  --color-text: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
-
-  /* tokens/color.css 계열 (--c-*) : Button/Badge 등 UI 컴포넌트가 사용 */
-  --c-bg-app:       #eef1f6;
-  --c-bg-surface:   #ffffff;
-  --c-bg-subtle:    #f8fafc;
-  --c-border:       #e5e9f0;
-  --c-border-strong:#d3dae5;
-  --c-text-1:       #0f172a;
-  --c-text-2:       #64748b;
-  --c-text-3:       #94a3b8;
-  --c-primary-50:   #eff5ff;
-  --c-primary-100:  #dbe7fe;
-  --c-primary-500:  #3b82f6;
-  --c-primary-600:  #2563eb;
-  --c-success-fg:   #16a34a;
-  --c-warning-fg:   #d97706;
-  --c-danger-fg:    #dc2626;
-  --c-info-fg:      #2563eb;
-}
-
+/* ============================================================
+   0. Base
+   ============================================================ */
 body {
   font-family: var(--font);
   background: var(--bg);
@@ -110,40 +19,71 @@ body {
 }
 
 .tnum { font-variant-numeric: tabular-nums; }
-.mono { font-family: "SF Mono", ui-monospace, "Roboto Mono", Menlo, monospace; }
+.mono { font-family: var(--font-mono); }
+
+::selection { background: var(--primary-line); color: var(--ink-strong); }
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-sm);
+}
+
+/* 폼 컨트롤 기본값 — 다크에서 흰 박스가 튀어나오는 것을 막는 안전망 */
+input, select, textarea {
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-1), box-shadow var(--dur-1), background var(--dur-1);
+}
+input::placeholder, textarea::placeholder { color: var(--ink-faint); }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+input:disabled, select:disabled, textarea:disabled { opacity: 0.55; cursor: not-allowed; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 
 /* ============================================================
-   전역 공통 클래스 오버라이드 — 기존 페이지들이 자동으로 새 톤을 입는다
+   1. Page chrome
    ============================================================ */
-
-/* page chrome */
 .app-content,
 .content-body { background: var(--bg); }
 
 .page-header h2,
-.page-header h3 { color: var(--ink-strong); letter-spacing: -.3px; }
+.page-header h3 { color: var(--ink-strong); letter-spacing: -0.3px; }
 .page-header p { color: var(--ink-muted); }
 
-/* cards / surfaces */
+/* ============================================================
+   2. Surfaces
+   ============================================================ */
 .card,
 .app-surface,
 .table-wrap {
-  border-color: var(--border);
+  background: var(--surface);
+  background-image: var(--sheen);
+  border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  box-shadow: var(--sh-card);
+  box-shadow: var(--sh-card), var(--hairline-top);
 }
 .card-title { color: var(--ink-strong); }
 
-/* ---- data table ---- */
+/* ============================================================
+   3. Data table
+   ============================================================ */
+.data-table { color: var(--ink); }
 .data-table thead { background: var(--surface-2); }
 .data-table thead th {
   background: var(--surface-2);
   color: var(--ink-faint);
   font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: .2px;
+  letter-spacing: 0.2px;
   border-bottom: 1px solid var(--border);
   padding: 11px 14px;
+  white-space: nowrap;
 }
 .data-table td {
   padding: 12px 14px;
@@ -151,28 +91,38 @@ body {
   font-size: 13px;
   color: var(--ink);
 }
-.data-table tbody tr { transition: background .1s; }
+.data-table tbody tr { transition: background var(--dur-1); }
 .data-table tbody tr:hover { background: var(--surface-2); }
 .row-selected,
-.data-table tbody tr.row-selected { background: var(--primary-tint); }
+.data-table tbody tr.row-selected {
+  background: var(--primary-bg);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
 
-/* ---- pagination ---- */
-.table-pagination { border-top: 1px solid var(--border); }
+/* ============================================================
+   4. Pagination
+   ============================================================ */
+.table-pagination { border-top: 1px solid var(--border); color: var(--ink-muted); }
 .table-pagination button,
 .table-pagination select {
+  background: var(--surface-2);
   border-color: var(--border);
   border-radius: var(--r-sm);
   color: var(--ink-muted);
 }
+.table-pagination button:hover { background: var(--surface-3); color: var(--ink); }
 .table-pagination button.active {
   background: var(--primary);
   border-color: var(--primary);
-  color: #fff;
+  color: var(--ink-on-accent);
+  box-shadow: var(--glow-primary);
 }
 
-/* ---- status badge / chip ---- */
+/* ============================================================
+   5. Status badge / chip
+   ============================================================ */
 .status-badge,
-.status-chip { font-weight: 700; }
+.status-chip { font-weight: 700; border-radius: var(--r-pill); }
 .status-badge.success,  .status-chip.success  { background: var(--c-success-bg); color: var(--c-success-ink); }
 .status-badge.warning,  .status-chip.warning  { background: var(--c-warning-bg); color: var(--c-warning-ink); }
 .status-badge.danger,   .status-chip.danger   { background: var(--c-danger-bg);  color: var(--c-danger-ink); }
@@ -180,28 +130,34 @@ body {
 .status-chip.processing { background: var(--c-info-bg); color: var(--c-info-ink); }
 .status-badge.pending   { background: var(--c-gray-bg); color: var(--c-gray-ink); }
 
-/* ---- kpi / metric cards ---- */
+/* ============================================================
+   6. KPI / metric cards
+   ============================================================ */
 .kpi-card,
 .monitor-kpi-card,
 .inbound-summary-card,
 .event-summary-card {
-  border-color: var(--border);
+  background: var(--surface);
+  background-image: var(--sheen);
+  border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  box-shadow: var(--sh-card);
+  box-shadow: var(--sh-card), var(--hairline-top);
 }
 .kpi-card:hover { border-color: var(--border-strong); box-shadow: var(--sh-pop); }
 .kpi-card h3 { color: var(--ink-strong); }
 .kpi-head p,
 .kpi-foot,
 .kpi-live { color: var(--ink-muted); }
-.kpi-trend.up { color: var(--c-success); }
-.kpi-trend.down { color: var(--c-danger); }
+.kpi-trend.up { color: var(--c-success-ink); }
+.kpi-trend.down { color: var(--c-danger-ink); }
 .tone-inbound  { background: var(--c-info-bg); }
 .tone-outbound { background: var(--c-danger-bg); }
 .tone-order    { background: var(--c-violet-bg); }
 .tone-accuracy { background: var(--c-success-bg); }
 
-/* ---- toolbars / filters / inputs ---- */
+/* ============================================================
+   7. Toolbars / filters / inputs
+   ============================================================ */
 .table-toolbar,
 .inbound-toolbar,
 .event-filters { border-color: var(--border-soft); }
@@ -214,65 +170,73 @@ body {
 .toolbar-filter,
 .role-select,
 .topbar-search {
+  background: var(--surface-2);
   border-color: var(--border-strong);
   border-radius: var(--r-md);
   color: var(--ink);
 }
 .table-toolbar-actions button,
 .inbound-toolbar-actions button {
+  background: var(--surface-2);
   border-color: var(--border-strong);
   border-radius: var(--r-md);
   color: var(--ink);
   font-weight: 700;
 }
 .table-toolbar-actions button:hover,
-.inbound-toolbar-actions button:hover { background: var(--surface-3); }
+.inbound-toolbar-actions button:hover { background: var(--surface-3); border-color: var(--border-strong); }
 
 /* 출고 송장번호 필수 강조 */
 .invoice-input.is-required,
 .mobile-invoice input.is-required {
   border-color: var(--c-warning) !important;
   background: var(--c-warning-bg);
+  color: var(--ink-strong);
 }
 
-/* tab pills used across pages */
+/* ============================================================
+   8. Tab pills
+   ============================================================ */
 .event-tabs button,
 .inbound-table-selectors button {
-  border-color: var(--border-strong);
+  background: var(--surface-2);
+  border-color: var(--border);
   color: var(--ink-muted);
 }
 .event-tabs button.active,
 .inbound-table-selectors button.active {
-  background: var(--primary-tint);
-  color: var(--primary);
-  border-color: var(--primary-tint2);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+  border-color: var(--primary-line);
 }
 
-/* ---- buttons (global helper classes) ---- */
+/* ============================================================
+   9. Buttons (전역 헬퍼 클래스)
+   ============================================================ */
 .btn-primary {
   background: var(--primary) !important;
   border-color: var(--primary) !important;
-  color: #fff !important;
-  box-shadow: 0 6px 14px -6px rgba(37,99,235,.6);
+  color: var(--ink-on-accent) !important;
+  box-shadow: var(--glow-primary);
 }
-.btn-primary:hover { background: var(--primary-hover) !important; }
+.btn-primary:hover { background: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
 .btn-secondary {
-  background: var(--surface);
+  background: var(--surface-2);
   border-color: var(--border-strong);
   color: var(--ink);
 }
 .btn-secondary:hover { background: var(--surface-3); }
 
 /* ============================================================
-   디자인 시스템 공용 클래스 (새 컴포넌트 및 페이지에서 사용)
+   10. 디자인 시스템 공용 클래스
    ============================================================ */
 
-/* badge */
+/* ---- badge ---- */
 .ds-badge {
   display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700;
-  padding: 3px 9px 3px 8px; border-radius: 999px; line-height: 1.45; white-space: nowrap;
+  padding: 3px 9px 3px 8px; border-radius: var(--r-pill); line-height: 1.45; white-space: nowrap;
 }
-.ds-badge .bdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .9; }
+.ds-badge .bdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.9; }
 .ds-badge.success { background: var(--c-success-bg); color: var(--c-success-ink); }
 .ds-badge.danger  { background: var(--c-danger-bg);  color: var(--c-danger-ink); }
 .ds-badge.warning { background: var(--c-warning-bg); color: var(--c-warning-ink); }
@@ -284,19 +248,23 @@ body {
 .ds-badge.teal    { background: var(--c-teal-bg);    color: var(--c-teal-ink); }
 .ds-badge.consign { background: var(--consign-bg);   color: var(--consign-ink); }
 
-/* ERP 연동 / 미연동 pill */
+/* ---- ERP 연동 / 미연동 pill ---- */
 .erp-on, .erp-off {
   display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700;
-  padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  padding: 2px 8px; border-radius: var(--r-xs); white-space: nowrap;
 }
 .erp-on  { background: var(--c-info-bg); color: var(--c-info-ink); }
 .erp-off { background: var(--consign-bg); color: var(--consign-ink); border: 1px solid var(--consign-line); }
 .erp-on svg, .erp-off svg { width: 12px; height: 12px; }
 
-/* metric card */
+/* ---- metric card ---- */
 .ds-metric {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  box-shadow: var(--sh-card); padding: 18px 20px; position: relative; overflow: hidden;
+  background: var(--surface);
+  background-image: var(--sheen);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card), var(--hairline-top);
+  padding: 18px 20px; position: relative; overflow: hidden;
 }
 .ds-metric-top { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .ds-metric-ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: 0 0 40px; }
@@ -307,10 +275,10 @@ body {
 .ds-metric-unit { font-size: 14px; font-weight: 600; color: var(--ink-faint); }
 .ds-metric-foot { font-size: 12.5px; color: var(--ink-muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .ds-delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
-.ds-delta.up { color: var(--c-success); } .ds-delta.down { color: var(--c-danger); }
+.ds-delta.up { color: var(--c-success-ink); } .ds-delta.down { color: var(--c-danger-ink); }
 .ds-delta svg { width: 14px; height: 14px; }
 
-/* stepper */
+/* ---- stepper ---- */
 .ds-stepper { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
 .ds-step { display: flex; align-items: center; gap: 10px; }
 .ds-step-node {
@@ -319,81 +287,170 @@ body {
   background: var(--surface-3); color: var(--ink-faint); border: 2px solid var(--border);
 }
 .ds-step-node svg { width: 17px; height: 17px; }
-.ds-step.done .ds-step-node { background: var(--c-success); border-color: var(--c-success); color: #fff; }
-.ds-step.current .ds-step-node { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 0 0 4px var(--primary-tint); }
+.ds-step.done .ds-step-node { background: var(--c-success); border-color: var(--c-success); color: var(--ink-on-accent); }
+.ds-step.current .ds-step-node { background: var(--primary); border-color: var(--primary); color: var(--ink-on-accent); box-shadow: 0 0 0 4px var(--primary-bg), var(--glow-primary); }
 .ds-step-label { font-size: 13px; font-weight: 700; color: var(--ink-faint); white-space: nowrap; }
 .ds-step.done .ds-step-label { color: var(--ink); }
-.ds-step.current .ds-step-label { color: var(--primary); }
+.ds-step.current .ds-step-label { color: var(--primary-ink); }
 .ds-step-bar { flex: 1; height: 2px; min-width: 24px; background: var(--border); margin: 0 10px; border-radius: 2px; }
 .ds-step-bar.done { background: var(--c-success); }
 
-/* process banner (화면이 속한 WMS 단계 표시) */
+/* ---- process banner ---- */
 .wms-process-banner {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
-  box-shadow: var(--sh-card); padding: 16px 20px; margin-bottom: 16px;
+  background: var(--surface);
+  background-image: var(--sheen);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-card), var(--hairline-top);
+  padding: 16px 20px; margin-bottom: 16px;
 }
 .wms-process-banner-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   flex-wrap: wrap; margin-bottom: 14px;
 }
-.wms-process-banner-title { font-size: 13px; font-weight: 800; color: var(--ink-muted); letter-spacing: .3px; }
+.wms-process-banner-title { font-size: 13px; font-weight: 800; color: var(--ink-muted); letter-spacing: 0.3px; }
 .wms-process-banner-note { font-size: 12.5px; color: var(--ink-muted); }
 
-/* callout */
-.ds-callout { display: flex; gap: 11px; padding: 13px 15px; border-radius: var(--r-md); font-size: 13px; line-height: 1.5; align-items: flex-start; }
+/* ---- callout ---- */
+.ds-callout {
+  display: flex; gap: 11px; padding: 13px 15px; border-radius: var(--r-md);
+  font-size: 13px; line-height: 1.5; align-items: flex-start; border: 1px solid transparent;
+}
 .ds-callout svg { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 1px; }
-.ds-callout.danger { background: var(--c-danger-bg); color: var(--c-danger-ink); }
-.ds-callout.warning { background: var(--c-warning-bg); color: var(--c-warning-ink); }
-.ds-callout.success { background: var(--c-success-bg); color: var(--c-success-ink); }
-.ds-callout.info { background: var(--primary-tint); color: var(--primary-press); }
-.ds-callout.consign { background: var(--consign-bg); color: var(--consign-ink); }
+.ds-callout.danger  { background: var(--c-danger-bg);  color: var(--c-danger-ink);  border-color: var(--c-danger-line); }
+.ds-callout.warning { background: var(--c-warning-bg); color: var(--c-warning-ink); border-color: var(--c-warning-line); }
+.ds-callout.success { background: var(--c-success-bg); color: var(--c-success-ink); border-color: var(--c-success-line); }
+.ds-callout.info    { background: var(--primary-bg);   color: var(--primary-ink);   border-color: var(--primary-line); }
+.ds-callout.consign { background: var(--consign-bg);   color: var(--consign-ink);   border-color: var(--consign-line); }
 
-/* modal */
+/* ---- modal ---- */
 .ds-overlay {
-  position: fixed; inset: 0; background: rgba(15, 23, 42, .5); z-index: 100;
-  display: flex; align-items: center; justify-content: center; padding: 24px;
-  animation: ds-fade .16s ease;
+  position: fixed; inset: 0; background: rgba(3, 6, 13, 0.68); backdrop-filter: blur(3px);
+  z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: ds-fade 0.16s ease;
 }
 @keyframes ds-fade { from { opacity: 0; } to { opacity: 1; } }
 .ds-modal {
-  background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--sh-modal);
-  width: 460px; max-width: 100%; overflow: hidden; animation: ds-pop .2s cubic-bezier(.3, 1.2, .5, 1);
+  background: var(--surface);
+  background-image: var(--sheen);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl); box-shadow: var(--sh-modal);
+  width: 460px; max-width: 100%; overflow: hidden;
+  animation: ds-pop 0.2s var(--ease-pop);
 }
-@keyframes ds-pop { from { transform: translateY(12px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ds-pop { from { transform: translateY(12px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
 .ds-modal-head { padding: 22px 24px 0; display: flex; gap: 14px; align-items: flex-start; }
 .ds-modal-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex: 0 0 46px; }
 .ds-modal-htext { flex: 1; min-width: 0; }
-.ds-modal-title { font-size: 18px; font-weight: 800; color: var(--ink-strong); letter-spacing: -.3px; }
+.ds-modal-title { font-size: 18px; font-weight: 800; color: var(--ink-strong); letter-spacing: -0.3px; }
 .ds-modal-desc { font-size: 13.5px; color: var(--ink-muted); margin-top: 5px; line-height: 1.55; }
 .ds-modal-x {
-  width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--surface-3);
+  width: 32px; height: 32px; border-radius: var(--r-sm); border: none; background: var(--surface-3);
   color: var(--ink-muted); display: grid; place-items: center; cursor: pointer;
 }
-.ds-modal-x:hover { background: var(--border); color: var(--ink); }
+.ds-modal-x:hover { background: var(--surface-4); color: var(--ink); }
 .ds-modal-body { padding: 18px 24px 4px; }
 .ds-modal-foot { padding: 18px 24px 22px; display: flex; gap: 10px; justify-content: flex-end; }
 
-/* modal form helpers */
+/* ---- modal form helpers ---- */
 .ds-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
 .ds-field > span { font-size: 12.5px; font-weight: 700; color: var(--ink-muted); }
 .ds-field select, .ds-field input, .ds-field textarea {
-  border: 1px solid var(--border-strong); border-radius: var(--r-md); background: #fff;
+  border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface-2);
   padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--ink); outline: none;
 }
-.ds-field select:focus, .ds-field input:focus, .ds-field textarea:focus { border-color: var(--primary); }
+.ds-field select:focus, .ds-field input:focus, .ds-field textarea:focus { border-color: var(--primary); box-shadow: var(--ring); }
 
-/* outbound 요약 그리드: 카드 늘어나도 깨지지 않게 */
+/* ============================================================
+   11. 신규 공용 프리미티브 (관제 톤)
+   ============================================================ */
+
+/* 섹션 타이틀 — 패널 헤더 */
+.nx-sect { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.nx-sect-title { font-size: 14px; font-weight: 800; color: var(--ink-strong); letter-spacing: -0.2px; }
+.nx-sect-sub { font-size: 11.5px; color: var(--ink-faint); font-weight: 600; }
+.nx-eyebrow {
+  font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* 진행 바 */
+.nx-bar { height: 6px; border-radius: var(--r-pill); background: var(--surface-4); overflow: hidden; }
+.nx-bar > i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--primary); transition: width var(--dur-3) var(--ease-out); }
+.nx-bar.is-ok > i     { background: linear-gradient(90deg, var(--c-success), var(--p-green-400)); }
+.nx-bar.is-warn > i   { background: linear-gradient(90deg, var(--c-warning), var(--p-amber-400)); }
+.nx-bar.is-danger > i { background: linear-gradient(90deg, var(--c-danger), var(--p-red-400)); }
+.nx-bar.is-info > i   { background: linear-gradient(90deg, var(--primary), var(--accent)); }
+
+/* LIVE 인디케이터 */
+.nx-live {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 4px 10px 4px 8px; border-radius: var(--r-pill);
+  background: var(--c-success-bg); color: var(--c-success-ink);
+  font-size: 11.5px; font-weight: 800; letter-spacing: 0.4px;
+}
+.nx-live::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--c-success); box-shadow: 0 0 0 0 var(--c-success-line);
+  animation: nx-pulse 1.8s infinite;
+}
+@keyframes nx-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* 아이콘 칩 */
+.nx-ico {
+  width: 38px; height: 38px; flex: 0 0 38px; border-radius: 11px;
+  display: grid; place-items: center; border: 1px solid transparent;
+}
+.nx-ico svg { width: 19px; height: 19px; }
+.nx-ico.info    { background: var(--c-info-bg);    color: var(--c-info-ink);    border-color: var(--c-info-line); }
+.nx-ico.success { background: var(--c-success-bg); color: var(--c-success-ink); border-color: var(--c-success-line); }
+.nx-ico.warning { background: var(--c-warning-bg); color: var(--c-warning-ink); border-color: var(--c-warning-line); }
+.nx-ico.danger  { background: var(--c-danger-bg);  color: var(--c-danger-ink);  border-color: var(--c-danger-line); }
+.nx-ico.violet  { background: var(--c-violet-bg);  color: var(--c-violet-ink);  border-color: var(--c-violet-line); }
+.nx-ico.teal    { background: var(--c-teal-bg);    color: var(--c-teal-ink);    border-color: var(--c-teal-line); }
+.nx-ico.accent  { background: var(--accent-bg);    color: var(--accent-ink);    border-color: var(--c-teal-line); }
+.nx-ico.gray    { background: var(--c-gray-bg);    color: var(--c-gray-ink);    border-color: var(--c-gray-line); }
+
+/* 아이콘 버튼 */
+.nx-iconbtn {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--ink-muted); cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.nx-iconbtn:hover { background: var(--surface-3); color: var(--ink-strong); border-color: var(--border-strong); }
+.nx-iconbtn svg { width: 16px; height: 16px; }
+
+/* 빈 상태 */
+.nx-empty {
+  display: grid; place-items: center; gap: 8px; padding: 44px 20px;
+  color: var(--ink-faint); font-size: 13px; text-align: center;
+}
+
+/* ============================================================
+   12. 기타 화면별 보정
+   ============================================================ */
 .outbound-summary-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
 .outbound-row-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .outbound-reject-btn {
   background: var(--c-danger-bg) !important;
   color: var(--c-danger-ink) !important;
-  border-color: transparent !important;
+  border-color: var(--c-danger-line) !important;
 }
-.outbound-reject-btn:hover { background: #fbdada !important; }
+.outbound-reject-btn:hover { background: var(--c-danger) !important; color: var(--ink-on-accent) !important; }
 
-/* scrollbar */
+/* ============================================================
+   13. Scrollbar
+   ============================================================ */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #c7d0dd; border-radius: 8px; border: 2px solid var(--bg); }
-::-webkit-scrollbar-thumb:hover { background: #aab6c7; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-sm); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
 ::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

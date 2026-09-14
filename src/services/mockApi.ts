@@ -209,6 +209,128 @@ const progress = {
   outbound: { 출고대기: 1, 피킹중: 1, 피킹완료: 1, 출고완료: 1, 거부: 1, total: 5, progressPct: 20 }
 };
 
+/* ------------------------------------------------------------
+   3D 창고 레이아웃 (관제 대시보드 / 로케이션 맵 공용)
+   x: 좌우(m), z: 앞뒤(m). 원점은 창고 중앙.
+   실제 운영에서는 로케이션 마스터의 좌표를 내려주는 자리.
+------------------------------------------------------------ */
+const warehouseLayout = {
+  warehouse: { code: "YI", name: "용인물류센터", floors: ["1F", "2F", "3F"], width: 66, depth: 46 },
+  zones: [
+    { id: "A", floor: "1F", name: "A 구역", code: "A-01 ~ A-50", type: "PICKING", typeName: "피킹 구역",
+      x: -17, z: -9, cols: 4, rows: 2, levels: 4, capacity: 500, used: 425, sku: 46,
+      manager: "김현우 대리", temp: "상온", recentIn: "09:20", recentOut: "14:10" },
+    { id: "B", floor: "1F", name: "B 구역", code: "B-01 ~ B-40", type: "PICKING", typeName: "피킹 구역",
+      x: 0, z: -9, cols: 4, rows: 2, levels: 4, capacity: 400, used: 248, sku: 39,
+      manager: "이상민 주임", temp: "상온", recentIn: "08:45", recentOut: "13:30" },
+    { id: "C", floor: "1F", name: "C 구역", code: "C-01 ~ C-30", type: "RESERVE", typeName: "보관 구역",
+      x: 17, z: -9, cols: 4, rows: 2, levels: 5, capacity: 300, used: 219, sku: 27,
+      manager: "박정호 과장", temp: "상온", recentIn: "10:15", recentOut: "14:25" },
+    { id: "D", floor: "1F", name: "D 구역", code: "D-01 ~ D-20", type: "RESERVE", typeName: "보관 구역",
+      x: -17, z: 6, cols: 4, rows: 2, levels: 5, capacity: 200, used: 96, sku: 18,
+      manager: "최미선 주임", temp: "상온", recentIn: "09:55", recentOut: "12:50" },
+    { id: "E", floor: "1F", name: "E 구역", code: "E-01 ~ E-20", type: "CROSS_DOCK", typeName: "직출 구역",
+      x: 0, z: 6, cols: 4, rows: 2, levels: 3, capacity: 200, used: 70, sku: 12,
+      manager: "정우성 사원", temp: "상온", recentIn: "11:05", recentOut: "15:02" },
+    { id: "F", floor: "1F", name: "F 구역", code: "F-01 ~ F-30", type: "PICKING", typeName: "피킹 구역",
+      x: 17, z: 6, cols: 4, rows: 2, levels: 4, capacity: 300, used: 270, sku: 52,
+      manager: "한지민 대리", temp: "상온", recentIn: "10:40", recentOut: "14:48" },
+    { id: "G", floor: "2F", name: "G 구역", code: "G-01 ~ G-40", type: "RESERVE", typeName: "보관 구역",
+      x: -11, z: -9, cols: 5, rows: 2, levels: 5, capacity: 400, used: 322, sku: 61,
+      manager: "오세훈 과장", temp: "상온", recentIn: "08:10", recentOut: "13:05" },
+    { id: "H", floor: "2F", name: "H 구역", code: "H-01 ~ H-40", type: "RESERVE", typeName: "보관 구역",
+      x: 11, z: -9, cols: 5, rows: 2, levels: 5, capacity: 400, used: 176, sku: 33,
+      manager: "오세훈 과장", temp: "상온", recentIn: "09:02", recentOut: "12:20" },
+    { id: "J", floor: "2F", name: "J 구역", code: "J-01 ~ J-24", type: "PICKING", typeName: "피킹 구역",
+      x: -11, z: 6, cols: 5, rows: 2, levels: 3, capacity: 240, used: 190, sku: 44,
+      manager: "서지훈 주임", temp: "상온", recentIn: "10:22", recentOut: "15:20" },
+    { id: "K", floor: "2F", name: "K 구역", code: "K-01 ~ K-24", type: "RESERVE", typeName: "보관 구역",
+      x: 11, z: 6, cols: 5, rows: 2, levels: 4, capacity: 240, used: 58, sku: 15,
+      manager: "서지훈 주임", temp: "상온", recentIn: "07:55", recentOut: "11:40" },
+    { id: "R", floor: "3F", name: "R 구역", code: "R-01 ~ R-16", type: "RETURN", typeName: "반품·불량",
+      x: -9, z: -2, cols: 4, rows: 2, levels: 3, capacity: 160, used: 132, sku: 21,
+      manager: "문가영 주임", temp: "상온", recentIn: "13:15", recentOut: "16:02" },
+    { id: "S", floor: "3F", name: "S 구역", code: "S-01 ~ S-16", type: "RESERVE", typeName: "장기 보관",
+      x: 9, z: -2, cols: 4, rows: 2, levels: 4, capacity: 160, used: 41, sku: 9,
+      manager: "문가영 주임", temp: "상온", recentIn: "—", recentOut: "—" }
+  ],
+  docks: [
+    { id: "IN-1", kind: "IN", floor: "1F", x: -22, z: 18, label: "입고 1" },
+    { id: "IN-2", kind: "IN", floor: "1F", x: -12, z: 18, label: "입고 2" },
+    { id: "OUT-1", kind: "OUT", floor: "1F", x: 12, z: 18, label: "출고 1" },
+    { id: "OUT-2", kind: "OUT", floor: "1F", x: 22, z: 18, label: "출고 2" }
+  ],
+  /* 실시간 장비 — 통로를 따라 순환 이동하는 지게차/AGV */
+  vehicles: [
+    { id: "FL-01", kind: "FORKLIFT", floor: "1F", path: [[-8.5, -18], [-8.5, 14], [8.5, 14], [8.5, -18]], speed: 3.4 },
+    { id: "AGV-07", kind: "AGV", floor: "1F", path: [[25, 14], [25, -17], [-25, -17], [-25, 14]], speed: 4.6 },
+    { id: "FL-02", kind: "FORKLIFT", floor: "2F", path: [[0, -17], [0, 14], [20, 14], [20, -17]], speed: 3.0 }
+  ]
+};
+
+/* 관제 대시보드 — 주요 작업 현황(입고/출고 통합 타임라인) */
+const inboundStatusLabel: Record<string, string> = {
+  scheduled: "입고예정",
+  registered: "입고등록",
+  located: "로케이션지정",
+  confirmed: "입고확정"
+};
+const taskTone = (status: string) => {
+  if (status.includes("완료") || status.includes("확정")) return "success";
+  if (status.includes("거부") || status.includes("반려")) return "danger";
+  if (status.includes("예정") || status.includes("대기")) return "warning";
+  return "info";
+};
+function dashboardTasks() {
+  const times = ["14:26", "13:50", "13:12", "11:40", "10:55", "10:12", "09:38", "09:05"];
+  const inRows = inbounds.slice(0, 4).map((row, idx) => {
+    const status = inboundStatusLabel[String(row.status)] ?? String(row.status);
+    return {
+      taskNo: row.inboundNo,
+      kind: "입고",
+      partner: row.supplierName,
+      qty: row.qty,
+      unit: "EA",
+      status,
+      tone: taskTone(status),
+      time: times[idx * 2] ?? "09:00",
+      to: "/inbound/inbound-confirm"
+    };
+  });
+  const outRows = outbounds.slice(0, 4).map((row, idx) => ({
+    taskNo: row.outboundNo,
+    kind: "출고",
+    partner: row.customerName,
+    qty: row.qty,
+    unit: "EA",
+    status: String(row.status),
+    tone: taskTone(String(row.status)),
+    time: times[idx * 2 + 1] ?? "09:00",
+    to: "/outbound/outbound-order"
+  }));
+  return [...inRows, ...outRows].sort((a, b) => b.time.localeCompare(a.time));
+}
+
+/* 관제 대시보드 — 보관 구분별 재고 구성 */
+function stockMix() {
+  const buckets: Array<{ name: string; qty: number; tone: string }> = [
+    { name: "피킹 재고", qty: 0, tone: "info" },
+    { name: "보관 재고", qty: 0, tone: "success" },
+    { name: "격납 대기", qty: 0, tone: "warning" },
+    { name: "외주 재고", qty: 0, tone: "violet" }
+  ];
+  for (const stock of stocks) {
+    const idx =
+      stock.warehouseType === "외주" ? 3
+      : stock.stockStatus === "PUTAWAY_WAIT" ? 2
+      : stock.locationType === "PICKING" ? 0
+      : 1;
+    buckets[idx].qty += stock.onHand;
+  }
+  const total = buckets.reduce((sum, bucket) => sum + bucket.qty, 0);
+  return { total, buckets };
+}
+
 const analyticsRows = {
   periodRows: [
     { period: "2026-06-15", cnt: 3, qty: 480 },
@@ -357,6 +479,9 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
 
   if (clean === "/dashboard/summary") return copy(summary) as T;
   if (clean === "/dashboard/progress") return copy(progress) as T;
+  if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
+  if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
+  if (clean === "/warehouse/layout") return copy(warehouseLayout) as T;
   if (clean === "/inbounds") return copy(inbounds) as T;
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds) as T;
