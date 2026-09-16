@@ -1,0 +1,111 @@
+/* ============================================================
+   로케이션 QR 라벨 — 미리보기 · 인쇄 공용
+   라벨은 종이라서 테마와 무관하게 흰 바탕·검정 글자 (고정 팔레트 토큰)
+   치수는 mm — 미리보기는 zoom 으로 줄여서 보여준다
+   ============================================================ */
+
+/* ---------- 라벨 한 장 ---------- */
+.lbl {
+  box-sizing: border-box; overflow: hidden;
+  display: grid; align-items: stretch;
+  background: var(--p-white); color: var(--p-black);
+  font-family: var(--font);
+}
+.lbl-qr { align-self: center; aspect-ratio: 1 / 1; }
+.lbl-qr svg { display: block; }
+.lbl-text { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+.lbl-where { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 코드는 굵은 본문 글꼴 — 모노 글꼴은 웹폰트로 싣지 않아 PC 마다 가는 대체 글꼴로 찍힌다 */
+.lbl-code {
+  font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em; white-space: nowrap;
+}
+.lbl-place { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbl-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 2mm; }
+.lbl-foot em {
+  font-style: normal; font-weight: 800; line-height: 1.2;
+  border: 0.3mm solid var(--p-black); border-radius: 1mm;
+}
+.lbl-arrow { display: block; fill: var(--p-black); }
+
+/* 라벨 프린터 100 × 50 mm */
+.lbl-sheet.is-thermal .lbl-page { width: 100mm; height: 50mm; overflow: hidden; }
+.lbl-sheet.is-thermal .lbl { width: 100mm; height: 50mm; padding: 3mm; grid-template-columns: 40mm minmax(0, 1fr); gap: 3.5mm; }
+.lbl-sheet.is-thermal .lbl-qr { width: 40mm; }
+.lbl-sheet.is-thermal .lbl-where { font-size: 8pt; }
+.lbl-sheet.is-thermal .lbl-code { font-size: 30pt; }
+.lbl-sheet.is-thermal .lbl-code.is-long { font-size: 21pt; }
+.lbl-sheet.is-thermal .lbl-code.is-xlong { font-size: 15pt; }
+.lbl-sheet.is-thermal .lbl-place { font-size: 10pt; }
+.lbl-sheet.is-thermal .lbl-foot em { font-size: 8pt; padding: 0.4mm 1.6mm; }
+.lbl-sheet.is-thermal .lbl-arrow { width: 9mm; height: 9mm; }
+
+/* A4 라벨지 3열 × 8행 — 칸 70 × 37 mm */
+.lbl-sheet.is-a4 .lbl-page {
+  box-sizing: border-box; width: 210mm; height: 297mm; padding: 0.5mm 0; overflow: hidden;
+  display: grid; grid-template-columns: repeat(3, 70mm); grid-auto-rows: 37mm; align-content: start;
+  background: var(--p-white);
+}
+.lbl-sheet.is-a4 .lbl { width: 70mm; height: 37mm; padding: 2.5mm; grid-template-columns: 28mm minmax(0, 1fr); gap: 2.5mm; }
+.lbl-sheet.is-a4 .lbl-qr { width: 28mm; }
+.lbl-sheet.is-a4 .lbl-where { font-size: 6pt; }
+.lbl-sheet.is-a4 .lbl-code { font-size: 20pt; }
+.lbl-sheet.is-a4 .lbl-code.is-long { font-size: 14pt; }
+.lbl-sheet.is-a4 .lbl-code.is-xlong { font-size: 10pt; }
+.lbl-sheet.is-a4 .lbl-place { font-size: 7pt; }
+.lbl-sheet.is-a4 .lbl-foot em { font-size: 6pt; padding: 0.3mm 1.2mm; }
+.lbl-sheet.is-a4 .lbl-arrow { width: 6mm; height: 6mm; }
+
+/* ---------- 출력 창 ---------- */
+.ds-modal.lbl-modal { width: 760px; }
+.lbl-options { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+.lbl-opt { display: grid; gap: 6px; align-content: start; }
+.lbl-opt > span { font-size: 12px; font-weight: 700; color: var(--ink-muted); }
+.lbl-opt > span small { font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+.lbl-seg { display: flex; gap: 4px; padding: 3px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2); }
+.lbl-seg button {
+  flex: 1; display: grid; gap: 1px; justify-items: center; align-content: center;
+  min-height: 42px; padding: 4px 8px; border: none; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-muted); font-family: inherit; cursor: pointer;
+}
+.lbl-seg button b { font-size: 12.5px; font-weight: 800; }
+.lbl-seg button small { font-size: 10.5px; font-weight: 600; color: var(--ink-faint); }
+.lbl-seg button:hover { color: var(--ink-strong); }
+.lbl-seg button.is-on { background: var(--surface); color: var(--primary-ink); box-shadow: 0 0 0 1px var(--primary-line), var(--sh-soft); }
+
+.lbl-preview {
+  max-height: 360px; overflow: auto; padding: 14px;
+  border-radius: var(--r-md); border: 1px solid var(--border-soft); background: var(--bg-sunken);
+}
+.lbl-preview .lbl-sheet.is-thermal { zoom: 0.78; display: grid; grid-template-columns: repeat(2, max-content); justify-content: center; gap: 12px; }
+.lbl-preview .lbl-sheet.is-a4 { zoom: 0.58; width: max-content; margin: 0 auto; }
+.lbl-preview .lbl-page { box-shadow: var(--sh-soft); background: var(--p-white); }
+/* 미리보기에서만 칸 경계를 보여준다 — 라벨지는 이미 잘려 있으니 인쇄하지 않는다 */
+.lbl-preview .lbl-sheet.is-a4 .lbl { outline: 0.2mm dashed color-mix(in srgb, var(--p-black) 22%, transparent); outline-offset: -0.1mm; }
+
+.lbl-more { margin: 8px 0 0; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
+.lbl-note {
+  display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0;
+  font-size: 11.5px; line-height: 1.5; color: var(--ink-muted);
+}
+.lbl-note svg { flex: 0 0 auto; margin-top: 2px; }
+.lbl-foot-msg { margin-right: auto; align-self: center; font-size: 12px; font-weight: 700; color: var(--ink-muted); }
+.lbl-print-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 760px) {
+  .lbl-options { grid-template-columns: minmax(0, 1fr); }
+  .lbl-preview .lbl-sheet.is-thermal { grid-template-columns: max-content; }
+}
+
+/* ---------- 인쇄 — 라벨만 남긴다 ---------- */
+.lbl-print-root { display: none; }
+
+@media print {
+  html.is-printing-labels,
+  html.is-printing-labels body { margin: 0 !important; padding: 0 !important; background: var(--p-white) !important; }
+  html.is-printing-labels body > *:not(.lbl-print-root) { display: none !important; }
+  html.is-printing-labels .lbl-print-root { display: block; }
+  .lbl-print-root .lbl-page { break-after: page; break-inside: avoid; }
+  .lbl-print-root .lbl-page:last-child { break-after: auto; }
+  .lbl-print-root .lbl { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

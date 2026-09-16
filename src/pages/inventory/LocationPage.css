@@ -1,0 +1,135 @@
+/* ============================================================
+   로케이션 관리 — 목록 · CAPA · 배치 탭
+   ============================================================ */
+
+.lp-page { display: grid; gap: 12px; }
+
+.lp-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px;
+}
+.lp-head h2 { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink-strong); }
+.lp-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-muted); }
+
+.lp-tabs {
+  display: inline-flex; gap: 3px; padding: 3px;
+  border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2);
+}
+.lp-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px; border: none; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-muted);
+  font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.lp-tab:hover { color: var(--ink-strong); }
+.lp-tab.is-on { background: var(--surface); color: var(--ink-strong); box-shadow: var(--sh-soft); }
+.lp-tab small {
+  padding: 0 6px; border-radius: var(--r-pill); background: var(--surface-3);
+  font-size: 10.5px; font-weight: 800; color: var(--ink-muted);
+}
+
+/* ---------- 목록 탭 보강 ---------- */
+.lp-page .outbound-filter-actions button { white-space: nowrap; }
+.lp-placement { font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.lp-row-actions { display: flex; gap: 5px; justify-content: flex-end; flex-wrap: nowrap; }
+.lp-row-actions button { white-space: nowrap; }
+.lp-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 30px; padding: 0 9px; border-radius: var(--r-sm);
+  border: 1px solid var(--primary-line); background: var(--primary-bg); color: var(--primary-ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.lp-link.is-warn { border-color: var(--c-warning-line); background: var(--c-warning-bg); color: var(--c-warning-ink); }
+.lp-pager { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 12px 4px 2px; font-size: 12px; color: var(--ink-muted); }
+.lp-pager button {
+  min-width: 32px; height: 30px; padding: 0 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.lp-pager button:disabled { opacity: 0.4; cursor: not-allowed; }
+.lp-pager b { color: var(--ink-strong); }
+
+.lp-place-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lp-place-grid .ds-field { margin-bottom: 0; }
+.lp-hint { margin: 6px 0 0; font-size: 11.5px; color: var(--ink-faint); line-height: 1.45; }
+
+/* ---------- CAPA 탭 ---------- */
+.lp-capa { display: grid; gap: 12px; }
+.lp-capa-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: stretch; }
+.lp-map { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.lp-map-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--border-soft);
+}
+.lp-map-head .nx-sect { flex-direction: column; align-items: flex-start; gap: 3px; }
+.lp-map-tools { display: flex; align-items: center; gap: 8px; }
+.lp-select {
+  height: 32px; padding: 0 8px; border-radius: var(--r-sm);
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.lp-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; font-size: 12.5px; }
+.lp-map-stage { flex: 1; min-height: 540px; padding: 12px; }
+.lp-loading {
+  height: 100%; min-height: 516px; display: grid; place-items: center;
+  border-radius: var(--r-lg); background: var(--bg-sunken);
+  color: var(--ink-faint); font-size: 13px; font-weight: 600;
+}
+
+.lp-capa-table { padding: 0; overflow: hidden; }
+.lp-capa-total { font-size: 12.5px; color: var(--ink-muted); }
+.lp-capa-total b { color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.lp-table-wrap { overflow-x: auto; }
+.lp-table { width: 100%; border-collapse: collapse; }
+.lp-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lp-table tbody tr { cursor: pointer; }
+.lp-table tbody tr.is-selected { background: var(--primary-bg); box-shadow: inset 3px 0 0 var(--primary); }
+.lp-muted { font-size: 11px; color: var(--ink-faint); }
+.lp-util { display: flex; align-items: center; gap: 10px; }
+.lp-util .nx-bar { flex: 1; }
+.lp-util b { min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 3D / 랙 정면 전환 */
+.lp-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface-2); }
+.lp-seg button {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 11px; border: none; border-radius: 5px;
+  background: transparent; color: var(--ink-muted);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.lp-seg button:hover { color: var(--ink-strong); }
+.lp-seg button.is-on { background: var(--surface); color: var(--ink-strong); box-shadow: var(--sh-soft); }
+
+/* ---------- CAPA › 랙 정면 ---------- */
+.rb { display: grid; gap: 12px; align-content: start; }
+.rb-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rb-zone { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--ink-muted); }
+.rb-zone select {
+  height: 36px; min-width: 230px; padding: 0 10px; border-radius: var(--r-sm);
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.rb-tools .rb-print { margin-left: auto; }
+.rb-summary {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 16px;
+  padding: 10px 14px; border-radius: var(--r-md); border: 1px solid var(--border-soft); background: var(--surface-2);
+  font-size: 12.5px; color: var(--ink-muted);
+}
+.rb-summary > b { font-size: 15px; font-weight: 800; color: var(--ink-strong); }
+.rb-summary b { color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.rb-summary .is-danger, .rb-summary .is-danger b { color: var(--c-danger-ink); }
+.rb-rack { padding: 12px 14px; border-radius: var(--r-md); border: 1px solid var(--border-soft); }
+.rb-mini {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.rb-mini:hover { background: var(--surface-3); }
+.rb-mini:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* 목록 — 최대 무게(랙 기준을 따르면 흐리게) · QR 라벨 버튼 */
+.lp-weight-inherit { font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+.lp-label-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+
+@media (max-width: 1280px) {
+  .lp-capa-main { grid-template-columns: minmax(0, 1fr); }
+}

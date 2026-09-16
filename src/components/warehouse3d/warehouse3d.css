@@ -23,7 +23,46 @@
 .wh3d-canvas { position: absolute; inset: 0; touch-action: none; cursor: grab; }
 .wh3d-canvas:active { cursor: grabbing; }
 .wh3d-canvas.is-pointing { cursor: pointer; }
+.wh3d-canvas.is-top { cursor: move; }
+.wh3d-canvas.is-dragging, .wh3d-canvas.is-dragging:active { cursor: copy; }
 .wh3d-canvas canvas { display: block; }
+
+/* 배치 편집 모드 — 구역을 통째로 끌어 옮긴다 */
+.wh3d.is-edit { box-shadow: inset 0 0 0 2px var(--primary); }
+.wh3d.is-edit::after {
+  content: "배치 편집 모드 · 구역을 끌어 옮기세요";
+  position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+  padding: 3px 12px; border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: var(--primary); color: var(--ink-on-accent);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.2px; pointer-events: none;
+}
+.wh3d.is-edit .wh3d-canvas.is-pointing { cursor: grab; }
+.wh3d-canvas.is-zone-dragging, .wh3d-canvas.is-zone-dragging:active { cursor: grabbing; }
+
+.wh3d-zone-tag {
+  position: absolute; left: 50%; top: 30px; transform: translateX(-50%); z-index: 6;
+  display: grid; justify-items: center; gap: 1px;
+  padding: 6px 12px; border-radius: var(--r-md);
+  background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--sh-pop);
+  pointer-events: none; white-space: nowrap;
+}
+.wh3d-zone-tag b { font-size: 12.5px; font-weight: 800; color: var(--ink-strong); }
+.wh3d-zone-tag span { font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; color: var(--ink-muted); }
+.wh3d-zone-tag em { font-style: normal; font-size: 11.5px; font-weight: 800; }
+.wh3d-zone-tag.is-ok { border-color: var(--c-success); }
+.wh3d-zone-tag.is-ok em { color: var(--c-success-ink); }
+.wh3d-zone-tag.is-bad { border-color: var(--c-danger); }
+.wh3d-zone-tag.is-bad em { color: var(--c-danger-ink); }
+
+/* 작업 모드 — 지금 무슨 모드인지 테두리로 항상 보이게 */
+.wh3d.is-work { box-shadow: inset 0 0 0 2px var(--c-success-line); }
+.wh3d.is-work::after {
+  content: "작업 모드 · 재고 이동";
+  position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+  padding: 3px 12px; border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: var(--c-success); color: var(--ink-on-accent);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.2px; pointer-events: none;
+}
 
 /* ---------- 구역 라벨 ---------- */
 .wh3d-labels { position: absolute; inset: 0; pointer-events: none; }
@@ -71,9 +110,57 @@
 .wh3d-label.tone-normal .wh3d-label-util { color: var(--primary-ink); }
 .wh3d-label.tone-busy   .wh3d-label-util { color: var(--c-warning-ink); }
 .wh3d-label.tone-full   .wh3d-label-util { color: var(--c-danger-ink); }
+.wh3d-label.tone-neutral { border-color: var(--border-strong); }
+.wh3d-label.tone-neutral .wh3d-label-util { color: var(--ink-muted); }
 .wh3d-label.is-active {
   box-shadow: var(--sh-pop), 0 0 0 2px var(--primary);
 }
+
+/* ---------- 슬롯 라벨 (호버/선택) ---------- */
+.wh3d-slot-label {
+  position: absolute; top: 0; left: 0;
+  display: grid; gap: 1px; padding: 5px 9px;
+  border-radius: var(--r-sm); border: 1px solid var(--primary);
+  background: var(--surface); box-shadow: var(--sh-pop);
+  white-space: nowrap; opacity: 0; pointer-events: none;
+  margin-top: -6px;
+}
+.wh3d-slot-label.is-hidden { display: none; }
+.wh3d-slot-label b { font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--ink-strong); }
+.wh3d-slot-label span { font-size: 10.5px; font-weight: 700; color: var(--ink-muted); }
+
+/* ---------- 끌기 안내 ---------- */
+.wh3d-drag {
+  position: absolute; z-index: 6; pointer-events: none;
+  transform: translate(14px, 14px);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 280px;
+  padding: 6px 10px; border-radius: var(--r-sm);
+  background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--sh-pop);
+  font-size: 12px; color: var(--ink);
+}
+.wh3d-drag b { font-family: var(--font-mono); font-weight: 800; color: var(--ink-strong); }
+.wh3d-drag span { flex-basis: 100%; font-size: 11px; font-weight: 700; }
+.wh3d-drag.is-ok { border-color: var(--c-success); }
+.wh3d-drag.is-ok b:last-of-type { color: var(--c-success-ink); }
+.wh3d-drag.is-bad { border-color: var(--c-danger); }
+.wh3d-drag.is-bad span { color: var(--c-danger-ink); }
+
+/* ---------- 왼쪽 위 도구 (검색) — 층 선택 바로 옆 ---------- */
+.wh3d-overlay {
+  position: absolute; left: 70px; top: 14px;
+  z-index: 5;
+}
+
+/* ---------- 레이아웃 없음 ---------- */
+.wh3d-empty {
+  position: absolute; inset: 0; z-index: 4;
+  display: grid; place-items: center; align-content: center; gap: 8px;
+  padding: 24px; text-align: center;
+  background: color-mix(in srgb, var(--bg-sunken) 82%, transparent);
+  color: var(--ink-faint);
+}
+.wh3d-empty b { font-size: 14px; font-weight: 800; color: var(--ink-strong); }
+.wh3d-empty span { font-size: 12px; font-weight: 600; max-width: 340px; line-height: 1.5; }
 
 /* ---------- 층 선택 ---------- */
 .wh3d-floors {
@@ -127,8 +214,15 @@
   font-weight: 700;
   color: var(--ink-muted);
 }
-.wh3d-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.wh3d-legend { align-items: center; }
+.wh3d-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .wh3d-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.wh3d-mode {
+  height: 24px; padding: 0 6px; margin-right: 2px;
+  border-radius: var(--r-pill); border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--ink-strong);
+  font-family: inherit; font-size: 11.5px; font-weight: 800; cursor: pointer;
+}
 
 /* ---------- 뷰 도구 ---------- */
 .wh3d-tools {
@@ -147,6 +241,13 @@
 .wh3d-tools .nx-iconbtn { width: 30px; height: 30px; background: transparent; border-color: transparent; }
 .wh3d-tools .nx-iconbtn:hover { background: var(--surface-3); }
 .wh3d-tools .nx-iconbtn.is-on { background: var(--primary-bg); color: var(--primary-ink); border-color: var(--primary-line); }
+.wh3d-tools .wh3d-text-btn {
+  width: auto; min-width: 34px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  font-family: inherit; font-size: 11.5px; font-weight: 800; white-space: nowrap;
+}
+.wh3d-tools .wh3d-text-btn:disabled { opacity: 0.5; cursor: progress; }
+.wh3d-tools-sep { width: 1px; margin: 5px 2px; background: var(--border); }
 
 /* ---------- 상태 ---------- */
 .wh3d-status {
@@ -172,7 +273,21 @@
   white-space: nowrap;
 }
 
-@media (max-width: 900px) {
-  .wh3d-legend { display: none; }
+/* 맵 자체의 폭에 맞춘다 — 옆 패널 때문에 화면이 넓어도 맵은 좁을 수 있다 */
+.wh3d { container-type: inline-size; }
+
+@container (max-width: 1040px) {
+  .wh3d-legend {
+    flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px;
+    max-width: 236px; border-radius: var(--r-md);
+  }
+  .wh3d-legend .wh3d-mode { flex-basis: 100%; }
+  .wh3d-overlay .wms-search-box { width: 230px; }
   .wh3d-hint { display: none; }
+}
+@container (max-width: 640px) {
+  .wh3d-legend span { display: none; }
+  .wh3d-legend { max-width: none; padding: 5px; }
+  .wh3d-overlay .wms-search-box { width: 170px; }
+  .wh3d-status .wh3d-sync { display: none; }
 }

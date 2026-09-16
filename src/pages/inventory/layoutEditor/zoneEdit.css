@@ -1,0 +1,121 @@
+/* ============================================================
+   3D 구역 배치 편집 — 작업 바 · 옆 패널
+   ============================================================ */
+
+/* 맵 왼쪽 위 작업 바 */
+.zep-bar {
+  display: flex; align-items: center; gap: 4px;
+  height: 38px; padding: 0 4px 0 12px; border-radius: var(--r-pill);
+  background: var(--surface); border: 1px solid var(--primary-line); box-shadow: var(--sh-pop);
+}
+.zep-bar-count { margin-right: 6px; font-size: 12px; font-weight: 800; color: var(--ink-muted); white-space: nowrap; }
+.zep-bar-count.is-dirty { color: var(--primary-ink); }
+.zep-bar button {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 30px; padding: 0 11px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.zep-bar button:hover:not(:disabled) { border-color: var(--border-strong); color: var(--ink-strong); }
+.zep-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+.zep-bar button.is-primary { border-color: var(--primary); background: var(--primary); color: var(--ink-on-accent); }
+.zep-bar button.zep-bar-icon { width: 30px; padding: 0; justify-content: center; }
+.zep-bar-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--border); }
+
+/* 옆 패널 — 맵 높이를 따라가고 안에서 스크롤 */
+.zep { position: relative; padding: 0; overflow: hidden; min-height: 420px; border: 1px solid var(--primary-line); }
+.zep-body { position: absolute; inset: 0; overflow-y: auto; display: flex; flex-direction: column; }
+
+.zep-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--border-soft); background: color-mix(in srgb, var(--primary) 7%, var(--surface)); }
+.zep-head h3 { margin: 3px 0 5px; font-size: 16px; font-weight: 800; color: var(--ink-strong); }
+.zep-head p { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-muted); }
+.zep-note { margin: 12px 14px 0; font-size: 11.5px; }
+
+.zep-sec { display: grid; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border-soft); }
+.zep-sec > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.zep-sec > header span { font-size: 12px; font-weight: 800; color: var(--ink-strong); }
+.zep-sec > header small { font-size: 10.5px; font-weight: 600; color: var(--ink-faint); }
+
+.zep-zones { display: grid; gap: 4px; }
+.zep-zone {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--surface-2);
+  font-family: inherit; text-align: left; cursor: pointer;
+}
+.zep-zone:hover { border-color: var(--border-strong); }
+.zep-zone.is-sel { border-color: var(--primary); background: var(--primary-bg); box-shadow: inset 3px 0 0 var(--primary); }
+.zep-zone b { flex: 1; font-size: 12.5px; font-weight: 800; color: var(--ink-strong); }
+.zep-zone em {
+  font-style: normal; padding: 1px 7px; border-radius: var(--r-pill);
+  background: var(--primary); color: var(--ink-on-accent); font-size: 10px; font-weight: 800;
+}
+.zep-mono { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--ink-muted); }
+.zep-empty { margin: 0; padding: 12px 14px; font-size: 12px; color: var(--ink-faint); }
+
+.zep-coords { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.zep-coord { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px;
+  padding: 0 8px; height: 34px; border-radius: var(--r-sm); border: 1px solid var(--border-strong); background: var(--surface-2); }
+.zep-coord:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px var(--ring); }
+.zep-coord span { font-size: 10.5px; font-weight: 800; color: var(--ink-faint); white-space: nowrap; }
+.zep-coord input {
+  min-width: 0; height: 100%; border: none; background: transparent; box-shadow: none; padding: 0;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 800; color: var(--ink-strong); text-align: right;
+}
+.zep-coord input:focus { box-shadow: none; outline: none; }
+.zep-coord small { font-size: 10.5px; color: var(--ink-faint); }
+
+.zep-pad { display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 30px); gap: 3px; justify-content: center; align-items: center; }
+.zep-pad button {
+  width: 34px; height: 30px; display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); color: var(--ink);
+  cursor: pointer;
+}
+.zep-pad button:hover { border-color: var(--primary-line); color: var(--primary-ink); }
+.zep-pad small { text-align: center; font-size: 10px; font-weight: 800; color: var(--ink-faint); }
+
+/* 회전 — [⟲45°] [각도 입력] [45°⟳] */
+.zep-rotate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.zep-rotate > button {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 34px; padding: 0 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  font-family: inherit; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap;
+}
+.zep-rotate > button:hover { border-color: var(--primary-line); color: var(--primary-ink); }
+.zep-hint { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 11px; color: var(--ink-faint); }
+/* 방향 표시 — 위쪽 눈금이 돌아간 만큼 기운다 */
+.zep-dial {
+  position: relative; flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--primary-line); transition: transform var(--dur-1);
+}
+.zep-dial::after {
+  content: ""; position: absolute; left: 50%; top: 1px; width: 2px; height: 6px; margin-left: -1px;
+  border-radius: 1px; background: var(--primary);
+}
+
+.zep-reset {
+  height: 30px; border-radius: var(--r-sm); border: 1px dashed var(--border-strong); background: transparent;
+  font-family: inherit; font-size: 12px; font-weight: 700; color: var(--ink-muted); cursor: pointer;
+}
+.zep-reset:hover { color: var(--ink-strong); border-color: var(--primary-line); }
+
+.zep-changes { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 12px; line-height: 1.45; color: var(--ink); }
+
+.zep-foot { display: flex; gap: 8px; padding: 12px 14px; margin-top: auto; border-top: 1px solid var(--border-soft); background: var(--surface); position: sticky; bottom: 0; }
+.zep-foot > button { flex: 1; height: 38px; }
+
+/* 대시보드 알림 — 화면을 밀지 않게 떠 있는다 */
+.zep-toast {
+  position: fixed; left: 50%; bottom: 24px; z-index: 60; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; margin: 0;
+  width: max-content; max-width: min(640px, calc(100vw - 32px)); box-shadow: var(--sh-pop);
+}
+.zep-toast button { width: 24px; height: 24px; display: grid; place-items: center; border: none; background: transparent; color: inherit; cursor: pointer; }
+.zep-confirm { display: grid; gap: 10px; font-size: 12.5px; color: var(--ink); }
+.zep-confirm p { margin: 0; }
+.zep-confirm ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+@media (max-width: 1280px) {
+  .zep { min-height: 460px; }
+}

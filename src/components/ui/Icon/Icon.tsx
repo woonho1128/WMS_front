@@ -52,6 +52,10 @@ export const ICON_PATHS: Record<string, string> = {
   dots: "M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z",
   cube3d: "M12 2 3 7v10l9 5 9-5V7zM3 7l9 5 9-5M12 12v10",
   megaphone: "M3 11v2a1 1 0 0 0 1 1h3l7 4V6L7 10H4a1 1 0 0 0-1 1zM18 9a4 4 0 0 1 0 6",
+  upload: "M12 20V8M7 13l5-5 5 5M5 4h14",
+  printer: "M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z",
+  rotateCw: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5",
+  rotateCcw: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5",
   /* 탭 닫기 메뉴 */
   closeOthers: "M3 5h8v14H3zM15 9l6 6M21 9l-6 6",
   closeLeft: "M4 4v16M20 12H9M13 8l-4 4 4 4",

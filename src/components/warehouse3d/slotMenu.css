@@ -1,0 +1,88 @@
+/* ============================================================
+   슬롯 우클릭 메뉴
+   ============================================================ */
+
+.scm {
+  position: absolute; z-index: 20;
+  width: 318px; max-height: calc(100% - 16px); overflow-y: auto;
+  border-radius: var(--r-md); border: 1px solid var(--border-strong);
+  background: var(--surface); box-shadow: var(--sh-pop);
+  animation: scm-in 120ms ease-out;
+}
+@keyframes scm-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .scm { animation: none; } }
+
+.scm-head { display: grid; gap: 3px; padding: 11px 13px 10px; border-bottom: 1px solid var(--border-soft); background: var(--surface-2); }
+.scm-title { display: flex; align-items: center; gap: 7px; }
+.scm-title b { font-family: var(--font-mono); font-size: 16px; font-weight: 800; color: var(--ink-strong); }
+.scm-type { padding: 1px 8px; border-radius: var(--r-pill); border: 1px solid; font-size: 11px; font-weight: 800; background: var(--surface); }
+.scm-head > small { font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+.scm-meta { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 11.5px; color: var(--ink-muted); }
+.scm-meta b { color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.scm-meta .is-over, .scm-meta .is-over b { color: var(--c-danger-ink); }
+
+.scm-sec { display: grid; gap: 6px; padding: 10px 13px; border-bottom: 1px solid var(--border-soft); }
+.scm-sec:last-child { border-bottom: none; }
+.scm-sec-title { font-size: 11px; font-weight: 800; color: var(--ink-muted); letter-spacing: 0.2px; }
+.scm-empty { padding: 14px 13px; font-size: 12px; color: var(--ink-faint); }
+.scm-empty.is-error { color: var(--c-danger-ink); }
+.scm-muted { font-size: 11px; line-height: 1.45; color: var(--ink-faint); }
+.scm-more { font-size: 11px; color: var(--ink-faint); }
+
+.scm-stock { display: grid; gap: 2px; }
+.scm-stock + .scm-stock { padding-top: 7px; border-top: 1px dashed var(--border); }
+.scm-stock-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.scm-stock-top b { font-size: 12.5px; font-weight: 700; color: var(--ink-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scm-stock > small { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); }
+.scm-qty { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-muted); }
+.scm-qty b { font-size: 15px; font-weight: 800; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.scm-qty small { font-size: 10.5px; color: var(--ink-faint); }
+.scm-inline {
+  margin-left: auto; height: 24px; padding: 0 8px; border-radius: var(--r-xs);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+
+.scm-replenish { background: color-mix(in srgb, var(--c-warning) 8%, var(--surface)); }
+.scm-alert { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--c-warning-ink); }
+.scm-alert b { font-weight: 800; }
+.scm-replenish > small { font-size: 11px; color: var(--ink-muted); }
+
+.scm-primary {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 8px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--primary); background: var(--primary); color: var(--ink-on-accent);
+  font-family: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer;
+}
+.scm-primary span { display: grid; gap: 1px; }
+.scm-primary small { font-size: 10.5px; font-weight: 600; opacity: 0.85; }
+.scm-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.scm-primary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+.scm-order {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 7px 9px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface-2);
+  font-family: inherit; color: var(--ink-muted); cursor: pointer;
+}
+.scm-order:hover, .scm-order:focus-visible { border-color: var(--primary-line); background: var(--primary-bg); color: var(--primary-ink); outline: none; }
+.scm-order-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.scm-order-main > span { display: flex; align-items: center; gap: 6px; }
+.scm-order-main b { font-family: var(--font-mono); font-size: 12px; font-weight: 800; color: var(--ink-strong); }
+.scm-order-main em {
+  font-style: normal; padding: 0 6px; border-radius: var(--r-pill);
+  background: var(--c-warning-bg); color: var(--c-warning-ink); font-size: 10px; font-weight: 800;
+}
+.scm-order-main em.is-picking { background: var(--c-violet-bg); color: var(--c-violet-ink); }
+.scm-order-main small { font-size: 11px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.scm-actions { gap: 2px; padding: 6px; }
+.scm-actions button {
+  display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+  height: 34px; padding: 0 9px; border: none; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink);
+  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.scm-actions button svg { color: var(--ink-faint); }
+.scm-actions button:hover:not(:disabled), .scm-actions button:focus-visible { background: var(--primary-bg); color: var(--primary-ink); outline: none; }
+.scm-actions button:hover:not(:disabled) svg, .scm-actions button:focus-visible svg { color: var(--primary-ink); }
+.scm-actions button:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -5,6 +5,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Icon } from "../../components/ui/Icon";
 import { TRANSFER_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
+import { TransferMapView } from "../stock/TransferMapView";
 import "./DashboardTransfer.css";
 
 type StockRow = {
@@ -45,6 +46,7 @@ type TransferRow = {
 };
 
 export const DashboardTransfer = () => {
+  const [view, setView] = useState<"list" | "map">("list");
   const [stocks, setStocks] = useState<StockRow[]>([]);
   const [locations, setLocations] = useState<LocationRow[]>([]);
   const [transfers, setTransfers] = useState<TransferRow[]>([]);
@@ -138,11 +140,44 @@ export const DashboardTransfer = () => {
       <header className="transfer-head app-surface">
         <div>
           <h2>재고 이동 (일반)</h2>
-          <p>가용 재고(LOT)를 선택해 도착 로케이션으로 이동합니다. 출발/도착 QR 검증 후 확정. (백엔드 연동)</p>
+          <p>
+            {view === "list"
+              ? "가용 재고(LOT)를 선택해 도착 로케이션으로 이동합니다. 출발/도착 QR 검증 후 확정."
+              : "3D 배치도에서 슬롯을 끌어 옮기거나, 품목의 [이동]·[조정]으로 처리합니다."}
+          </p>
         </div>
-        <button type="button" className="btn-primary" onClick={load}>새로고침</button>
+        <div className="transfer-head-actions">
+          <div className="tmv-tabs" role="tablist" aria-label="보기 방식">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "list"}
+              className={`tmv-tab${view === "list" ? " is-on" : ""}`}
+              onClick={() => {
+                setView("list");
+                load();
+              }}
+            >
+              <Icon name="menu" size={14} />
+              목록
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "map"}
+              className={`tmv-tab${view === "map" ? " is-on" : ""}`}
+              onClick={() => setView("map")}
+            >
+              <Icon name="cube3d" size={14} />
+              3D 배치도
+            </button>
+          </div>
+          {view === "list" ? <button type="button" className="btn-primary" onClick={load}>새로고침</button> : null}
+        </div>
       </header>
 
+      {view === "map" ? <TransferMapView onChanged={load} /> : (
+      <>
       <ProcessBanner
         title="재고이동 단계"
         steps={TRANSFER_STEPS}
@@ -259,6 +294,8 @@ export const DashboardTransfer = () => {
           </table>
         </div>
       </DashboardCard>
+      </>
+      )}
     </section>
   );
 };

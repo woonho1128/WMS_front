@@ -2,9 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
+import { Icon } from "../../components/ui/Icon";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
+import type { LayoutRack, LayoutSummaryRow } from "../../components/warehouse3d/types";
+import { LocationCapaView } from "./LocationCapaView";
+import { LocationLabelDialog, type LabelTarget } from "./LocationLabels";
+import { LayoutEditor } from "./layoutEditor/LayoutEditor";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
+import "./LocationPage.css";
 
 type LocationRow = {
   id: number;
@@ -16,10 +22,49 @@ type LocationRow = {
   zoneId: number;
   zoneName: string;
   warehouseName: string;
+  warehouseId: number | null;
+  floor: string | null;
   stockCount: number;
+  rackId: number | null;
+  rackCode: string | null;
+  bay: number | null;
+  level: number | null;
+  /** "A-R01 · 2연 3단" — 미배치면 null */
+  placement: string | null;
+  /** 이 로케이션에 따로 정한 최대 무게(kg) — null 이면 랙 기준 */
+  maxWeightKg: number | null;
+  /** 배치된 랙의 칸당 허용 하중(kg) */
+  rackMaxLoadKg: number | null;
+  palletSpec: string | null;
 };
 
-type ZoneOption = { id: number; code: string; name: string; warehouseName: string };
+const toLabelTarget = (r: LocationRow): LabelTarget => ({
+  locationId: r.id,
+  code: r.code,
+  warehouseName: r.warehouseName,
+  zoneName: r.zoneName,
+  floor: r.floor,
+  rackCode: r.rackCode,
+  bay: r.bay,
+  level: r.level,
+  locationType: r.locationType
+});
+
+/** 목록 표기 — 따로 정한 값이 없으면 랙 기준을 흐리게 */
+const weightCell = (r: LocationRow) =>
+  r.maxWeightKg != null ? (
+    `${r.maxWeightKg.toLocaleString()} kg`
+  ) : r.rackMaxLoadKg != null ? (
+    <span className="lp-weight-inherit">{r.rackMaxLoadKg.toLocaleString()} kg · 랙</span>
+  ) : (
+    "-"
+  );
+
+type ZoneOption = { id: number; code: string; name: string; warehouseName: string; warehouseId?: number | null; floor?: string | null };
+
+type Tab = "list" | "capa" | "layout";
+
+const PAGE_SIZE = 50;
 
 const TYPE_META: Record<string, { label: string; tone: "info" | "violet" | "danger" | "warning" | "teal" }> = {
   PICKING: { label: "피킹", tone: "info" },
@@ -31,6 +76,12 @@ const TYPE_META: Record<string, { label: string; tone: "info" | "violet" | "dang
 const TYPE_KEYS = Object.keys(TYPE_META);
 
 export const InventoryLocationPage = () => {
+  const [tab, setTab] = useState<Tab>("list");
+  const [mapWarehouseId, setMapWarehouseId] = useState(4);
+  const [layoutSummary, setLayoutSummary] = useState<LayoutSummaryRow[]>([]);
+  const [focusRequest, setFocusRequest] = useState<{ locationId: number; warehouseId: number; nonce: number } | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [page, setPage] = useState(1);
   const [rows, setRows] = useState<LocationRow[]>([]);
   const [zones, setZones] = useState<ZoneOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,21 +101,68 @@ export const InventoryLocationPage = () => {
   const [newCode, setNewCode] = useState("");
   const [newType, setNewType] = useState("PICKING");
   const [newMaxQty, setNewMaxQty] = useState<number | "">("");
+  const [newMaxWeight, setNewMaxWeight] = useState<number | "">("");
+  const [zoneRacks, setZoneRacks] = useState<LayoutRack[]>([]);
+  const [newRackId, setNewRackId] = useState<number | "">("");
+  const [newCell, setNewCell] = useState("");
   const [editTarget, setEditTarget] = useState<LocationRow | null>(null);
   const [editType, setEditType] = useState("PICKING");
   const [editStatus, setEditStatus] = useState("가용");
   const [editMaxQty, setEditMaxQty] = useState<number | "">("");
+  const [editMaxWeight, setEditMaxWeight] = useState<number | "">("");
   const [editActive, setEditActive] = useState(true);
+  const [labelTargets, setLabelTargets] = useState<LabelTarget[] | null>(null);
 
   const load = () => {
     setLoading(true);
     setError(null);
-    Promise.all([apiGet<LocationRow[]>("/locations"), apiGet<ZoneOption[]>("/zones")])
-      .then(([l, z]) => { setRows(l); setZones(z); })
+    Promise.all([
+      apiGet<LocationRow[]>("/locations"),
+      apiGet<ZoneOption[]>("/zones"),
+      apiGet<LayoutSummaryRow[]>("/warehouse/layout-summary")
+    ])
+      .then(([l, z, s]) => { setRows(l); setZones(z); setLayoutSummary(s); })
       .catch((e) => setError(e instanceof Error ? e.message : "조회 실패"))
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
+
+  // 등록 모달 — Zone 을 고르면 그 구역의 랙을 불러와 빈 칸을 고를 수 있게 한다
+  useEffect(() => {
+    setNewRackId("");
+    setNewCell("");
+    if (newZone === "") {
+      setZoneRacks([]);
+      return;
+    }
+    apiGet<LayoutRack[]>(`/racks?zoneId=${newZone}`).then(setZoneRacks).catch(() => setZoneRacks([]));
+  }, [newZone]);
+
+  const freeCells = useMemo(() => {
+    const rack = zoneRacks.find((item) => item.id === newRackId);
+    if (!rack) return [];
+    const taken = new Set(rows.filter((r) => r.rackId === rack.id).map((r) => `${r.bay}:${r.level}`));
+    const cells: string[] = [];
+    for (let level = 1; level <= rack.levels; level += 1) {
+      for (let bay = 1; bay <= rack.bays; bay += 1) {
+        if (!taken.has(`${bay}:${level}`)) cells.push(`${bay}:${level}`);
+      }
+    }
+    return cells;
+  }, [zoneRacks, newRackId, rows]);
+
+  const openIn3D = (r: LocationRow) => {
+    const warehouseId = r.warehouseId ?? mapWarehouseId;
+    setMapWarehouseId(warehouseId);
+    setFocusRequest({ locationId: r.id, warehouseId, nonce: Date.now() });
+    setTab("capa");
+  };
+
+  const openLayoutFor = (r: LocationRow) => {
+    if (r.warehouseId) setMapWarehouseId(r.warehouseId);
+    setNotice(`배치 탭 왼쪽 "미배치 로케이션"에서 ${r.code} 를 찾아 랙 칸에 놓으세요.`);
+    setTab("layout");
+  };
 
   const warehouses = useMemo(() => ["전체", ...Array.from(new Set(rows.map((r) => r.warehouseName)))], [rows]);
 
@@ -80,24 +178,44 @@ export const InventoryLocationPage = () => {
 
   const summary = useMemo(() => {
     const by = (t: string) => rows.filter((r) => r.locationType === t).length;
-    return { total: rows.length, picking: by("PICKING"), reserve: by("RESERVE"), bad: by("DEFECT") + by("DAMAGED") };
+    return {
+      total: rows.length,
+      picking: by("PICKING"),
+      reserve: by("RESERVE"),
+      bad: by("DEFECT") + by("DAMAGED"),
+      unplaced: rows.filter((r) => !r.placement).length
+    };
   }, [rows]);
+
+  useEffect(() => setPage(1), [selWarehouse, selType, keyword]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const toggleCheck = (id: number) =>
     setChecked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const allVisibleChecked = filtered.length > 0 && filtered.every((r) => checked.includes(r.id));
+  const allVisibleChecked = pageRows.length > 0 && pageRows.every((r) => checked.includes(r.id));
   const toggleAll = () =>
-    setChecked(allVisibleChecked ? [] : filtered.map((r) => r.id));
+    setChecked(allVisibleChecked ? checked.filter((id) => !pageRows.some((r) => r.id === id)) : Array.from(new Set([...checked, ...pageRows.map((r) => r.id)])));
 
   const doCreate = async () => {
     if (newZone === "" || !newCode.trim()) { setNotice("Zone과 코드를 입력하세요."); return; }
     setBusy(true);
     try {
-      await apiPost("/locations", { zoneId: newZone, code: newCode.trim(), locationType: newType, maxQty: newMaxQty === "" ? null : newMaxQty });
-      setNotice(`로케이션 ${newCode} 생성 완료`);
+      const [bay, level] = newCell ? newCell.split(":").map(Number) : [null, null];
+      await apiPost("/locations", {
+        zoneId: newZone,
+        code: newCode.trim(),
+        locationType: newType,
+        maxQty: newMaxQty === "" ? null : newMaxQty,
+        maxWeightKg: newMaxWeight === "" ? null : newMaxWeight,
+        // 배치를 고르면 3D 에 바로 나타나고, 비워 두면 배치 탭의 미배치 트레이로 간다
+        ...(newRackId !== "" && newCell ? { rackId: newRackId, bay, level } : {})
+      });
+      setNotice(`로케이션 ${newCode} 생성 완료${newRackId !== "" && newCell ? " — 3D 에 바로 나타납니다" : " — 미배치 상태입니다 (배치 탭에서 랙 칸에 놓으세요)"}`);
       setCreateOpen(false);
-      setNewCode(""); setNewMaxQty("");
+      setNewCode(""); setNewMaxQty(""); setNewMaxWeight(""); setNewRackId(""); setNewCell("");
       await load();
+      setReloadKey((key) => key + 1);
     } catch (e) { setNotice(e instanceof Error ? e.message : "생성 실패"); }
     finally { setBusy(false); }
   };
@@ -107,6 +225,7 @@ export const InventoryLocationPage = () => {
     setEditType(r.locationType);
     setEditStatus(r.status);
     setEditMaxQty(r.maxQty ?? "");
+    setEditMaxWeight(r.maxWeightKg ?? "");
     setEditActive(r.active);
   };
 
@@ -114,10 +233,17 @@ export const InventoryLocationPage = () => {
     if (!editTarget) return;
     setBusy(true);
     try {
-      await apiPut(`/locations/${editTarget.id}`, { locationType: editType, status: editStatus, maxQty: editMaxQty === "" ? null : editMaxQty, active: editActive });
+      await apiPut(`/locations/${editTarget.id}`, {
+        locationType: editType,
+        status: editStatus,
+        maxQty: editMaxQty === "" ? null : editMaxQty,
+        maxWeightKg: editMaxWeight === "" ? null : editMaxWeight,
+        active: editActive
+      });
       setNotice(`${editTarget.code} 수정 완료`);
       setEditTarget(null);
       await load();
+      setReloadKey((key) => key + 1);
     } catch (e) { setNotice(e instanceof Error ? e.message : "수정 실패"); }
     finally { setBusy(false); }
   };
@@ -126,9 +252,10 @@ export const InventoryLocationPage = () => {
     setBusy(true);
     try {
       await apiDelete(`/locations/${r.id}`);
-      setNotice(`${r.code} 삭제 완료`);
+      setNotice(`${r.code} 삭제 완료${r.placement ? ` — 3D 의 ${r.placement} 칸이 비었습니다` : ""}`);
       setEditTarget(null);
       await load();
+      setReloadKey((key) => key + 1);
     } catch (e) { setNotice(e instanceof Error ? e.message : "삭제 실패"); }
     finally { setBusy(false); }
   };
@@ -141,6 +268,7 @@ export const InventoryLocationPage = () => {
       setNotice(`${checked.length}개 로케이션을 ${TYPE_META[bulkType].label}(으)로 일괄변경했습니다.`);
       setChecked([]);
       await load();
+      setReloadKey((key) => key + 1);
     } catch (e) { setNotice(e instanceof Error ? e.message : "일괄변경 실패"); }
     finally { setBusy(false); }
   };
@@ -148,12 +276,87 @@ export const InventoryLocationPage = () => {
   const exportCsv = () =>
     downloadCsv(
       `로케이션_${new Date().toISOString().slice(0, 10)}`,
-      ["창고", "Zone", "로케이션코드", "유형", "상태", "적재한도", "재고건수", "사용여부"],
-      filtered.map((r) => [r.warehouseName, r.zoneName, r.code, TYPE_META[r.locationType]?.label ?? r.locationType, r.status, r.maxQty ?? "", r.stockCount, r.active ? "사용" : "미사용"])
+      ["창고", "Zone", "로케이션코드", "유형", "상태", "배치", "적재한도", "최대무게(kg)", "최대무게 기준", "파레트규격", "재고건수", "사용여부"],
+      filtered.map((r) => [
+        r.warehouseName,
+        r.zoneName,
+        r.code,
+        TYPE_META[r.locationType]?.label ?? r.locationType,
+        r.status,
+        r.placement ?? "미배치",
+        r.maxQty ?? "",
+        r.maxWeightKg ?? r.rackMaxLoadKg ?? "",
+        r.maxWeightKg != null ? "로케이션" : r.rackMaxLoadKg != null ? "랙" : "",
+        r.palletSpec ?? "",
+        r.stockCount,
+        r.active ? "사용" : "미사용"
+      ])
     );
 
+  const tabs: Array<{ key: Tab; label: string; icon: string; badge?: string }> = [
+    { key: "list", label: "목록", icon: "menu", badge: String(summary.total) },
+    { key: "capa", label: "CAPA", icon: "cube3d" },
+    { key: "layout", label: "배치", icon: "edit", badge: summary.unplaced ? `미배치 ${summary.unplaced}` : undefined }
+  ];
+
   return (
-    <section className="outbound-page">
+    <section className="outbound-page lp-page">
+      <header className="app-surface lp-head">
+        <div>
+          <h2>로케이션 관리</h2>
+          <p>
+            {tab === "list"
+              ? "로케이션이 있는지는 여기서 정합니다. 추가·삭제하면 3D 에 바로 반영됩니다."
+              : tab === "capa"
+                ? "구역별 파레트 자리 점유·가용을 3D 와 표로 봅니다."
+                : "랙이 어디에 놓였는지를 정합니다. 편집은 초안에 쌓이고 게시해야 운영에 반영됩니다."}
+          </p>
+        </div>
+        <div className="lp-tabs" role="tablist" aria-label="로케이션 관리 보기">
+          {tabs.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === item.key}
+              className={`lp-tab${tab === item.key ? " is-on" : ""}`}
+              onClick={() => {
+                if (item.key === "list" && tab !== "list") load();
+                setTab(item.key);
+              }}
+            >
+              <Icon name={item.icon} size={14} />
+              {item.label}
+              {item.badge ? <small>{item.badge}</small> : null}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {tab === "capa" ? (
+        <LocationCapaView
+          warehouseId={mapWarehouseId}
+          onWarehouseChange={setMapWarehouseId}
+          focusRequest={focusRequest}
+          onEditLayout={() => setTab("layout")}
+          reloadKey={reloadKey}
+        />
+      ) : null}
+
+      {tab === "layout" ? (
+        <LayoutEditor
+          warehouseId={mapWarehouseId}
+          onWarehouseChange={setMapWarehouseId}
+          summary={layoutSummary}
+          onPublished={() => {
+            load();
+            setReloadKey((key) => key + 1);
+          }}
+        />
+      ) : null}
+
+      {tab === "list" ? (
+      <>
       <section className="outbound-summary-grid" aria-label="로케이션 요약">
         <article className="app-surface outbound-summary-card"><span>전체 로케이션</span><strong>{summary.total}개</strong></article>
         <article className="app-surface outbound-summary-card"><span>피킹</span><strong>{summary.picking}개</strong></article>
@@ -190,8 +393,18 @@ export const InventoryLocationPage = () => {
 
       <DashboardCard className="outbound-table-card" title={`로케이션 목록 (${filtered.length}건)`}>
         <div className="outbound-list-toolbar">
-          <p className="outbound-notice">{notice ?? "체크 후 하단에서 상태(유형)를 일괄변경하거나, 행의 수정 버튼으로 개별 변경하세요."}</p>
+          <p className="outbound-notice">{notice ?? "체크 후 상태(유형)를 일괄변경하거나 QR 라벨을 출력하세요. 개별 변경은 행의 수정 버튼으로 합니다."}</p>
           <div className="outbound-expand-actions">
+            <button
+              type="button"
+              className="btn-secondary lp-label-btn"
+              disabled={checked.length === 0}
+              onClick={() => setLabelTargets(rows.filter((r) => checked.includes(r.id)).map(toLabelTarget))}
+              title="선택한 로케이션의 QR 라벨을 인쇄합니다 (라벨 프린터 · A4 라벨지)"
+            >
+              <Icon name="printer" size={14} />
+              선택 {checked.length}건 QR 라벨
+            </button>
             <select value={bulkType} onChange={(e) => setBulkType(e.target.value)}>
               {TYPE_KEYS.map((t) => <option key={t} value={t}>{TYPE_META[t].label}</option>)}
             </select>
@@ -213,19 +426,21 @@ export const InventoryLocationPage = () => {
                 <th>Zone</th>
                 <th>유형</th>
                 <th>상태</th>
+                <th>배치 (랙·연·단)</th>
                 <th className="num">적재한도</th>
+                <th className="num">최대 무게</th>
                 <th className="num">재고건수</th>
                 <th>사용여부</th>
-                <th>작업</th>
+                <th style={{ textAlign: "right" }}>작업</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={10} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>조건에 맞는 로케이션이 없습니다.</td></tr>
+                <tr><td colSpan={12} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>조건에 맞는 로케이션이 없습니다.</td></tr>
               ) : (
-                filtered.map((r) => {
+                pageRows.map((r) => {
                   const meta = TYPE_META[r.locationType];
                   return (
                     <tr key={r.id}>
@@ -235,11 +450,24 @@ export const InventoryLocationPage = () => {
                       <td>{r.zoneName}</td>
                       <td>{meta ? <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge> : r.locationType}</td>
                       <td>{r.status}</td>
+                      <td>{r.placement ? <span className="lp-placement">{r.placement}</span> : <StatusBadge tone="warning">미배치</StatusBadge>}</td>
                       <td className="num">{r.maxQty != null ? r.maxQty.toLocaleString() : "-"}</td>
+                      <td className="num">{weightCell(r)}</td>
                       <td className="num">{r.stockCount}</td>
                       <td>{r.active ? <StatusBadge tone="success">사용</StatusBadge> : <StatusBadge tone="gray">미사용</StatusBadge>}</td>
                       <td>
-                        <div className="outbound-row-actions">
+                        <div className="lp-row-actions">
+                          {r.placement ? (
+                            <button type="button" className="lp-link" onClick={() => openIn3D(r)} title="CAPA 탭 3D 에서 이 칸으로 이동">
+                              <Icon name="cube3d" size={13} />
+                              3D
+                            </button>
+                          ) : (
+                            <button type="button" className="lp-link is-warn" onClick={() => openLayoutFor(r)} title="배치 탭에서 랙 칸에 놓기">
+                              <Icon name="edit" size={13} />
+                              배치
+                            </button>
+                          )}
                           <button type="button" className="btn-secondary" onClick={() => openEdit(r)}>수정</button>
                         </div>
                       </td>
@@ -250,7 +478,21 @@ export const InventoryLocationPage = () => {
             </tbody>
           </table>
         </div>
+        {filtered.length > PAGE_SIZE ? (
+          <div className="lp-pager">
+            <span>
+              <b>{(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</b> / {filtered.length}
+            </span>
+            <button type="button" onClick={() => setPage(1)} disabled={page === 1}>처음</button>
+            <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>이전</button>
+            <span>{page} / {pageCount}</span>
+            <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page === pageCount}>다음</button>
+            <button type="button" onClick={() => setPage(pageCount)} disabled={page === pageCount}>끝</button>
+          </div>
+        ) : null}
       </DashboardCard>
+      </>
+      ) : null}
 
       {/* 생성 모달 */}
       <Modal
@@ -285,10 +527,51 @@ export const InventoryLocationPage = () => {
             {TYPE_KEYS.map((t) => <option key={t} value={t}>{TYPE_META[t].label}</option>)}
           </select>
         </label>
-        <label className="ds-field" style={{ marginTop: 10 }}>
-          <span>적재한도 (선택)</span>
-          <input type="number" min={0} value={newMaxQty} onChange={(e) => setNewMaxQty(e.target.value === "" ? "" : Number(e.target.value))} placeholder="예: 500" />
-        </label>
+        <div className="lp-place-grid" style={{ marginTop: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          <label className="ds-field">
+            <span>적재한도 (선택)</span>
+            <input type="number" min={0} value={newMaxQty} onChange={(e) => setNewMaxQty(e.target.value === "" ? "" : Number(e.target.value))} placeholder="예: 500" />
+          </label>
+          <label className="ds-field">
+            <span>최대 무게 kg (선택)</span>
+            <input
+              type="number"
+              min={1}
+              value={newMaxWeight}
+              onChange={(e) => setNewMaxWeight(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder={(() => {
+                const rack = zoneRacks.find((item) => item.id === newRackId);
+                return rack?.maxLoadKg != null ? `비우면 랙 기준 ${rack.maxLoadKg.toLocaleString()}` : "비우면 랙 기준";
+              })()}
+            />
+          </label>
+        </div>
+        <div className="lp-place-grid" style={{ marginTop: 10 }}>
+          <label className="ds-field">
+            <span>배치 — 랙 (선택)</span>
+            <select
+              value={newRackId}
+              disabled={newZone === "" || zoneRacks.length === 0}
+              onChange={(e) => { setNewRackId(e.target.value === "" ? "" : Number(e.target.value)); setNewCell(""); }}
+            >
+              <option value="">{newZone === "" ? "Zone 먼저 선택" : zoneRacks.length ? "미배치로 등록" : "이 Zone 에 랙 없음"}</option>
+              {zoneRacks.map((rack) => <option key={rack.id} value={rack.id}>{rack.code} ({rack.bays}연×{rack.levels}단)</option>)}
+            </select>
+          </label>
+          <label className="ds-field" style={{ gridColumn: "span 2" }}>
+            <span>빈 칸 (연·단)</span>
+            <select value={newCell} disabled={newRackId === ""} onChange={(e) => setNewCell(e.target.value)}>
+              <option value="">{newRackId === "" ? "-" : freeCells.length ? `칸 선택 (빈 칸 ${freeCells.length})` : "빈 칸 없음"}</option>
+              {freeCells.map((cell) => {
+                const [bay, level] = cell.split(":");
+                return <option key={cell} value={cell}>{bay}연 {level}단</option>;
+              })}
+            </select>
+          </label>
+        </div>
+        <p className="lp-hint">
+          칸을 고르면 3D 에 바로 나타납니다. 비워 두면 <b>미배치</b>로 등록되고, 배치 탭 왼쪽 트레이에서 나중에 칸에 놓을 수 있습니다.
+        </p>
       </Modal>
 
       {/* 수정 모달 */}
@@ -329,10 +612,23 @@ export const InventoryLocationPage = () => {
             {["가용", "사용", "만재", "점검", "차단"].map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
-        <label className="ds-field" style={{ marginTop: 10 }}>
-          <span>적재한도</span>
-          <input type="number" min={0} value={editMaxQty} onChange={(e) => setEditMaxQty(e.target.value === "" ? "" : Number(e.target.value))} />
-        </label>
+        <div className="lp-place-grid" style={{ marginTop: 10, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+          <label className="ds-field">
+            <span>적재한도</span>
+            <input type="number" min={0} value={editMaxQty} onChange={(e) => setEditMaxQty(e.target.value === "" ? "" : Number(e.target.value))} />
+          </label>
+          <label className="ds-field">
+            <span>최대 무게 kg</span>
+            <input
+              type="number"
+              min={1}
+              value={editMaxWeight}
+              onChange={(e) => setEditMaxWeight(e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder={editTarget?.rackMaxLoadKg != null ? `비우면 랙 기준 ${editTarget.rackMaxLoadKg.toLocaleString()}` : "비우면 제한 없음"}
+            />
+          </label>
+        </div>
+        <p className="lp-hint">최대 무게는 이 칸에만 따로 적용합니다 — 맨 윗단처럼 랙 기준보다 낮춰야 할 때 쓰세요. 이동·보충·격납 때 넘으면 막힙니다.</p>
         <label className="ds-field" style={{ marginTop: 10 }}>
           <span>사용여부</span>
           <select value={editActive ? "1" : "0"} onChange={(e) => setEditActive(e.target.value === "1")}>
@@ -340,7 +636,13 @@ export const InventoryLocationPage = () => {
             <option value="0">미사용</option>
           </select>
         </label>
+        <p className="lp-hint">
+          배치: <b>{editTarget?.placement ?? "미배치"}</b> — 칸을 옮기려면 배치 탭에서 편집 후 게시하세요.
+          {(editTarget?.stockCount ?? 0) > 0 ? " 재고가 있어 삭제할 수 없습니다." : ""}
+        </p>
       </Modal>
+
+      <LocationLabelDialog targets={labelTargets} title="로케이션 목록에서 선택" onClose={() => setLabelTargets(null)} />
     </section>
   );
 };

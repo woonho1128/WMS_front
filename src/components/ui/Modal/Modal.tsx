@@ -11,10 +11,12 @@ type Props = {
   children?: ReactNode;
   footer?: ReactNode;
   onClose: () => void;
+  /** 폭 등을 화면별로 바꿀 때 — .ds-modal 에 함께 붙는다 */
+  className?: string;
 };
 
 /** 디자인 시스템 모달 (확정/거부 확인 등). */
-export const Modal = ({ open, title, desc, icon, iconBg, iconColor, children, footer, onClose }: Props) => {
+export const Modal = ({ open, title, desc, icon, iconBg, iconColor, children, footer, onClose, className }: Props) => {
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
@@ -28,7 +30,7 @@ export const Modal = ({ open, title, desc, icon, iconBg, iconColor, children, fo
 
   return (
     <div className="ds-overlay" onClick={onClose}>
-      <div className="ds-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
+      <div className={className ? `ds-modal ${className}` : "ds-modal"} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true">
         <div className="ds-modal-head">
           {icon ? (
             <div className="ds-modal-ico" style={{ background: iconBg, color: iconColor }}>

@@ -1,0 +1,74 @@
+/* ============================================================
+   재고 이동 — 3D 작업 모드 (화면 틀)
+   이동·조정·보충 창과 알림 스타일은 components/warehouse3d/stockActions.css
+   ============================================================ */
+
+.tmv { display: grid; gap: 12px; }
+
+.tmv-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.tmv-map { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.tmv-map-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border-soft);
+}
+.tmv-map-head .nx-sect { flex-direction: column; align-items: flex-start; gap: 3px; }
+.tmv-select {
+  height: 32px; padding: 0 8px; border-radius: var(--r-sm);
+  font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+
+.tmv-guide {
+  list-style: none; margin: 0; padding: 9px 16px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+  border-bottom: 1px solid var(--border-soft); background: var(--surface-2);
+  counter-reset: tmv;
+}
+.tmv-guide li {
+  counter-increment: tmv;
+  display: block; position: relative; padding-left: 22px;
+  font-size: 11.5px; line-height: 1.45; color: var(--ink-muted);
+}
+.tmv-guide li::before {
+  content: counter(tmv);
+  position: absolute; left: 0; top: 1px;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--c-success-bg); color: var(--c-success-ink);
+  font-size: 10px; font-weight: 800;
+}
+.tmv-guide b { display: block; color: var(--ink-strong); font-weight: 800; }
+
+.tmv-stage { flex: 1; min-height: 600px; padding: 12px; }
+.tmv-loading {
+  height: 100%; min-height: 576px; display: grid; place-items: center;
+  border-radius: var(--r-lg); background: var(--bg-sunken);
+  color: var(--ink-faint); font-size: 13px; font-weight: 600;
+}
+
+/* ---------- 목록/3D 탭 (DashboardTransfer 머리) ---------- */
+.tmv-tabs {
+  display: inline-flex; gap: 3px; padding: 3px;
+  border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-2);
+}
+.tmv-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 13px; border: none; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-muted);
+  font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.tmv-tab:hover { color: var(--ink-strong); }
+.tmv-tab.is-on { background: var(--surface); color: var(--ink-strong); box-shadow: var(--sh-soft); }
+
+@media (max-width: 1280px) {
+  .tmv-main { grid-template-columns: minmax(0, 1fr); }
+  .tmv-guide { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}
+@media (max-width: 760px) {
+  .tmv-stage { min-height: 420px; padding: 8px; }
+}

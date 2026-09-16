@@ -3,9 +3,27 @@ import { useNavigate } from "react-router-dom";
 import { apiGet } from "../../services/http";
 import { appToday } from "../../shared/appDate";
 import { useUiStore } from "../../app/store/uiStore";
+import { useAuthStore } from "../../app/store/authStore";
 import { Icon } from "../../components/ui/Icon";
-import { bucketOf, utilOf, type WarehouseLayout, type WarehouseZone } from "../../components/warehouse3d/types";
+import { Modal } from "../../components/ui/Modal";
+import { MapSearch } from "../../components/warehouse3d/MapSearch";
+import { MapSidePanel } from "../../components/warehouse3d/MapSidePanel";
+import { SlotContextMenu } from "../../components/warehouse3d/SlotContextMenu";
+import { useStockActions } from "../../components/warehouse3d/stockActions";
+import { useWarehouseMap } from "../../components/warehouse3d/useWarehouseMap";
+import type {
+  LayoutSlot,
+  MapSearchItem,
+  MapSearchLocation,
+  MapSearchResult,
+  SlotStock
+} from "../../components/warehouse3d/types";
+import { useZoneEditSession } from "../inventory/layoutEditor/useZoneEditSession";
+import { ZoneEditBar, ZoneEditPanel } from "../inventory/layoutEditor/ZoneEditPanel";
 import "./ControlTower.css";
+
+/** 구역 배치 편집 권한 — 물류 관리자·IT (DOCS/WMS_3D창고맵_설계.md 11-3) */
+const LAYOUT_EDIT_ROLES = ["admin", "logistics"];
 
 // three.js 는 무거우므로 별도 청크로 분리한다 — KPI/표는 먼저 그려지고 맵이 뒤따라 붙는다
 const Warehouse3D = lazy(() =>
@@ -77,31 +95,110 @@ export const ControlTowerPage = () => {
   const theme = useUiStore((state) => state.theme);
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [layout, setLayout] = useState<WarehouseLayout | null>(null);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [mix, setMix] = useState<StockMix | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncedAt, setSyncedAt] = useState("");
-
-  const [floor, setFloor] = useState("1F");
-  const [zoneId, setZoneId] = useState<string | null>(null);
   const [taskKind, setTaskKind] = useState("전체");
+
+  // 3D 맵 상태 — 레이아웃은 로케이션 마스터 + 재고에서 계산된 값이다
+  const map = useWarehouseMap();
+  const { layout, refresh: refreshMap } = map;
+
+  // 구역 배치 편집 — 3D 위에서 구역을 통째로 끌어 옮긴다
+  const role = useUiStore((state) => state.currentRole);
+  const operator = useAuthStore((state) => state.user?.id ?? "system");
+  const canEditLayout = LAYOUT_EDIT_ROLES.includes(role);
+  const zoneEdit = useZoneEditSession(map, operator);
+  const [editConfirm, setEditConfirm] = useState<"save" | "discard" | null>(null);
+  const { notice: editNotice, setNotice: setEditNotice } = zoneEdit;
+
+  // 슬롯 우클릭 메뉴 — 이동·조정·보충은 재고 이동 3D 탭과 같은 창·규칙을 쓴다
+  // load 는 아래에서 정의되므로 호출 시점에 읽도록 감싼다
+  const stockActions = useStockActions(map, { onChanged: () => load() });
+  const [slotMenu, setSlotMenu] = useState<{ slot: LayoutSlot; point: { x: number; y: number } } | null>(null);
+
+  const openSlotMenu = (slot: LayoutSlot, point: { x: number; y: number }) => {
+    map.setSelection({ zoneId: slot.zoneId, locationId: slot.locationId });
+    setSlotMenu({ slot, point });
+  };
+
+  const showSameItem = async (stock: SlotStock) => {
+    const res = await apiGet<MapSearchResult>(`/warehouse/search?warehouseId=${map.warehouseId}&q=${encodeURIComponent(stock.itemCode)}`);
+    const item = res.items.find((entry) => entry.itemCode === stock.itemCode);
+    if (item) pickItem(item);
+  };
+
+  const startZoneEdit = () => {
+    map.setHighlight(null);
+    stockActions.cancelMove();
+    setSlotMenu(null);
+    void zoneEdit.enter();
+  };
+  const stopZoneEdit = () => {
+    if (zoneEdit.changedZoneIds.size) setEditConfirm("discard");
+    else zoneEdit.exit();
+  };
+
+  useEffect(() => {
+    if (!editNotice) return;
+    const timer = window.setTimeout(() => setEditNotice(null), 4500);
+    return () => window.clearTimeout(timer);
+  }, [editNotice, setEditNotice]);
+
+  // 편집 중 단축키 — 방향키 0.5m(Shift 0.1m), Q/E 45° 회전, Ctrl+Z 되돌리기, Esc 편집 종료
+  useEffect(() => {
+    if (!zoneEdit.active) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")) return;
+      if (document.querySelector(".ds-overlay")) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        zoneEdit.undo();
+        return;
+      }
+      if (event.key === "Escape") {
+        stopZoneEdit();
+        return;
+      }
+      // 한글 입력 상태여도 같은 자리 키로 동작하게 event.code 로 본다
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && (event.code === "KeyQ" || event.code === "KeyE")) {
+        if (zoneEdit.selectedZoneId == null) return;
+        event.preventDefault();
+        zoneEdit.rotateBy(event.code === "KeyE" ? 1 : -1);
+        return;
+      }
+      const step = event.shiftKey ? 0.1 : 0.5;
+      const moves: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step]
+      };
+      const move = moves[event.key];
+      if (move && zoneEdit.selectedZoneId != null) {
+        event.preventDefault();
+        zoneEdit.nudge(move[0], move[1]);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
     Promise.all([
       apiGet<DashboardSummary>("/dashboard/summary"),
-      apiGet<WarehouseLayout>("/warehouse/layout"),
       apiGet<TaskRow[]>("/dashboard/tasks"),
       apiGet<StockMix>("/dashboard/stock-mix"),
       apiGet<Notice[]>("/notices")
     ])
-      .then(([summaryData, layoutData, taskData, mixData, noticeData]) => {
+      .then(([summaryData, taskData, mixData, noticeData]) => {
         setSummary(summaryData);
-        setLayout(layoutData);
         setTasks(taskData);
         setMix(mixData);
         setNotices(noticeData);
@@ -113,18 +210,25 @@ export const ControlTowerPage = () => {
 
   useEffect(load, [load]);
 
-  const floorZones = useMemo(
-    () => (layout?.zones ?? []).filter((zone) => zone.floor === floor),
-    [layout, floor]
-  );
+  const reloadAll = () => {
+    load();
+    void refreshMap();
+  };
 
-  // 층을 바꾸면 그 층의 첫 구역을 선택 상태로 맞춘다
-  useEffect(() => {
-    if (!floorZones.length) return;
-    setZoneId((prev) => (prev && floorZones.some((zone) => zone.id === prev) ? prev : floorZones[0].id));
-  }, [floorZones]);
+  const pickLocation = (location: MapSearchLocation) => {
+    map.setHighlight(null);
+    map.selectLocation(location.locationId);
+  };
 
-  const selectedZone = floorZones.find((zone) => zone.id === zoneId) ?? null;
+  const pickItem = (item: MapSearchItem) => {
+    const placed = item.locations.filter((location) => location.placed);
+    const floors = Array.from(new Set(placed.map((location) => location.floor).filter(Boolean)));
+    map.setHighlight({
+      label: `${item.itemName} · ${placed.length}곳${floors.length > 1 ? ` (${floors.join("·")})` : ""}`,
+      ids: placed.map((location) => location.locationId)
+    });
+    if (placed[0]) map.selectZone(placed[0].zoneId);
+  };
 
   const kpis: Kpi[] = useMemo(() => {
     const inbound = summary?.inbound;
@@ -171,7 +275,7 @@ export const ControlTowerPage = () => {
         </div>
         <div className="ct-hello-actions">
           {syncedAt ? <span className="ct-sync">기준 {syncedAt}</span> : null}
-          <button type="button" className="btn-secondary ct-refresh" onClick={load}>
+          <button type="button" className="btn-secondary ct-refresh" onClick={reloadAll}>
             <Icon name="refresh" size={15} />
             새로고침
           </button>
@@ -213,63 +317,244 @@ export const ControlTowerPage = () => {
               <span className="nx-sect-title">{layout?.warehouse.name ?? "창고"} 3D 현황</span>
             </div>
             <div className="ct-panel-tools">
-              <span className="ct-chip">{floor}</span>
-              <span className="ct-chip">{floorZones.length}개 구역</span>
+              <select
+                className="ct-select"
+                value={map.warehouseId}
+                onChange={(event) => map.setWarehouseId(Number(event.target.value))}
+                aria-label="창고 선택"
+                disabled={zoneEdit.active}
+                title={zoneEdit.active ? "배치 편집 중에는 창고를 바꿀 수 없습니다" : undefined}
+              >
+                {map.summary.map((row) => (
+                  <option key={row.warehouseId} value={row.warehouseId}>
+                    {row.name}
+                    {row.floors === 0 ? " · 레이아웃 미등록" : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="ct-chip">{map.floor}</span>
+              <span className="ct-chip">{map.floorZones.length}개 구역</span>
             </div>
           </div>
           <div className="ct-map-stage">
             {layout ? (
               <Suspense fallback={<div className="ct-map-loading">3D 창고 맵을 준비하는 중…</div>}>
                 <Warehouse3D
-                  layout={layout}
-                  floor={floor}
-                  onFloorChange={setFloor}
-                  selectedZoneId={zoneId}
-                  onSelectZone={setZoneId}
+                  layout={zoneEdit.active && zoneEdit.layout ? zoneEdit.layout : layout}
+                  floor={map.floor}
+                  onFloorChange={map.setFloor}
                   theme={theme}
+                  selection={zoneEdit.active ? { zoneId: zoneEdit.selectedZoneId, locationId: null } : map.selection}
+                  onSelectionChange={
+                    zoneEdit.active
+                      ? () => undefined
+                      : (next) => {
+                          // 우클릭 메뉴에서 [다른 칸으로 옮기기] 중이면 클릭한 칸이 도착지
+                          if (!stockActions.interceptSelection(next)) map.setSelection(next);
+                        }
+                  }
+                  mode={stockActions.pending ? "work" : "view"}
+                  dropCheck={stockActions.dropCheck}
+                  onDropSlot={stockActions.onDropSlot}
+                  onSlotContextMenu={zoneEdit.active ? undefined : openSlotMenu}
+                  popover={
+                    slotMenu && !zoneEdit.active ? (
+                      <SlotContextMenu
+                        slot={slotMenu.slot}
+                        point={slotMenu.point}
+                        actions={stockActions}
+                        onClose={() => setSlotMenu(null)}
+                        onOpenOrder={(order, code) =>
+                          navigate(`/outbound/picking?outboundNo=${encodeURIComponent(order.outboundNo)}&from=${encodeURIComponent(code)}`)
+                        }
+                        onShowItem={(stock) => void showSameItem(stock)}
+                        onFocus={() => map.requestFocus({ locationId: slotMenu.slot.locationId })}
+                      />
+                    ) : null
+                  }
+                  colorMode={map.colorMode}
+                  onColorModeChange={map.setColorMode}
+                  highlightIds={zoneEdit.active ? null : map.highlight?.ids ?? null}
+                  focus={zoneEdit.active ? null : map.focus}
                   syncedAt={syncedAt}
+                  zoneEdit={
+                    zoneEdit.active
+                      ? {
+                          enabled: true,
+                          check: zoneEdit.check,
+                          onMove: (zoneId, x, z) => void zoneEdit.moveZone(zoneId, x, z),
+                          onRotate: (zoneId, rotation) => void zoneEdit.rotateZone(zoneId, rotation),
+                          onReject: (reason) => setEditNotice({ tone: "danger", text: `놓을 수 없습니다 — ${reason}` }),
+                          onSelect: zoneEdit.setSelectedZoneId
+                        }
+                      : null
+                  }
+                  toolbarExtra={
+                    canEditLayout && layout.floors.length ? (
+                      <button
+                        type="button"
+                        className={`nx-iconbtn wh3d-text-btn${zoneEdit.active ? " is-on" : ""}`}
+                        onClick={zoneEdit.active ? stopZoneEdit : startZoneEdit}
+                        disabled={zoneEdit.entering}
+                        title={zoneEdit.active ? "배치 편집 끝내기 (Esc)" : "구역을 끌어 옮기거나 돌리는 배치 편집"}
+                        aria-pressed={zoneEdit.active}
+                      >
+                        <Icon name="edit" size={13} />
+                        {zoneEdit.active ? "편집 중" : "편집"}
+                      </button>
+                    ) : null
+                  }
+                  overlay={
+                    zoneEdit.active ? (
+                      <ZoneEditBar session={zoneEdit} onSave={() => setEditConfirm("save")} onCancel={stopZoneEdit} />
+                    ) : stockActions.pendingBanner ? (
+                      stockActions.pendingBanner
+                    ) : layout.floors.length ? (
+                      <MapSearch
+                        warehouseId={map.warehouseId}
+                        onPickLocation={pickLocation}
+                        onPickItem={pickItem}
+                        highlightLabel={map.highlight?.label ?? null}
+                        onClearHighlight={() => map.setHighlight(null)}
+                      />
+                    ) : null
+                  }
                 />
               </Suspense>
             ) : (
-              <div className="ct-map-loading">3D 레이아웃을 불러오는 중…</div>
+              <div className="ct-map-loading">{map.error ? `레이아웃 조회 실패: ${map.error}` : "3D 레이아웃을 불러오는 중…"}</div>
             )}
           </div>
         </section>
 
-        <aside className="card ct-rail">
-          <div className="ct-panel-head">
-            <div className="nx-sect">
-              <span className="nx-sect-title">로케이션 현황</span>
-              <span className="nx-sect-sub">{layout?.warehouse.name ?? ""} · {floor}</span>
-            </div>
+        {zoneEdit.active ? (
+          <ZoneEditPanel
+            session={zoneEdit}
+            floor={map.floor}
+            onSave={() => setEditConfirm("save")}
+            onCancel={stopZoneEdit}
+          />
+        ) : (
+        <MapSidePanel
+          map={map}
+          onPickSlot={(slot) => stockActions.interceptSelection({ zoneId: slot.zoneId, locationId: slot.locationId })}
+          onOpenActions={() => {
+            const slot = layout?.slots.find((item) => item.locationId === map.selection.locationId);
+            // 맵 오른쪽 위에 연다 — 메뉴가 맵 안쪽으로 알아서 당겨진다
+            if (slot) setSlotMenu({ slot, point: { x: 100000, y: 56 } });
+          }}
+          headAction={
             <button type="button" className="ct-link" onClick={() => navigate("/master/location-master")}>
-              전체 구역
+              로케이션 관리
               <Icon name="chevR" size={13} />
             </button>
-          </div>
-
-          <div className="ct-zones">
-            {floorZones.map((zone) => (
-              <ZoneRow
-                key={zone.id}
-                zone={zone}
-                active={zone.id === zoneId}
-                onSelect={() => setZoneId(zone.id)}
-              />
-            ))}
-            {!floorZones.length ? <div className="nx-empty">해당 층에 등록된 구역이 없습니다.</div> : null}
-          </div>
-
-          <button
-            type="button"
-            className="btn-primary ct-rail-cta"
-            onClick={() => navigate("/master/location-master")}
-          >
-            {selectedZone ? `${selectedZone.name} 상세 보기` : "로케이션 상세 보기"}
-            <Icon name="arrowR" size={15} />
-          </button>
-        </aside>
+          }
+          zoneFooter={
+            map.selectedZone ? (
+              <button
+                type="button"
+                className="btn-primary wmp-cta"
+                onClick={() => map.selectedZone && map.requestFocus({ zoneId: map.selectedZone.id })}
+              >
+                {map.selectedZone.name} 확대해서 보기
+                <Icon name="arrowR" size={15} />
+              </button>
+            ) : null
+          }
+          locationFooter={
+            <>
+              <button type="button" className="btn-secondary wmp-cta" onClick={() => navigate("/stock/stock-realtime")}>
+                실시간 재고
+              </button>
+              <button type="button" className="btn-primary wmp-cta" onClick={() => navigate("/stock/transfer")}>
+                재고 이동
+                <Icon name="arrowR" size={15} />
+              </button>
+            </>
+          }
+        />
+        )}
       </div>
+
+      {stockActions.layer}
+
+      {editNotice ? (
+        <div className={`ds-callout ${editNotice.tone} zep-toast`} role="status">
+          <Icon name={editNotice.tone === "success" ? "checkCircle" : "alert"} size={16} />
+          <span>{editNotice.text}</span>
+          <button type="button" onClick={() => setEditNotice(null)} aria-label="닫기">
+            <Icon name="x" size={13} />
+          </button>
+        </div>
+      ) : null}
+
+      <Modal
+        open={editConfirm === "save"}
+        title="구역 배치 저장"
+        desc="저장하면 게시되어 모든 3D 화면과 로케이션 관리에 반영됩니다"
+        icon="upload"
+        iconBg="var(--primary-bg)"
+        iconColor="var(--primary)"
+        onClose={() => !zoneEdit.saving && setEditConfirm(null)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setEditConfirm(null)} disabled={zoneEdit.saving}>
+              계속 편집
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={zoneEdit.saving}
+              onClick={async () => {
+                const ok = await zoneEdit.save();
+                if (ok) setEditConfirm(null);
+              }}
+            >
+              {zoneEdit.saving ? "저장 중…" : "저장"}
+            </button>
+          </>
+        }
+      >
+        <div className="zep-confirm">
+          <ul>
+            {zoneEdit.changes.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p>구역 안의 랙·로케이션이 함께 옮겨지거나 돌아가고, 로케이션 코드와 재고 수량은 그대로입니다.</p>
+        </div>
+      </Modal>
+
+      <Modal
+        open={editConfirm === "discard"}
+        title="편집 취소"
+        desc={`바꾼 구역 ${zoneEdit.changedZoneIds.size}곳을 원래 자리·방향으로 되돌립니다`}
+        icon="alert"
+        iconBg="var(--c-warning-bg)"
+        iconColor="var(--c-warning)"
+        onClose={() => setEditConfirm(null)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setEditConfirm(null)}>
+              계속 편집
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setEditConfirm(null);
+                zoneEdit.exit();
+              }}
+            >
+              버리고 나가기
+            </button>
+          </>
+        }
+      >
+        <div className="zep-confirm">
+          <p>저장하지 않은 이동·회전은 사라집니다.</p>
+        </div>
+      </Modal>
 
       {/* ---------- 작업 / 재고 / 공지 ---------- */}
       <div className="ct-bottom">
@@ -393,59 +678,5 @@ export const ControlTowerPage = () => {
         </section>
       </div>
     </section>
-  );
-};
-
-/* ------------------------------------------------------------
-   로케이션 현황 한 줄 — 선택 시 상세가 펼쳐진다
------------------------------------------------------------- */
-const ZoneRow = ({ zone, active, onSelect }: { zone: WarehouseZone; active: boolean; onSelect: () => void }) => {
-  const util = utilOf(zone);
-  const bucket = bucketOf(util);
-  const barTone = bucket.key === "free" ? "is-ok" : bucket.key === "normal" ? "is-info" : bucket.key === "busy" ? "is-warn" : "is-danger";
-
-  return (
-    <div className={`ct-zone${active ? " is-active" : ""}`}>
-      <button type="button" className="ct-zone-head" onClick={onSelect}>
-        <span className="ct-zone-badge" style={{ background: bucket.token }}>
-          {zone.id}
-        </span>
-        <span className="ct-zone-text">
-          <span className="ct-zone-name">{zone.name}</span>
-          <span className="ct-zone-code">{zone.code}</span>
-        </span>
-        <span className="ct-zone-figures">
-          <span className="ct-zone-util" style={{ color: bucket.token }}>{util}%</span>
-          <span className="ct-zone-cap">
-            {zone.used} / {zone.capacity}
-          </span>
-        </span>
-      </button>
-      <div className={`nx-bar ${barTone} ct-zone-bar`}>
-        <i style={{ width: `${util}%` }} />
-      </div>
-      {active ? (
-        <dl className="ct-zone-detail">
-          <div>
-            <dt>구역 유형</dt>
-            <dd>{zone.typeName}</dd>
-          </div>
-          <div>
-            <dt>보관 SKU</dt>
-            <dd>{zone.sku} 종</dd>
-          </div>
-          <div>
-            <dt>담당자</dt>
-            <dd>{zone.manager}</dd>
-          </div>
-          <div>
-            <dt>최근 입·출고</dt>
-            <dd>
-              {zone.recentIn} / {zone.recentOut}
-            </dd>
-          </div>
-        </dl>
-      ) : null}
-    </div>
   );
 };

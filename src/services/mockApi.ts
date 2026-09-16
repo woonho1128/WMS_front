@@ -1,5 +1,6 @@
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
+import { createWarehouseMock } from "./mockWarehouse";
 
 type AnyRecord = Record<string, any>;
 
@@ -39,9 +40,9 @@ const zones = [
   { id: 12, code: "C-B", name: "창원 B존", warehouseName: "창원공장" },
   { id: 21, code: "J-A", name: "제천 A존", warehouseName: "제천공장" },
   { id: 31, code: "A-A", name: "안산 A존", warehouseName: "안산공장" },
-  { id: 41, code: "Y-A", name: "용인 A존", warehouseName: "용인물류센터" },
+  // 용인물류센터 구역(41~52)은 레이아웃과 함께 mockWarehouse.ts 에서 만든다
   { id: 51, code: "O-X", name: "외주 X존", warehouseName: "외주공장" }
-];
+] as Array<Record<string, any>>;
 
 let locations = [
   { id: 101, code: "PC-A-01", locationType: "PICKING", status: "가용", maxQty: 500, active: true, zoneId: 11, zoneName: "창원 A존", warehouseName: "창원공장", stockCount: 2 },
@@ -59,11 +60,12 @@ let locations = [
 ];
 
 const items = [
-  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, category: "음향기기", consign: false, active: true },
-  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, category: "케이블", consign: false, active: true },
-  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, category: "배터리", consign: false, active: true },
-  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, category: "주방용품", consign: true, active: true },
-  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, category: "부자재", consign: false, active: true }
+  // unitWeightKg = 단위당 무게 — 랙 칸 허용 하중 검사에 쓴다
+  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25, category: "음향기기", consign: false, active: true },
+  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08, category: "케이블", consign: false, active: true },
+  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45, category: "배터리", consign: false, active: true },
+  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2, category: "주방용품", consign: true, active: true },
+  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03, category: "부자재", consign: false, active: true }
 ];
 
 let stocks = [
@@ -207,65 +209,6 @@ const summary = {
 const progress = {
   inbound: { 입고예정: 1, 입고등록: 1, 로케이션지정: 1, 입고확정: 2, total: 5, progressPct: 40 },
   outbound: { 출고대기: 1, 피킹중: 1, 피킹완료: 1, 출고완료: 1, 거부: 1, total: 5, progressPct: 20 }
-};
-
-/* ------------------------------------------------------------
-   3D 창고 레이아웃 (관제 대시보드 / 로케이션 맵 공용)
-   x: 좌우(m), z: 앞뒤(m). 원점은 창고 중앙.
-   실제 운영에서는 로케이션 마스터의 좌표를 내려주는 자리.
------------------------------------------------------------- */
-const warehouseLayout = {
-  warehouse: { code: "YI", name: "용인물류센터", floors: ["1F", "2F", "3F"], width: 66, depth: 46 },
-  zones: [
-    { id: "A", floor: "1F", name: "A 구역", code: "A-01 ~ A-50", type: "PICKING", typeName: "피킹 구역",
-      x: -17, z: -9, cols: 4, rows: 2, levels: 4, capacity: 500, used: 425, sku: 46,
-      manager: "김현우 대리", temp: "상온", recentIn: "09:20", recentOut: "14:10" },
-    { id: "B", floor: "1F", name: "B 구역", code: "B-01 ~ B-40", type: "PICKING", typeName: "피킹 구역",
-      x: 0, z: -9, cols: 4, rows: 2, levels: 4, capacity: 400, used: 248, sku: 39,
-      manager: "이상민 주임", temp: "상온", recentIn: "08:45", recentOut: "13:30" },
-    { id: "C", floor: "1F", name: "C 구역", code: "C-01 ~ C-30", type: "RESERVE", typeName: "보관 구역",
-      x: 17, z: -9, cols: 4, rows: 2, levels: 5, capacity: 300, used: 219, sku: 27,
-      manager: "박정호 과장", temp: "상온", recentIn: "10:15", recentOut: "14:25" },
-    { id: "D", floor: "1F", name: "D 구역", code: "D-01 ~ D-20", type: "RESERVE", typeName: "보관 구역",
-      x: -17, z: 6, cols: 4, rows: 2, levels: 5, capacity: 200, used: 96, sku: 18,
-      manager: "최미선 주임", temp: "상온", recentIn: "09:55", recentOut: "12:50" },
-    { id: "E", floor: "1F", name: "E 구역", code: "E-01 ~ E-20", type: "CROSS_DOCK", typeName: "직출 구역",
-      x: 0, z: 6, cols: 4, rows: 2, levels: 3, capacity: 200, used: 70, sku: 12,
-      manager: "정우성 사원", temp: "상온", recentIn: "11:05", recentOut: "15:02" },
-    { id: "F", floor: "1F", name: "F 구역", code: "F-01 ~ F-30", type: "PICKING", typeName: "피킹 구역",
-      x: 17, z: 6, cols: 4, rows: 2, levels: 4, capacity: 300, used: 270, sku: 52,
-      manager: "한지민 대리", temp: "상온", recentIn: "10:40", recentOut: "14:48" },
-    { id: "G", floor: "2F", name: "G 구역", code: "G-01 ~ G-40", type: "RESERVE", typeName: "보관 구역",
-      x: -11, z: -9, cols: 5, rows: 2, levels: 5, capacity: 400, used: 322, sku: 61,
-      manager: "오세훈 과장", temp: "상온", recentIn: "08:10", recentOut: "13:05" },
-    { id: "H", floor: "2F", name: "H 구역", code: "H-01 ~ H-40", type: "RESERVE", typeName: "보관 구역",
-      x: 11, z: -9, cols: 5, rows: 2, levels: 5, capacity: 400, used: 176, sku: 33,
-      manager: "오세훈 과장", temp: "상온", recentIn: "09:02", recentOut: "12:20" },
-    { id: "J", floor: "2F", name: "J 구역", code: "J-01 ~ J-24", type: "PICKING", typeName: "피킹 구역",
-      x: -11, z: 6, cols: 5, rows: 2, levels: 3, capacity: 240, used: 190, sku: 44,
-      manager: "서지훈 주임", temp: "상온", recentIn: "10:22", recentOut: "15:20" },
-    { id: "K", floor: "2F", name: "K 구역", code: "K-01 ~ K-24", type: "RESERVE", typeName: "보관 구역",
-      x: 11, z: 6, cols: 5, rows: 2, levels: 4, capacity: 240, used: 58, sku: 15,
-      manager: "서지훈 주임", temp: "상온", recentIn: "07:55", recentOut: "11:40" },
-    { id: "R", floor: "3F", name: "R 구역", code: "R-01 ~ R-16", type: "RETURN", typeName: "반품·불량",
-      x: -9, z: -2, cols: 4, rows: 2, levels: 3, capacity: 160, used: 132, sku: 21,
-      manager: "문가영 주임", temp: "상온", recentIn: "13:15", recentOut: "16:02" },
-    { id: "S", floor: "3F", name: "S 구역", code: "S-01 ~ S-16", type: "RESERVE", typeName: "장기 보관",
-      x: 9, z: -2, cols: 4, rows: 2, levels: 4, capacity: 160, used: 41, sku: 9,
-      manager: "문가영 주임", temp: "상온", recentIn: "—", recentOut: "—" }
-  ],
-  docks: [
-    { id: "IN-1", kind: "IN", floor: "1F", x: -22, z: 18, label: "입고 1" },
-    { id: "IN-2", kind: "IN", floor: "1F", x: -12, z: 18, label: "입고 2" },
-    { id: "OUT-1", kind: "OUT", floor: "1F", x: 12, z: 18, label: "출고 1" },
-    { id: "OUT-2", kind: "OUT", floor: "1F", x: 22, z: 18, label: "출고 2" }
-  ],
-  /* 실시간 장비 — 통로를 따라 순환 이동하는 지게차/AGV */
-  vehicles: [
-    { id: "FL-01", kind: "FORKLIFT", floor: "1F", path: [[-8.5, -18], [-8.5, 14], [8.5, 14], [8.5, -18]], speed: 3.4 },
-    { id: "AGV-07", kind: "AGV", floor: "1F", path: [[25, 14], [25, -17], [-25, -17], [-25, 14]], speed: 4.6 },
-    { id: "FL-02", kind: "FORKLIFT", floor: "2F", path: [[0, -17], [0, 14], [20, 14], [20, -17]], speed: 3.0 }
-  ]
 };
 
 /* 입고 예정 — 도크/검수라인 점유 스케줄 (분 단위, 08:00=480)
@@ -429,11 +372,19 @@ function orderProducts() {
 // 다음 파레트를 채우기 위한 부족 수량을 산정하고, 동일 품목 보충(RESERVE) FIFO 재고를 출발지로 추천.
 function computeReplenishment() {
   const rows: AnyRecord[] = [];
-  stocks.filter((s) => s.stockStatus === "AVAILABLE" && s.locationType === "PICKING").forEach((s) => {
+  // 같은 피킹 로케이션·같은 품목은 LOT 가 달라도 합쳐서 본다 — 보충하면 LOT 가 둘로 나뉘기 때문
+  const groups = new Map<string, typeof stocks>();
+  stocks.filter((s) => s.stockStatus === "AVAILABLE" && s.locationType === "PICKING" && s.onHand > 0).forEach((s) => {
+    const key = `${s.locationCode}|${s.itemCode}`;
+    groups.set(key, [...(groups.get(key) ?? []), s]);
+  });
+  groups.forEach((list) => {
+    const s = list[0];
     const item = items.find((it) => it.itemCode === s.itemCode);
     const upp = item?.unitsPerPallet ?? 0;
     if (!upp) return;
-    const loose = s.onHand % upp;
+    const total = list.reduce((sum, row) => sum + row.onHand, 0);
+    const loose = total % upp;
     if (loose === 0) return; // 파레트 정합 — 보충 불필요
     const shortQty = upp - loose;
     const source = stocks
@@ -442,8 +393,8 @@ function computeReplenishment() {
     const targetLoc = locations.find((l) => l.code === s.locationCode);
     rows.push({
       itemCode: s.itemCode, itemName: s.itemName, unit: s.unit, warehouseName: s.warehouseName,
-      unitsPerPallet: upp, pickingLocationCode: s.locationCode, pickingQty: s.onHand,
-      wholePallets: Math.floor(s.onHand / upp), looseQty: loose, shortQty, suggestQty: shortQty,
+      unitsPerPallet: upp, unitWeightKg: Number(item?.unitWeightKg) || 0, pickingLocationCode: s.locationCode, pickingQty: total,
+      wholePallets: Math.floor(total / upp), looseQty: loose, shortQty, suggestQty: shortQty,
       sourceStockId: source?.stockId ?? null, sourceLocationCode: source?.locationCode ?? null,
       sourceLot: source?.lotNo ?? null, sourceReceivedDate: source?.receivedDate ?? null, sourceAvail: source?.available ?? 0,
       targetLocationId: targetLoc?.id ?? null, targetLocationCode: s.locationCode
@@ -490,6 +441,20 @@ function fifoRows() {
   return out.sort((a, b) => a.itemCode.localeCompare(b.itemCode) || (a.receivedDate ?? "").localeCompare(b.receivedDate ?? ""));
 }
 
+/* 창고 레이아웃 · 로케이션 마스터 · 재고 이동/조정 — 같은 배열을 공유한다 */
+const warehouseMock = createWarehouseMock({
+  today,
+  warehouses,
+  zones,
+  items,
+  locations: () => locations,
+  stocks: () => stocks,
+  nextStockId: () => ++stockSeq,
+  outbounds: () => outbounds,
+  outboundLines,
+  replenishment: () => computeReplenishment()
+});
+
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -499,15 +464,19 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (method !== "GET") {
     const body = init?.body ? JSON.parse(String(init.body)) : {};
     if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
+    const handled = warehouseMock.mutate(method, clean, body);
+    if (handled !== undefined) return copy(handled) as T;
     handleMutation(clean, body);
     return copy({ ok: true }) as T;
   }
+
+  const warehouseData = warehouseMock.get(clean, url.searchParams);
+  if (warehouseData !== undefined) return copy(warehouseData) as T;
 
   if (clean === "/dashboard/summary") return copy(summary) as T;
   if (clean === "/dashboard/progress") return copy(progress) as T;
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
-  if (clean === "/warehouse/layout") return copy(warehouseLayout) as T;
   if (clean === "/inbounds") return copy(inbounds) as T;
   if (clean === "/inbounds/dock-schedule") return copy(dockSchedule) as T;
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
@@ -522,8 +491,6 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/stocks/trace") return copy(stockTrace(url.searchParams.get("q") ?? "")) as T;
   if (clean === "/warehouses") return copy(warehouses) as T;
   if (clean.match(/^\/warehouses\/\d+\/locations$/)) return copy(asWarehouseLocations(Number(clean.split("/")[2]))) as T;
-  if (clean === "/locations") return copy(locations) as T;
-  if (clean === "/zones") return copy(zones) as T;
   if (clean === "/items") return copy(items.map((it) => ({ id: it.id, code: it.itemCode, name: it.itemName, category: it.category, unit: it.unit, safetyStock: it.safetyStock, consign: it.consign, active: it.active }))) as T;
   if (clean === "/carriers") return copy(carriers) as T;
   if (clean === "/dispatch/targets") return copy(dispatchTargets(url.searchParams.get("region") ?? "수도권")) as T;
@@ -532,9 +499,10 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     const o = outbounds.find((x) => x.outboundNo === d.outboundNo);
     return { ...d, deliveryNo: d.dispatchNo, customerCode: o?.customerCode ?? null, invoiceNo: o?.invoiceNo ?? ("MOCK-" + d.id), qty: o?.qty ?? 0, scheduledDate: o?.scheduledDate ?? null };
   })) as T;
-  if (clean === "/analytics/aging") return copy(stocks.map((s, idx) => {
-    const agingDays = 25 + idx * 60;
-    const unitPrice = 1500 + idx * 800;
+  if (clean === "/analytics/aging") return copy(stocks.map((s) => {
+    // 경과일은 입고일 기준 — 목 재고가 늘어도 장기재고 판정이 실제 데이터를 따른다
+    const agingDays = Math.max(0, Math.round((Date.parse(today) - Date.parse(s.receivedDate)) / 86400000));
+    const unitPrice = 1500 + ([...s.itemCode].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 20) * 400;
     return { itemCode: s.itemCode, itemName: s.itemName, warehouseName: s.warehouseName, locationCode: s.locationCode, lotNo: s.lotNo, receivedDate: s.receivedDate, agingDays, qty: s.onHand, unitPrice, amount: s.onHand * unitPrice, longTerm: agingDays >= 365 };
   })) as T;
   if (clean === "/analytics/shortage") return copy([
@@ -556,15 +524,11 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     { id: "IF-260617-002", type: "재고차감", direction: "SEND", refNo: "DN20260601021", state: "fail", retry: 1, message: "중계서버 timeout", createdAt: "2026-06-17 09:45" },
     { id: "IF-260617-003", type: "외주이동", direction: "SEND", refNo: "TR-OEM-001", state: "excluded", retry: 0, message: "외주 재고는 ERP 미연동", createdAt: "2026-06-17 10:10" }
   ]) as T;
-  if (clean.startsWith("/history/transfer")) return copy([
-    { id: 1, transferNo: "TR260616131934-6", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", fromWarehouse: "창원공장", toWarehouse: "창원공장", fromLocation: "PC-A-01", toLocation: "PC-A-02", qty: 50, type: "일반→일반", lotNo: "LOT260407-0006", erpLinked: true, status: "done", reason: "창고 내 재배치", createdBy: "admin", createdAt: "2026-06-16 13:19" }
-  ]) as T;
   if (clean.startsWith("/history/")) return copy([
     { id: 1, refType: "OUTBOUND", refNo: "DN20260601019", action: "출고확정", detail: "출고확정 및 ERP 전송", erpSent: true, operator: "outbound", createdAt: "2026-06-17 09:30" },
     { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" },
     { id: 3, refType: "INBOUND", refNo: "IN-MV-20260616-001", action: "공장간이동 입고확정", detail: "창원→제천 이동입고 · 격납대기 생성 (일반입고와 구분, ERP 미전송)", erpSent: false, operator: "logistics", createdAt: "2026-06-16 15:20" }
   ]) as T;
-  if (clean === "/transfers") return copy([]) as T;
   if (clean === "/policies") return copy({ policies, buckets: policyBuckets }) as T;
   // /chatbot/ask 는 POST 이므로 위 mutation 분기(chatbotAnswer)에서 처리합니다.
 
@@ -639,9 +603,6 @@ function handleMutation(clean: string, body: AnyRecord) {
     notices.unshift({ id: Date.now(), category: body.category, title: body.title, content: body.content, author: "관리자", pinned: Boolean(body.pinned), createdAt: new Date().toISOString() });
   } else if (clean === "/carriers") {
     carriers.unshift({ id: Date.now(), active: true, ...body });
-  } else if (clean === "/locations") {
-    const z = zones.find((zone) => zone.id === body.zoneId);
-    locations.unshift({ id: Date.now(), code: body.code, locationType: body.locationType, status: "가용", maxQty: body.maxQty ?? null, active: true, zoneId: body.zoneId, zoneName: z?.name ?? "-", warehouseName: z?.warehouseName ?? "-", stockCount: 0 });
   } else if (clean.match(/^\/stocktakings\/\d+\/adjust$/)) {
     const row = stocktakings.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) {
@@ -656,6 +617,13 @@ function handleMutation(clean: string, body: AnyRecord) {
       const rawAssigns: AnyRecord[] = Array.isArray(body.assignments) && body.assignments.length
         ? body.assignments
         : [{ toLocationId: body.toLocationId, qty: src.onHand }];
+      // 칸 허용 하중 — 같은 로케이션에 나눠 넣은 수량은 합쳐서 보고, 하나라도 넘으면 격납 전체를 막는다
+      const perLocation = new Map<number, number>();
+      rawAssigns.forEach((a) => {
+        const qty = Number(a.qty) || 0;
+        if (qty > 0) perLocation.set(Number(a.toLocationId), (perLocation.get(Number(a.toLocationId)) ?? 0) + qty);
+      });
+      perLocation.forEach((qty, locationId) => warehouseMock.assertLoad(locationId, src.itemCode, qty));
       let moved = 0;
       rawAssigns.forEach((a) => {
         const loc = locations.find((l) => l.id === Number(a.toLocationId));
@@ -689,16 +657,6 @@ function handleMutation(clean: string, body: AnyRecord) {
       } else if (moved > 0) {
         src.onHand -= moved;
       }
-    }
-  } else if (clean === "/stocks/replenishment/complete") {
-    // 보충 이동 — 출발(RESERVE) 재고 차감 → 도착(피킹) 로케이션 재고 가산 (파레트 정합 복원)
-    const src = stocks.find((s) => s.stockId === body.sourceStockId);
-    const targetLoc = locations.find((l) => l.id === body.toLocationId);
-    const qty = Number(body.qty) || 0;
-    if (src && targetLoc && qty > 0) {
-      src.onHand -= qty; src.available = Math.max(0, src.available - qty);
-      const tgt = stocks.find((s) => s.itemCode === src.itemCode && s.locationCode === targetLoc.code && s.stockStatus === "AVAILABLE");
-      if (tgt) { tgt.onHand += qty; tgt.available += qty; }
     }
   } else if (clean === "/manual-orders") {
     const seq = String(manualOrders.length + 1).padStart(3, "0");

@@ -1,0 +1,122 @@
+/* ============================================================
+   랙 정면 격자 — 옆 패널(compact) · CAPA 랙 정면(full) 공용
+   칸 색은 --rf-tone(적치율 구간 토큰)을 섞어서 만든다
+   ============================================================ */
+
+.rf { min-width: 0; }
+
+/* ---------- full 머리 ---------- */
+.rf-head {
+  display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.rf-title { display: grid; gap: 2px; min-width: 0; }
+.rf-title b { font-family: var(--font-mono); font-size: 15px; font-weight: 800; color: var(--ink-strong); }
+.rf-title small { font-size: 11px; font-weight: 600; color: var(--ink-faint); }
+.rf-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-left: auto; font-size: 12px; color: var(--ink-muted); }
+.rf-stats b { color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.rf-stats .is-danger, .rf-stats .is-danger b { color: var(--c-danger-ink); }
+.rf-actions { display: flex; gap: 6px; }
+
+/* ---------- compact 머리 ---------- */
+.rf-mini-head {
+  display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px;
+  font-size: 11.5px; font-weight: 800; color: var(--ink-muted);
+}
+.rf-mini-head small { font-size: 10.5px; font-weight: 600; color: var(--ink-faint); }
+
+/* ---------- 격자 ---------- */
+.rf-grid {
+  display: grid; gap: 5px; padding: 8px;
+  border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border-soft);
+}
+.rf-compact .rf-grid { gap: 4px; padding: 6px; border-radius: var(--r-sm); }
+
+.rf-corner { display: block; }
+.rf-colhead {
+  text-align: center; font-size: 10.5px; font-weight: 700; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.rf-rowhead {
+  display: flex; flex-direction: column; justify-content: center; gap: 1px;
+  font-size: 11px; font-weight: 800; color: var(--ink-muted); white-space: nowrap;
+}
+.rf-rowhead small { font-size: 9.5px; font-weight: 600; color: var(--ink-faint); }
+
+.rf-cell {
+  position: relative; overflow: hidden; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  height: 58px; padding: 3px 2px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--ink-muted);
+  font-family: inherit; cursor: pointer;
+  transition: border-color var(--dur-1), box-shadow var(--dur-1);
+}
+.rf-cell:hover { border-color: var(--border-strong); }
+.rf-cell > * { position: relative; max-width: 100%; }
+
+.rf-code {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--ink-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rf-pct { font-size: 16px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.rf-sub { font-size: 9.5px; font-weight: 600; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 적재 — 구간 색을 옅게 깔고 숫자는 진하게 */
+.rf-cell.is-filled {
+  background: color-mix(in srgb, var(--rf-tone) 15%, var(--surface));
+  border-color: color-mix(in srgb, var(--rf-tone) 45%, var(--border));
+}
+.rf-cell.is-filled .rf-pct { color: var(--rf-tone); }
+.rf-cell.is-filled .rf-code { color: var(--ink); }
+
+/* 공실 — 비어 있다는 게 한눈에 보이게 점선 */
+.rf-cell.is-empty { border-style: dashed; border-color: var(--border-strong); background: var(--bg-sunken); }
+.rf-cell.is-empty .rf-pct { font-size: 11.5px; font-weight: 700; color: var(--ink-faint); }
+
+.rf-cell.is-void {
+  cursor: default; border-style: dashed; border-color: var(--border-soft);
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--border-soft) 6px 7px);
+}
+.rf-cell.is-off { opacity: 0.5; }
+
+.rf-cell.is-over { border-color: var(--c-danger); box-shadow: inset 0 0 0 1px var(--c-danger); }
+.rf-warn {
+  position: absolute !important; top: 3px; right: 3px;
+  width: 15px; height: 15px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--c-danger); color: var(--ink-on-accent);
+  font-style: normal; font-size: 10px; font-weight: 900;
+}
+
+.rf-cell.is-hit { outline: 2px dashed var(--accent); outline-offset: 1px; }
+.rf-cell.is-sel {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary), 0 0 0 5px var(--primary-line);
+}
+
+/* ---------- compact — 옆 패널 폭에 맞춘 작은 칸 ---------- */
+.rf-compact .rf-cell { height: 36px; border-radius: 4px; padding: 2px 1px; gap: 0; }
+.rf-compact .rf-code { font-size: 9px; }
+.rf-compact .rf-pct { font-size: 10.5px; }
+.rf-compact .rf-cell.is-empty .rf-pct { font-size: 9.5px; }
+.rf-compact .rf-cell.is-filled { background: var(--surface); }
+.rf-fill {
+  position: absolute !important; left: 0; right: 0; bottom: 0; max-width: none !important;
+  background: color-mix(in srgb, var(--rf-tone) 20%, transparent);
+  border-top: 2px solid var(--rf-tone);
+}
+.rf-compact .rf-warn { top: 1px; right: 1px; width: 11px; height: 11px; font-size: 8px; }
+
+/* ---------- 범례 ---------- */
+.rf-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; font-weight: 600; color: var(--ink-muted); }
+.rf-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.rf-legend small { font-size: 10px; color: var(--ink-faint); }
+.rf-swatch {
+  width: 14px; height: 14px; border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--rf-tone, var(--border)) 45%, var(--border));
+  background: color-mix(in srgb, var(--rf-tone, var(--surface)) 22%, var(--surface));
+}
+.rf-swatch.is-empty { border-style: dashed; border-color: var(--border-strong); background: var(--bg-sunken); }
+.rf-swatch.is-over { border: 2px solid var(--c-danger); background: var(--surface); }
+.rf-swatch.is-void { border-style: dashed; background: repeating-linear-gradient(135deg, transparent 0 3px, var(--border) 3px 4px); }
