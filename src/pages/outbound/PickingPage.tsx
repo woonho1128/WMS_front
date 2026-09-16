@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -46,6 +47,13 @@ export const PickingPage = () => {
   const [skipped, setSkipped] = useState<Record<number, number[]>>({});
   const [completeTarget, setCompleteTarget] = useState<OutboundRow | null>(null);
 
+  // 3D 맵 우클릭 메뉴에서 넘어온 주문 — ?outboundNo=&from=로케이션
+  const [searchParams] = useSearchParams();
+  const linkedNo = searchParams.get("outboundNo");
+  const linkedFrom = searchParams.get("from");
+  const linkedRowRef = useRef<HTMLTableRowElement | null>(null);
+  const linkHandled = useRef<string | null>(null);
+
   const reload = () => {
     setLoading(true);
     return apiGet<OutboundRow[]>("/outbounds")
@@ -91,6 +99,19 @@ export const PickingPage = () => {
     ids.forEach(fetchLines);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targets.map((r) => r.id).join(",")]);
+
+  useEffect(() => {
+    if (!linkedNo || loading || linkHandled.current === linkedNo) return;
+    const row = rows.find((r) => r.outboundNo === linkedNo);
+    if (!row) return;
+    linkHandled.current = linkedNo;
+    if (row.status === "출고대기") setScanInput(row.outboundNo);
+    setNotice(
+      `3D 맵${linkedFrom ? ` ${linkedFrom} 로케이션` : ""}에서 연결된 주문 ${row.outboundNo} (${row.status}) — ` +
+        (row.status === "출고대기" ? "스캔 칸에 넣어 두었습니다. [피킹 시작]을 누르세요." : "라인별 품목 QR을 확인하세요.")
+    );
+    window.setTimeout(() => linkedRowRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
+  }, [linkedNo, linkedFrom, rows, loading]);
 
   const toggleExpand = (id: number) => {
     const willExpand = !expandedIds.includes(id);
@@ -257,7 +278,11 @@ export const PickingPage = () => {
                   const c = counts(row);
                   return (
                     <Fragment key={row.id}>
-                      <tr className={`outbound-master-row${expanded ? " is-expanded" : ""}`} onClick={(e) => onRowClick(e, row.id)}>
+                      <tr
+                        ref={row.outboundNo === linkedNo ? linkedRowRef : undefined}
+                        className={`outbound-master-row${expanded ? " is-expanded" : ""}${row.outboundNo === linkedNo ? " is-linked" : ""}`}
+                        onClick={(e) => onRowClick(e, row.id)}
+                      >
                         <td>
                           <span className="outbound-expand-caret" aria-hidden>{expanded ? "▾" : "▸"}</span>
                           {row.outboundNo}

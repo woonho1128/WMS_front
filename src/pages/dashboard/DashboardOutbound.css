@@ -224,6 +224,12 @@
   border-bottom-color: var(--primary-line);
 }
 
+/* 3D 맵 우클릭 메뉴에서 넘어온 주문 */
+.outbound-master-row.is-linked {
+  box-shadow: inset 4px 0 0 var(--c-success);
+  background: var(--c-success-bg);
+}
+
 .outbound-expand-caret {
   display: inline-block;
   width: 14px;
