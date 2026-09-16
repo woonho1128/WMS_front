@@ -486,7 +486,7 @@ export const InboundConfirmPage = () => {
           <div className="cfm-label">
             <div className="cfm-label-qr">
               <QrBox value={`WMS-IN|${labelTarget.inboundNo}|LOT-${labelTarget.inboundNo}`} />
-              <span>데모 QR</span>
+              <span>스캔용 QR</span>
             </div>
             <dl className="cfm-label-meta">
               <div>

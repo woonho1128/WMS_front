@@ -485,7 +485,7 @@ export const DashboardOutbound = () => {
           <div className="out-label">
             <div className="out-label-qr">
               <QrBox value={`WMS-OUT|${labelTarget.outboundNo}`} />
-              <span>데모 QR</span>
+              <span>스캔용 QR</span>
             </div>
             <dl className="out-label-meta">
               <div>

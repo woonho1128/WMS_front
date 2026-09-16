@@ -847,7 +847,7 @@ export const DashboardInbound = () => {
           <div className="inb-label">
             <div className="inb-label-qr">
               <QrBox value={`WMS-IN|${labelTarget.inboundNo}|LOT-${labelTarget.inboundNo}`} />
-              <span>데모 QR</span>
+              <span>스캔용 QR</span>
             </div>
             <dl className="inb-meta">
               <div>
