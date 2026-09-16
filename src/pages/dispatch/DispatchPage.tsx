@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { DashboardCard } from "../dashboard/components/DashboardCard";
-import { StatusBadge } from "../../components/ui/StatusBadge";
-import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
-import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
+import { todayStr } from "../../shared/appDate";
+import "./DispatchPage.css";
+
+/* ============================================================
+   배차 — 배차 대상 선택 → 차량 적재율 확인 → 배차 확정
+   기준: DOCS/front 운영화면 재설계 HTML
+   ============================================================ */
 
 type Target = {
   outboundId: number;
@@ -38,11 +41,20 @@ type Dispatched = {
 
 type Carrier = { id: number; name: string; region: string; active: boolean };
 
-const VEHICLES = ["1톤", "2.5톤", "5톤", "11톤"];
+/** 차량 적재 한도 — 중량(kg) / 부피(m³) */
+const VEHICLES = [
+  { name: "1톤", weight: 1000, volume: 4.5 },
+  { name: "2.5톤", weight: 2500, volume: 10 },
+  { name: "5톤", weight: 5000, volume: 22 },
+  { name: "11톤", weight: 11000, volume: 48 }
+];
 
 type Props = { region: "수도권" | "지방권"; title: string };
 
-/** 배차관리 공용 — 권역별 배차대상/배정/현황 */
+const num = (n: number) => n.toLocaleString("ko-KR");
+const cityOf = (address: string | null) => (address ?? "").split(" ")[1] ?? "-";
+const gaugeTone = (pct: number) => (pct > 100 ? "danger" : pct >= 85 ? "warning" : "success");
+
 export const DispatchPage = ({ region, title }: Props) => {
   const [targets, setTargets] = useState<Target[]>([]);
   const [dispatched, setDispatched] = useState<Dispatched[]>([]);
@@ -52,9 +64,9 @@ export const DispatchPage = ({ region, title }: Props) => {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [target, setTarget] = useState<Target | null>(null);
+  const [picked, setPicked] = useState<number[]>([]);
+  const [vehicle, setVehicle] = useState("5톤");
   const [carrierId, setCarrierId] = useState<number | "">("");
-  const [vehicle, setVehicle] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -64,162 +76,349 @@ export const DispatchPage = ({ region, title }: Props) => {
       apiGet<Dispatched[]>(`/dispatch?region=${encodeURIComponent(region)}`),
       apiGet<Carrier[]>("/carriers")
     ])
-      .then(([t, d, c]) => { setTargets(t); setDispatched(d); setCarriers(c); })
+      .then(([t, d, c]) => {
+        setTargets(t);
+        setDispatched(d);
+        setCarriers(c);
+        if (c.length && carrierId === "") setCarrierId(c[0].id);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "조회 실패"))
       .finally(() => setLoading(false));
   };
-  useEffect(load, [region]); // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [region]);
 
-  // 권역 매칭 배송사 (해당 권역 + 전국, 사용중)
-  const availableCarriers = useMemo(
-    () => carriers.filter((c) => c.active && (c.region === region || c.region === "전국")),
-    [carriers, region]
-  );
+  const today = todayStr();
 
-  const summary = useMemo(() => {
-    const weight = targets.reduce((a, t) => a + t.totalWeightKg, 0);
-    const pallets = targets.reduce((a, t) => a + t.palletCount, 0);
-    return { targets: targets.length, dispatched: dispatched.length, weight: Math.round(weight * 10) / 10, pallets };
-  }, [targets, dispatched]);
+  const allChecked = targets.length > 0 && targets.every((t) => picked.includes(t.outboundId));
+  const toggle = (id: number) =>
+    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggleAll = () => setPicked(allChecked ? [] : targets.map((t) => t.outboundId));
 
-  const openAssign = (t: Target) => {
-    setTarget(t);
-    setVehicle(t.recommendedVehicle);
-    const match = availableCarriers[0];
-    setCarrierId(match ? match.id : "");
-  };
+  /* ---------- 선택 물량 = 1회 운행 ---------- */
+  const trip = useMemo(() => {
+    const list = targets.filter((t) => picked.includes(t.outboundId));
+    const weight = list.reduce((a, t) => a + t.totalWeightKg, 0);
+    const volume = list.reduce((a, t) => a + t.totalVolumeM3, 0);
+    const pallet = list.reduce((a, t) => a + t.palletCount, 0);
+    const spec = VEHICLES.find((v) => v.name === vehicle) ?? VEHICLES[2];
+    const wPct = spec.weight ? (weight / spec.weight) * 100 : 0;
+    const vPct = spec.volume ? (volume / spec.volume) * 100 : 0;
+    const stops = Array.from(new Set(list.map((t) => cityOf(t.shipAddress))));
+    const fit = VEHICLES.find((v) => weight <= v.weight && volume <= v.volume);
+    return {
+      list, weight, volume, pallet, spec,
+      wPct, vPct,
+      over: wPct > 100 || vPct > 100,
+      stops,
+      fit: fit?.name ?? null
+    };
+  }, [targets, picked, vehicle]);
 
-  const doAssign = async () => {
-    if (!target || carrierId === "") { setNotice("배송사를 선택하세요."); return; }
+  const confirmDispatch = async () => {
+    if (!trip.list.length || carrierId === "") return;
     setBusy(true);
     try {
-      await apiPost("/dispatch/assign", { outboundId: target.outboundId, carrierId, vehicleType: vehicle });
-      const cName = carriers.find((c) => c.id === carrierId)?.name;
-      setNotice(`${target.outboundNo} 배차 완료 — ${cName} / ${vehicle}`);
-      setTarget(null);
+      for (const t of trip.list) {
+        await apiPost("/dispatch/assign", {
+          outboundId: t.outboundId,
+          carrierId,
+          vehicleType: vehicle
+        });
+      }
+      setNotice(`배차 확정 ${trip.list.length}건 · ${trip.stops.length}착지 — ${vehicle} 배정 완료`);
+      setPicked([]);
       load();
-    } catch (e) { setNotice(e instanceof Error ? e.message : "배차 실패"); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "배차 실패");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const exportCsv = () =>
     downloadCsv(
-      `배차현황_${region}_${new Date().toISOString().slice(0, 10)}`,
-      ["배차번호", "출하번호", "납품처", "배송사", "차량", "중량(kg)", "부피(m³)", "파렛트", "배차일"],
-      dispatched.map((d) => [d.dispatchNo, d.outboundNo, d.customerName, d.carrierName ?? "", d.vehicleType ?? "", d.totalWeightKg, d.totalVolumeM3, d.palletCount, d.dispatchDate ?? ""])
+      `${title}_${today}`,
+      ["배차번호", "출고번호", "납품처", "배송사", "차량", "중량(kg)", "부피(m3)", "파렛트", "배차일"],
+      dispatched.map((d) => [
+        d.dispatchNo, d.outboundNo, d.customerName, d.carrierName, d.vehicleType,
+        d.totalWeightKg, d.totalVolumeM3, d.palletCount, d.dispatchDate
+      ])
     );
 
   return (
-    <section className="outbound-page">
-      <section className="outbound-summary-grid" aria-label="배차 요약">
-        <article className="app-surface outbound-summary-card"><span>{region} 배차대상</span><strong>{summary.targets}건</strong></article>
-        <article className="app-surface outbound-summary-card"><span>배차완료</span><strong>{summary.dispatched}건</strong></article>
-        <article className="app-surface outbound-summary-card"><span>대상 총중량</span><strong>{summary.weight.toLocaleString()} kg</strong></article>
-        <article className="app-surface outbound-summary-card"><span>대상 파렛트</span><strong>{summary.pallets} PLT</strong></article>
-      </section>
+    <section className="dsp-page">
+      {error ? (
+        <div className="ds-callout danger">
+          <Icon name="alert" size={18} />
+          <span>불러오기 실패: {error} — 백엔드(8080) 확인</span>
+        </div>
+      ) : null}
+      {notice ? (
+        <div className="ds-callout success">
+          <Icon name="check" size={18} />
+          <span>{notice}</span>
+        </div>
+      ) : null}
 
-      <DashboardCard className="outbound-filter-card" title={`${title} — 배차 대상 (${targets.length}건)`}>
-        <div className="outbound-list-toolbar">
-          <p className="outbound-notice">{notice ?? `${region} 출고 건의 중량·부피·파렛트를 계산하고 차량을 추천합니다. 배송사를 배정하세요.`}</p>
-          <div className="outbound-expand-actions">
-            <button type="button" className="btn-secondary" onClick={load}>새로고침</button>
+      <div className="dsp-main">
+        {/* ---------- 배차 대상 ---------- */}
+        <section className="card dsp-targets">
+          <div className="dsp-head">
+            <div className="nx-sect">
+              <span className="nx-sect-title">배차 대상</span>
+              <span className="dsp-count">{targets.length}</span>
+            </div>
+            <div className="dsp-head-tools">
+              <span className="ds-badge info">{region}</span>
+              <button type="button" className="nx-iconbtn" onClick={load} title="새로고침" aria-label="새로고침">
+                <Icon name="refresh" size={15} />
+              </button>
+            </div>
           </div>
-        </div>
-        {error ? (<div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(8080) 확인</span></div>) : null}
-        <div className="pc-only">
-          <table className="outbound-table">
-            <thead>
-              <tr><th>출하번호</th><th>납품처</th><th>배송주소</th><th className="num">중량(kg)</th><th className="num">부피(m³)</th><th className="num">파렛트</th><th>추천차량</th><th>처리</th></tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
-              ) : targets.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>{region} 배차 대상이 없습니다. (피킹완료/출고완료 + 미배차)</td></tr>
-              ) : (
-                targets.map((t) => (
-                  <tr key={t.outboundId}>
-                    <td><b>{t.outboundNo}</b></td>
-                    <td>{t.customerName}</td>
-                    <td><span className="outbound-addr-cell" title={t.shipAddress ?? ""}>{t.shipAddress ?? "-"}</span></td>
-                    <td className="num">{t.totalWeightKg.toLocaleString()}</td>
-                    <td className="num">{t.totalVolumeM3.toLocaleString()}</td>
-                    <td className="num">{t.palletCount}</td>
-                    <td><StatusBadge tone="info">{t.recommendedVehicle}</StatusBadge></td>
-                    <td><div className="outbound-row-actions"><button type="button" className="btn-secondary" disabled={busy} onClick={() => openAssign(t)}>배송사 배정</button></div></td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </DashboardCard>
 
-      <DashboardCard className="outbound-table-card" title={`배차 현황 (${dispatched.length}건)`} action={<button type="button" className="btn-secondary" onClick={exportCsv} disabled={dispatched.length === 0}>배차현황 출력(엑셀)</button>}>
-        <div className="pc-only">
-          <table className="outbound-table">
+          <div className="dsp-table-wrap">
+            <table className="data-table dsp-table">
+              <thead>
+                <tr>
+                  <th className="dsp-check-col">
+                    <button
+                      type="button"
+                      className={`dsp-check${allChecked ? " is-on" : ""}`}
+                      onClick={toggleAll}
+                      disabled={!targets.length}
+                      aria-label="전체 선택"
+                    >
+                      {allChecked ? <Icon name="check" size={12} /> : null}
+                    </button>
+                  </th>
+                  <th>출하번호</th>
+                  <th>납품처</th>
+                  <th>착지</th>
+                  <th>납기</th>
+                  <th className="num">중량</th>
+                  <th className="num">부피</th>
+                  <th className="num">PLT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {targets.map((t) => {
+                  const on = picked.includes(t.outboundId);
+                  const urgent = (t.scheduledDate ?? "") <= today;
+                  return (
+                    <tr
+                      key={t.outboundId}
+                      className={`dsp-row${on ? " is-sel" : ""}`}
+                      onClick={() => toggle(t.outboundId)}
+                      title={`${t.outboundNo} · ${t.customerName} · ${t.shipAddress ?? ""}`}
+                    >
+                      <td className="dsp-check-col">
+                        <span className={`dsp-check${on ? " is-on" : ""}`}>{on ? <Icon name="check" size={12} /> : null}</span>
+                      </td>
+                      <td className="dsp-no">{t.outboundNo}</td>
+                      <td>{t.customerName}</td>
+                      <td>{cityOf(t.shipAddress)}</td>
+                      <td className={`dsp-due${urgent ? " is-urgent" : ""}`}>{(t.scheduledDate ?? "").slice(5)}</td>
+                      <td className="num">{num(t.totalWeightKg)}</td>
+                      <td className="num">{t.totalVolumeM3.toFixed(1)}</td>
+                      <td className="num">{t.palletCount}</td>
+                    </tr>
+                  );
+                })}
+                {!targets.length && !loading ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="nx-empty">배차 대상이 없습니다. 피킹완료 건이 생기면 표시됩니다.</div>
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          <p className="dsp-foot-note">납기가 오늘이거나 지난 건은 붉게 표시됩니다 · 당일 마감</p>
+        </section>
+
+        {/* ---------- 배차 편성 ---------- */}
+        <aside className="card dsp-build">
+          <div className="dsp-head">
+            <div className="nx-sect">
+              <span className="nx-sect-title">배차 편성</span>
+              <span className="nx-sect-sub">선택 건을 한 차량으로 묶습니다</span>
+            </div>
+          </div>
+
+          <div className="dsp-vehicles">
+            {VEHICLES.map((v) => (
+              <button
+                key={v.name}
+                type="button"
+                className={`dsp-vehicle${vehicle === v.name ? " is-on" : ""}${trip.fit === v.name ? " is-fit" : ""}`}
+                onClick={() => setVehicle(v.name)}
+              >
+                <b>{v.name}</b>
+                <span>{num(v.weight)}kg</span>
+                <span>{v.volume}m³</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="dsp-gauges">
+            <div className="dsp-gauge">
+              <span className="dsp-gauge-label">중량</span>
+              <span className="nx-bar dsp-gauge-bar">
+                <i className={`tone-${gaugeTone(trip.wPct)}`} style={{ width: `${Math.min(trip.wPct, 100)}%` }} />
+              </span>
+              <span className={`dsp-gauge-pct tone-${gaugeTone(trip.wPct)}`}>{Math.round(trip.wPct)}%</span>
+            </div>
+            <div className="dsp-gauge">
+              <span className="dsp-gauge-label">부피</span>
+              <span className="nx-bar dsp-gauge-bar">
+                <i className={`tone-${gaugeTone(trip.vPct)}`} style={{ width: `${Math.min(trip.vPct, 100)}%` }} />
+              </span>
+              <span className={`dsp-gauge-pct tone-${gaugeTone(trip.vPct)}`}>{Math.round(trip.vPct)}%</span>
+            </div>
+            <div className="dsp-gauge-sub">
+              {num(trip.weight)}kg · {trip.volume.toFixed(1)}m³ / {num(trip.spec.weight)}kg · {trip.spec.volume}m³
+            </div>
+          </div>
+
+          {trip.over ? (
+            <div className="ds-callout danger dsp-warn">
+              <Icon name="alert" size={16} />
+              <span>
+                선택 물량이 {vehicle} 적재한도를 넘습니다.
+                {trip.fit ? ` ${trip.fit}으로 올리거나 2회차로 나누세요.` : " 2회차 이상으로 나누세요."}
+              </span>
+            </div>
+          ) : null}
+
+          <div className="dsp-summary">
+            <div>
+              <dt>건수</dt>
+              <dd>{trip.list.length}</dd>
+            </div>
+            <div>
+              <dt>착지</dt>
+              <dd>{trip.stops.length}</dd>
+            </div>
+            <div>
+              <dt>중량</dt>
+              <dd>{num(trip.weight)}</dd>
+            </div>
+            <div>
+              <dt>PLT</dt>
+              <dd>{trip.pallet}</dd>
+            </div>
+          </div>
+
+          <div className="dsp-stops">
+            <span className="nx-eyebrow">배송 순서</span>
+            <b>{trip.stops.join(" → ") || "—"}</b>
+          </div>
+
+          <div className="dsp-picked">
+            {trip.list.map((t) => (
+              <div key={t.outboundId} className="dsp-picked-row">
+                <div>
+                  <div className="dsp-no">{t.outboundNo}</div>
+                  <div className="dsp-sub">
+                    {t.customerName} · {cityOf(t.shipAddress)}
+                  </div>
+                </div>
+                <b>{num(t.totalWeightKg)}</b>
+                <button type="button" className="dsp-remove" onClick={() => toggle(t.outboundId)} aria-label="선택 해제">
+                  <Icon name="x" size={13} />
+                </button>
+              </div>
+            ))}
+            {!trip.list.length ? <div className="nx-empty">왼쪽에서 배차할 출고 건을 선택하세요.</div> : null}
+          </div>
+
+          <label className="ds-field dsp-carrier">
+            <span>배송사</span>
+            <select value={carrierId} onChange={(e) => setCarrierId(e.target.value === "" ? "" : Number(e.target.value))}>
+              {carriers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.region})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            className="btn-primary dsp-cta"
+            disabled={busy || !trip.list.length || carrierId === ""}
+            onClick={confirmDispatch}
+            title={trip.over ? "적재한도 초과 상태로도 확정은 가능합니다 — 현장 확인 후 진행하세요" : undefined}
+          >
+            배차 확정 · {trip.list.length}건 / {trip.stops.length}착지
+            <Icon name="arrowR" size={15} />
+          </button>
+        </aside>
+      </div>
+
+      {/* ---------- 금일 확정 배차 ---------- */}
+      <section className="card dsp-done">
+        <div className="dsp-head">
+          <div className="nx-sect">
+            <span className="nx-sect-title">금일 확정 배차</span>
+            <span className="dsp-count">{dispatched.length}</span>
+          </div>
+          <button type="button" className="dsp-btn" onClick={exportCsv}>
+            <Icon name="download" size={14} />
+            배차서 출력
+          </button>
+        </div>
+        <div className="dsp-table-wrap">
+          <table className="data-table dsp-table">
             <thead>
-              <tr><th>배차번호</th><th>출하번호</th><th>납품처</th><th>배송사</th><th>차량</th><th className="num">중량(kg)</th><th className="num">파렛트</th><th>배차일</th></tr>
+              <tr>
+                <th>배차번호</th>
+                <th>출고번호</th>
+                <th>납품처</th>
+                <th>배송사</th>
+                <th>차량</th>
+                <th className="num">중량</th>
+                <th className="num">PLT</th>
+                <th>적재율</th>
+              </tr>
             </thead>
             <tbody>
-              {dispatched.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--ink-faint)" }}>배차 완료 건이 없습니다.</td></tr>
-              ) : (
-                dispatched.map((d) => (
+              {dispatched.map((d) => {
+                const spec = VEHICLES.find((v) => v.name === d.vehicleType) ?? VEHICLES[0];
+                const pct = Math.round((d.totalWeightKg / spec.weight) * 100);
+                return (
                   <tr key={d.id}>
-                    <td style={{ fontFamily: "var(--font-mono, monospace)" }}>{d.dispatchNo}</td>
+                    <td className="dsp-no">{d.dispatchNo}</td>
                     <td>{d.outboundNo}</td>
                     <td>{d.customerName}</td>
-                    <td><b>{d.carrierName ?? "-"}</b></td>
-                    <td><StatusBadge tone="violet">{d.vehicleType ?? "-"}</StatusBadge></td>
-                    <td className="num">{d.totalWeightKg.toLocaleString()}</td>
+                    <td>{d.carrierName ?? "-"}</td>
+                    <td>
+                      <span className="ds-badge gray">{d.vehicleType ?? "-"}</span>
+                    </td>
+                    <td className="num">{num(d.totalWeightKg)}</td>
                     <td className="num">{d.palletCount}</td>
-                    <td>{d.dispatchDate ?? "-"}</td>
+                    <td className="dsp-rate">
+                      <span className="nx-bar">
+                        <i className={`tone-${gaugeTone(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      </span>
+                      <b className={`tone-${gaugeTone(pct)}`}>{pct}%</b>
+                    </td>
                   </tr>
-                ))
-              )}
+                );
+              })}
+              {!dispatched.length && !loading ? (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="nx-empty">확정된 배차가 없습니다.</div>
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
-      </DashboardCard>
-
-      <Modal
-        open={target !== null}
-        title="배송사 배정"
-        desc={target ? `${target.outboundNo} · ${target.customerName} · ${target.region}` : ""}
-        icon="truck"
-        iconBg="var(--c-info-bg)"
-        iconColor="var(--c-info)"
-        onClose={() => setTarget(null)}
-        footer={
-          <>
-            <button type="button" className="btn-secondary" onClick={() => setTarget(null)}>취소</button>
-            <button type="button" className="btn-primary" disabled={busy || carrierId === ""} onClick={doAssign}>배차 확정</button>
-          </>
-        }
-      >
-        {target ? (
-          <>
-            <div className="ds-callout info" style={{ marginBottom: 12 }}>
-              <Icon name="check" size={18} />
-              <span>중량 <b>{target.totalWeightKg.toLocaleString()}kg</b> · 부피 <b>{target.totalVolumeM3.toLocaleString()}m³</b> · <b>{target.palletCount}</b>파렛트 → 추천 <b>{target.recommendedVehicle}</b></span>
-            </div>
-            <label className="ds-field">
-              <span>배송사 ({region} + 전국)</span>
-              <select value={carrierId} onChange={(e) => setCarrierId(e.target.value === "" ? "" : Number(e.target.value))}>
-                <option value="">배송사 선택</option>
-                {availableCarriers.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.region})</option>)}
-              </select>
-            </label>
-            <label className="ds-field" style={{ marginTop: 10 }}>
-              <span>배정 차량</span>
-              <select value={vehicle} onChange={(e) => setVehicle(e.target.value)}>
-                {VEHICLES.map((v) => <option key={v} value={v}>{v}{v === target.recommendedVehicle ? " (추천)" : ""}</option>)}
-              </select>
-            </label>
-          </>
-        ) : null}
-      </Modal>
+      </section>
     </section>
   );
 };

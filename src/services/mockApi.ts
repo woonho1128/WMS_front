@@ -268,6 +268,32 @@ const warehouseLayout = {
   ]
 };
 
+/* 입고 예정 — 도크/검수라인 점유 스케줄 (분 단위, 08:00=480)
+   실제 운영에서는 도크 예약 테이블에서 내려준다. */
+const dockSchedule = {
+  now: "09:41",
+  nowMin: 581,
+  startMin: 480,
+  endMin: 1080,
+  lanes: [
+    { name: "DOCK 1", sub: "대형 · 리프트 2", tone: "info", blocks: [
+      { inboundNo: "IN-20260606-003", partner: "한성테크놀로지", from: 480, to: 540, status: "confirmed", pct: 100 },
+      { inboundNo: "IN-20260613-001", partner: "한성테크놀로지", from: 570, to: 660, status: "registered", pct: 0 }
+    ] },
+    { name: "DOCK 2", sub: "일반 · 리프트 1", tone: "warning", blocks: [
+      { inboundNo: "IN-20260620-001", partner: "한성테크놀로지", from: 780, to: 900, status: "scheduled", pct: 0 }
+    ] },
+    { name: "DOCK 3", sub: "소형 · 수작업", tone: "success", blocks: [
+      { inboundNo: "IN-MV-20260617-002", partner: "안산공장 이동", from: 510, to: 555, status: "scheduled", pct: 0 },
+      { inboundNo: "IN-20260607-001", partner: "인천외주가공", from: 600, to: 645, status: "located", pct: 100 }
+    ] },
+    { name: "검수라인 A", sub: "검사품 전용", tone: "violet", blocks: [
+      { inboundNo: "IN-20260530-001", partner: "검수 완료", from: 540, to: 580, status: "confirmed", pct: 100 },
+      { inboundNo: "IN-MV-20260616-001", partner: "창원공장 이동", from: 630, to: 720, status: "located", pct: 50, warn: true }
+    ] }
+  ]
+};
+
 /* 관제 대시보드 — 주요 작업 현황(입고/출고 통합 타임라인) */
 const inboundStatusLabel: Record<string, string> = {
   scheduled: "입고예정",
@@ -483,6 +509,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
   if (clean === "/warehouse/layout") return copy(warehouseLayout) as T;
   if (clean === "/inbounds") return copy(inbounds) as T;
+  if (clean === "/inbounds/dock-schedule") return copy(dockSchedule) as T;
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds) as T;
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
