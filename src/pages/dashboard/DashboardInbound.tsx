@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
 import { apiGet, apiPost, apiPut } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
-import { shiftDays } from "../../shared/appDate";
+import { addDays, shiftDays, todayStr, weekdayKo } from "../../shared/appDate";
 import "./DashboardInbound.css";
 
 /* ============================================================
    입고 예정 — 단계 파이프라인 + 리스트/보드/도크 3뷰 + 마스터-디테일
    기준: DOCS/front 운영화면 재설계 HTML
+   · 리스트·보드는 조회기간, 도크 스케줄은 하루 단위 — 보기에 따라 날짜 입력이 바뀌고
+     단계 카드도 그 범위를 센다
    ============================================================ */
 
 type InboundRow = {
@@ -52,20 +54,35 @@ type WarehouseOption = { id: number; code: string; name: string; type: string };
 type LocationOption = { id: number; code: string; status: string; zoneName: string };
 
 type DockBlock = {
+  id: number;
   inboundNo: string;
   partner: string;
   from: number;
   to: number;
   status: string;
   pct: number;
+  /** 예약 시간이 지났는데 입고확정 전 */
   warn?: boolean;
 };
+type DockItem = {
+  id: number;
+  inboundNo: string;
+  partner: string;
+  type: string;
+  warehouseName: string | null;
+  qty: number;
+  status: string;
+};
 type DockSchedule = {
+  date: string;
+  isToday: boolean;
   now: string;
   nowMin: number;
   startMin: number;
   endMin: number;
   lanes: Array<{ name: string; sub: string; tone: string; blocks: DockBlock[] }>;
+  /** 그날 입고 예정인데 도크·검수라인 예약이 없는 건 */
+  unassigned: DockItem[];
 };
 
 type StageKey = "scheduled" | "registered" | "located" | "confirmed";
@@ -83,7 +100,7 @@ const KIND_TONE: Record<string, string> = { 일반: "gray", 외주: "consign", �
 const VIEWS = [
   { key: "list", label: "리스트", icon: "menu", note: "파이프라인으로 걸러 목록·상세로 처리합니다." },
   { key: "board", label: "보드", icon: "grid", note: "단계가 열입니다. 카드를 눌러 상세를 확인합니다." },
-  { key: "dock", label: "도크 스케줄", icon: "truck", note: "도크·검수라인의 시간 점유입니다. 빨간 선이 현재 시각." }
+  { key: "dock", label: "도크 스케줄", icon: "truck", note: "하루 단위 도크·검수라인 예약입니다. 오늘이면 빨간 선이 현재 시각." }
 ] as const;
 
 type ViewKey = (typeof VIEWS)[number]["key"];
@@ -91,6 +108,22 @@ type ViewKey = (typeof VIEWS)[number]["key"];
 const PAGE_SIZE = 10;
 const num = (n: number) => n.toLocaleString("ko-KR");
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+const dayLabel = (ymd: string) => `${ymd.slice(5)} (${weekdayKo(ymd)})`;
+/** 블록용 짧은 번호 — 연도만 뺀다 (IN-20260617-002 → 0617-002, IN-MV-20260617-002 → MV-0617-002) */
+const shortNo = (inboundNo: string) => inboundNo.replace(/^IN-/, "").replace(/\d{4}(\d{4}-\d+)$/, "$1");
+
+const matchesKeyword = (r: InboundRow, kw: string) =>
+  [r.inboundNo, r.poNo, r.supplierCode, r.supplierName, r.warehouseName, r.inTypeName, r.purchaseGroupName]
+    .map((v) => (v ?? "").toLowerCase())
+    .some((h) => h.includes(kw));
+
+const buildStageCards = (list: Array<{ status: string }>) => {
+  const total = list.length || 1;
+  return [
+    { key: "all" as const, label: "전체", tone: "ink", count: list.length },
+    ...STAGES.map((s) => ({ key: s.key, label: s.label, tone: s.tone, count: list.filter((r) => r.status === s.key).length }))
+  ].map((s) => ({ ...s, pct: Math.round((s.count / total) * 100) }));
+};
 
 export const DashboardInbound = () => {
   const navigate = useNavigate();
@@ -110,6 +143,12 @@ export const DashboardInbound = () => {
   const [dateTo, setDateTo] = useState(() => shiftDays(15));
   const [page, setPage] = useState(1);
   const [selId, setSelId] = useState<number | null>(null);
+  /** 다른 보기에서 고른 건을 리스트에서 보이게 할 때 — 그 건이 있는 페이지로 넘긴다 */
+  const [revealId, setRevealId] = useState<number | null>(null);
+
+  // 도크 스케줄은 하루 단위 — 조회기간과 따로 둔다
+  const [dockDate, setDockDate] = useState(() => todayStr());
+  const dockReq = useRef(0);
 
   const [linesById, setLinesById] = useState<Record<number, InboundLine[]>>({});
   const [linesLoading, setLinesLoading] = useState<number[]>([]);
@@ -142,8 +181,28 @@ export const DashboardInbound = () => {
   useEffect(load, []);
   useEffect(() => {
     apiGet<WarehouseOption[]>("/warehouses").then(setWarehouses).catch(() => {});
-    apiGet<DockSchedule>("/inbounds/dock-schedule").then(setDock).catch(() => {});
   }, []);
+
+  const loadDock = (date: string) => {
+    const req = ++dockReq.current;
+    apiGet<DockSchedule>(`/inbounds/dock-schedule?date=${date}`)
+      .then((data) => {
+        if (req === dockReq.current) setDock(data);
+      })
+      .catch((e) => {
+        if (req === dockReq.current) setError(e instanceof Error ? e.message : "도크 스케줄 불러오기 실패");
+      });
+  };
+  // 도크 보기로 올 때마다 다시 읽는다 — 리스트에서 처리한 결과가 바로 보이게
+  useEffect(() => {
+    if (view === "dock") loadDock(dockDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, dockDate]);
+
+  const refresh = () => {
+    load();
+    if (view === "dock") loadDock(dockDate);
+  };
 
   const invalidateLines = (id: number) =>
     setLinesById((p) => {
@@ -156,11 +215,7 @@ export const DashboardInbound = () => {
   const searched = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
     return rows.filter((r) => {
-      if (kw) {
-        const hay = [r.inboundNo, r.poNo, r.supplierCode, r.supplierName, r.warehouseName, r.inTypeName, r.purchaseGroupName]
-          .map((v) => (v ?? "").toLowerCase());
-        if (!hay.some((h) => h.includes(kw))) return false;
-      }
+      if (kw && !matchesKeyword(r, kw)) return false;
       if (typeFilter && r.type !== typeFilter) return false;
       if (dateFrom && (r.expectedAt ?? "") < dateFrom) return false;
       if (dateTo && (r.expectedAt ?? "") > dateTo) return false;
@@ -180,6 +235,36 @@ export const DashboardInbound = () => {
   useEffect(() => {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
+  // 위 페이지 초기화보다 뒤에 둔다 — 같은 렌더에서 필터가 바뀌어도 고른 건의 페이지가 남는다
+  useEffect(() => {
+    if (revealId == null) return;
+    const index = filtered.findIndex((r) => r.id === revealId);
+    if (index < 0) return;
+    setPage(Math.floor(index / PAGE_SIZE) + 1);
+    setRevealId(null);
+  }, [filtered, revealId]);
+
+  /** 보드·도크에서 고른 건을 리스트에서 연다 — 지금 필터에 가려지면 그 필터만 풀어준다 */
+  const revealRow = (row: InboundRow) => {
+    const date = row.expectedAt ?? "";
+    if (date && dateFrom && date < dateFrom) setDateFrom(date);
+    if (date && dateTo && date > dateTo) setDateTo(date);
+    if (stage !== "all" && row.status !== stage) setStage("all");
+    if (typeFilter && row.type !== typeFilter) setTypeFilter("");
+    const kw = keyword.trim().toLowerCase();
+    if (kw && !matchesKeyword(row, kw)) setKeyword("");
+    setSelId(row.id);
+    setRevealId(row.id);
+    setView("list");
+  };
+
+  /** 리스트의 예정일 → 그날 도크 스케줄 */
+  const openDay = (row: InboundRow) => {
+    if (!row.expectedAt) return;
+    setSelId(row.id);
+    setDockDate(row.expectedAt);
+    setView("dock");
+  };
 
   // 선택 행 유지 — 목록에서 빠지면 첫 행으로
   useEffect(() => {
@@ -201,14 +286,38 @@ export const DashboardInbound = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, filtered]);
 
-  const stageCards = useMemo(() => {
-    const total = searched.length || 1;
-    const all = [
-      { key: "all" as const, label: "전체", tone: "ink", count: searched.length },
-      ...STAGES.map((s) => ({ key: s.key, label: s.label, tone: s.tone, count: searched.filter((r) => r.status === s.key).length }))
-    ];
-    return all.map((s) => ({ ...s, pct: Math.round((s.count / total) * 100) }));
-  }, [searched]);
+  /* ---------- 도크 스케줄 (하루) ---------- */
+  const dockReady = dock !== null && dock.date === dockDate;
+  // 그날 입고 건 = 예약 블록(한 건이 도크·검수라인 두 곳을 쓸 수 있어 입고번호로 묶음) + 미배정
+  const dayItems = useMemo(() => {
+    if (!dock) return [] as Array<{ inboundNo: string; status: string; warn: boolean }>;
+    const byNo = new Map<string, { inboundNo: string; status: string; warn: boolean }>();
+    dock.lanes.forEach((lane) =>
+      lane.blocks.forEach((b) => {
+        const prev = byNo.get(b.inboundNo);
+        byNo.set(b.inboundNo, { inboundNo: b.inboundNo, status: b.status, warn: Boolean(b.warn) || Boolean(prev?.warn) });
+      })
+    );
+    dock.unassigned.forEach((u) => byNo.set(u.inboundNo, { inboundNo: u.inboundNo, status: u.status, warn: false }));
+    return Array.from(byNo.values());
+  }, [dock]);
+  const dockLate = dayItems.filter((item) => item.warn).length;
+  const dockUnassigned = dock?.unassigned.length ?? 0;
+
+  // 입고 예정이 있는 날 — 빈 날짜에서 앞뒤 예정일로 건너뛰기
+  const inboundDates = useMemo(
+    () => Array.from(new Set(rows.map((r) => r.expectedAt).filter((d): d is string => Boolean(d)))).sort(),
+    [rows]
+  );
+  const prevInboundDate = [...inboundDates].reverse().find((d) => d < dockDate) ?? null;
+  const nextInboundDate = inboundDates.find((d) => d > dockDate) ?? null;
+
+  // 단계 카드는 지금 보기의 범위를 센다 — 리스트·보드는 조회기간, 도크는 그날
+  const stageCards = useMemo(
+    () => buildStageCards(view === "dock" ? (dockReady ? dayItems : []) : searched),
+    [view, dockReady, dayItems, searched]
+  );
+  const cardsLoading = loading || (view === "dock" && !dockReady);
 
   /* ---------- 처리 액션 ---------- */
   const doRegister = async (id: number) => {
@@ -366,15 +475,42 @@ export const DashboardInbound = () => {
           ))}
           <span className="inb-view-note">{viewNote}</span>
         </div>
-        <div className="inb-period">
-          <span className="nx-eyebrow">조회기간</span>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="시작일" />
-          <span className="inb-period-dash">~</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="종료일" />
-          <button type="button" className="nx-iconbtn" onClick={load} title="새로고침" aria-label="새로고침">
-            <Icon name="refresh" size={15} />
-          </button>
-        </div>
+        {view === "dock" ? (
+          <div className="inb-period inb-day">
+            <span className="nx-eyebrow">일자</span>
+            <button type="button" className="nx-iconbtn" onClick={() => setDockDate((d) => addDays(d, -1))} title="전날" aria-label="전날">
+              <Icon name="chevL" size={15} />
+            </button>
+            <input
+              type="date"
+              value={dockDate}
+              onChange={(e) => {
+                if (e.target.value) setDockDate(e.target.value);
+              }}
+              aria-label="조회 일자"
+            />
+            <span className="inb-weekday">{weekdayKo(dockDate)}</span>
+            <button type="button" className="nx-iconbtn" onClick={() => setDockDate((d) => addDays(d, 1))} title="다음날" aria-label="다음날">
+              <Icon name="chevR" size={15} />
+            </button>
+            <button type="button" className="inb-btn" onClick={() => setDockDate(todayStr())} disabled={dockDate === todayStr()}>
+              오늘
+            </button>
+            <button type="button" className="nx-iconbtn" onClick={refresh} title="새로고침" aria-label="새로고침">
+              <Icon name="refresh" size={15} />
+            </button>
+          </div>
+        ) : (
+          <div className="inb-period">
+            <span className="nx-eyebrow">조회기간</span>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="시작일" />
+            <span className="inb-period-dash">~</span>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="종료일" />
+            <button type="button" className="nx-iconbtn" onClick={refresh} title="새로고침" aria-label="새로고침">
+              <Icon name="refresh" size={15} />
+            </button>
+          </div>
+        )}
       </header>
 
       {/* ---------- 단계 파이프라인 ---------- */}
@@ -391,7 +527,7 @@ export const DashboardInbound = () => {
               {s.label}
             </span>
             <span className="inb-stage-num">
-              {loading ? "—" : s.count}
+              {cardsLoading ? "—" : s.count}
               <small>건</small>
             </span>
             <span className="inb-stage-bar">
@@ -484,7 +620,23 @@ export const DashboardInbound = () => {
                         <td>
                           <span className={`ds-badge ${KIND_TONE[r.type] ?? "gray"}`}>{r.type}</span>
                         </td>
-                        <td className="inb-date">{(r.expectedAt ?? "").slice(5)}</td>
+                        <td className="inb-date">
+                          {r.expectedAt ? (
+                            <button
+                              type="button"
+                              className="inb-date-link"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDay(r);
+                              }}
+                              title={`${dayLabel(r.expectedAt)} 도크 스케줄 보기`}
+                            >
+                              {r.expectedAt.slice(5)}
+                            </button>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
                         <td className="num">{num(r.qty)}</td>
                         <td>
                           <span className={`ds-badge ${st?.tone ?? "gray"}`}>
@@ -655,10 +807,7 @@ export const DashboardInbound = () => {
                         key={r.id}
                         type="button"
                         className={`inb-card${short ? " is-short" : ""}${selId === r.id ? " is-sel" : ""}`}
-                        onClick={() => {
-                          setSelId(r.id);
-                          setView("list");
-                        }}
+                        onClick={() => revealRow(r)}
                       >
                         <span className="inb-card-top">
                           <b>{r.inboundNo}</b>
@@ -695,7 +844,9 @@ export const DashboardInbound = () => {
           <div className="inb-card-head">
             <div className="nx-sect">
               <span className="nx-sect-title">도크 · 검수라인 점유</span>
-              <span className="nx-sect-sub">08:00 ~ 18:00 · 현재 {dock?.now ?? "--:--"}</span>
+              <span className="nx-sect-sub">
+                {dayLabel(dockDate)} · 08:00 ~ 18:00{dockReady && dock.isToday ? ` · 현재 ${dock.now}` : ""}
+              </span>
             </div>
             <div className="inb-legend">
               {STAGES.map((s) => (
@@ -704,72 +855,156 @@ export const DashboardInbound = () => {
                   {s.label}
                 </span>
               ))}
+              <span>
+                <i className="inb-dot is-late" />
+                예약 시간 지남
+              </span>
             </div>
           </div>
 
-          {dock ? (
-            <div className="inb-gantt">
-              <div className="inb-gantt-hours">
-                <span className="inb-lane-label" />
-                <div className="inb-gantt-track">
-                  {Array.from({ length: 11 }, (_, i) => dock.startMin + i * 60).map((min) => (
-                    <span
-                      key={min}
-                      className="inb-hour"
-                      style={{ left: `${((min - dock.startMin) / (dock.endMin - dock.startMin)) * 100}%` }}
-                    >
-                      {hhmm(min)}
+          {dockReady ? (
+            <>
+              {dayItems.length ? (
+                <div className="inb-dock-sum">
+                  <span>
+                    입고 <b>{dayItems.length}</b>건
+                  </span>
+                  <span>
+                    도크 배정 <b>{dayItems.length - dockUnassigned}</b>
+                  </span>
+                  <span className={dockUnassigned ? "is-warn" : undefined}>
+                    미배정 <b>{dockUnassigned}</b>
+                  </span>
+                  {dockLate ? (
+                    <span className="is-danger">
+                      지연 <b>{dockLate}</b>
                     </span>
-                  ))}
+                  ) : null}
                 </div>
+              ) : (
+                <div className="inb-dock-empty">
+                  <span>{dayLabel(dockDate)}에는 입고 예정이 없습니다.</span>
+                  {prevInboundDate ? (
+                    <button type="button" className="inb-btn" onClick={() => setDockDate(prevInboundDate)}>
+                      <Icon name="chevL" size={14} />
+                      이전 예정일 {dayLabel(prevInboundDate)}
+                    </button>
+                  ) : null}
+                  {nextInboundDate ? (
+                    <button type="button" className="inb-btn" onClick={() => setDockDate(nextInboundDate)}>
+                      다음 예정일 {dayLabel(nextInboundDate)}
+                      <Icon name="chevR" size={14} />
+                    </button>
+                  ) : null}
+                </div>
+              )}
+
+              <div className="inb-gantt">
+                <div className="inb-gantt-hours">
+                  <span className="inb-lane-label" />
+                  <div className="inb-gantt-track">
+                    {Array.from({ length: 11 }, (_, i) => dock.startMin + i * 60).map((min) => (
+                      <span
+                        key={min}
+                        className="inb-hour"
+                        style={{ left: `${((min - dock.startMin) / (dock.endMin - dock.startMin)) * 100}%` }}
+                      >
+                        {hhmm(min)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {dock.lanes.map((lane) => (
+                  <div key={lane.name} className="inb-lane">
+                    <div className="inb-lane-label">
+                      <b>{lane.name}</b>
+                      <span>{lane.sub}</span>
+                    </div>
+                    <div className="inb-gantt-track">
+                      {Array.from({ length: 11 }, (_, i) => i).map((i) => (
+                        <span key={i} className="inb-grid-line" style={{ left: `${(i / 10) * 100}%` }} />
+                      ))}
+                      {dock.isToday && dock.nowMin >= dock.startMin && dock.nowMin <= dock.endMin ? (
+                        <span
+                          className="inb-now"
+                          style={{ left: `${((dock.nowMin - dock.startMin) / (dock.endMin - dock.startMin)) * 100}%` }}
+                          title={`현재 ${dock.now}`}
+                        />
+                      ) : null}
+                      {lane.blocks.map((b) => {
+                        const st = STAGE_MAP[b.status];
+                        const row = rows.find((r) => r.id === b.id);
+                        const dim = stage !== "all" && b.status !== stage;
+                        return (
+                          <button
+                            key={b.inboundNo + b.from}
+                            type="button"
+                            className={`inb-block tone-${st?.tone ?? "gray"}${b.warn ? " is-warn" : ""}${dim ? " is-dim" : ""}${selId === b.id ? " is-sel" : ""}`}
+                            style={{
+                              left: `${((b.from - dock.startMin) / (dock.endMin - dock.startMin)) * 100}%`,
+                              width: `${((b.to - b.from) / (dock.endMin - dock.startMin)) * 100}%`
+                            }}
+                            title={`${b.inboundNo} · ${b.partner} · ${hhmm(b.from)}~${hhmm(b.to)} · ${st?.label ?? b.status}${b.warn ? " · 예약 시간 지남" : ""}`}
+                            onClick={() => {
+                              if (row) revealRow(row);
+                            }}
+                          >
+                            <span className="inb-block-no">{shortNo(b.inboundNo)}</span>
+                            <span className="inb-block-sub">{b.partner}</span>
+                            <span className={`nx-bar ${b.warn ? "is-danger" : b.pct === 100 ? "is-ok" : "is-info"}`}>
+                              <i style={{ width: `${b.pct}%` }} />
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {dock.lanes.map((lane) => (
-                <div key={lane.name} className="inb-lane">
-                  <div className="inb-lane-label">
-                    <b>{lane.name}</b>
-                    <span>{lane.sub}</span>
+              {dockUnassigned ? (
+                <div className="inb-unassigned">
+                  <div className="inb-unassigned-head">
+                    <Icon name="alert" size={14} />
+                    <b>도크 미배정 {dockUnassigned}건</b>
+                    <span>이 날짜에 입고 예정이지만 도크·검수라인 예약이 없습니다</span>
                   </div>
-                  <div className="inb-gantt-track">
-                    {Array.from({ length: 11 }, (_, i) => i).map((i) => (
-                      <span key={i} className="inb-grid-line" style={{ left: `${(i / 10) * 100}%` }} />
-                    ))}
-                    <span
-                      className="inb-now"
-                      style={{ left: `${((dock.nowMin - dock.startMin) / (dock.endMin - dock.startMin)) * 100}%` }}
-                      title={`현재 ${dock.now}`}
-                    />
-                    {lane.blocks.map((b) => {
-                      const st = STAGE_MAP[b.status];
-                      const row = rows.find((r) => r.inboundNo === b.inboundNo);
+                  <ul>
+                    {dock.unassigned.map((u) => {
+                      const st = STAGE_MAP[u.status];
+                      const row = rows.find((r) => r.id === u.id);
+                      const dim = stage !== "all" && u.status !== stage;
                       return (
-                        <button
-                          key={b.inboundNo + b.from}
-                          type="button"
-                          className={`inb-block tone-${st?.tone ?? "gray"}${b.warn ? " is-warn" : ""}`}
-                          style={{
-                            left: `${((b.from - dock.startMin) / (dock.endMin - dock.startMin)) * 100}%`,
-                            width: `${((b.to - b.from) / (dock.endMin - dock.startMin)) * 100}%`
-                          }}
-                          title={`${b.inboundNo} · ${b.partner} · ${hhmm(b.from)}~${hhmm(b.to)}`}
-                          onClick={() => {
-                            if (!row) return;
-                            setSelId(row.id);
-                            setView("list");
-                          }}
-                        >
-                          <span className="inb-block-no">{b.inboundNo.slice(-8)}</span>
-                          <span className="inb-block-sub">{b.partner}</span>
-                          <span className={`nx-bar ${b.warn ? "is-danger" : b.pct === 100 ? "is-ok" : "is-info"}`}>
-                            <i style={{ width: `${b.pct}%` }} />
-                          </span>
-                        </button>
+                        <li key={u.id}>
+                          <button
+                            type="button"
+                            className={`inb-unassigned-row${dim ? " is-dim" : ""}${selId === u.id ? " is-sel" : ""}`}
+                            onClick={() => {
+                              if (row) revealRow(row);
+                            }}
+                          >
+                            <span className="inb-unassigned-no">
+                              <b>{u.inboundNo}</b>
+                              <small>
+                                {u.partner} · {u.warehouseName ?? "-"}
+                              </small>
+                            </span>
+                            <span className={`ds-badge ${KIND_TONE[u.type] ?? "gray"}`}>{u.type}</span>
+                            <span className="inb-unassigned-qty">{num(u.qty)}</span>
+                            <span className={`ds-badge ${st?.tone ?? "gray"}`}>
+                              <i className="bdot" />
+                              {st?.label ?? u.status}
+                            </span>
+                            <Icon name="chevR" size={14} />
+                          </button>
+                        </li>
                       );
                     })}
-                  </div>
+                  </ul>
                 </div>
-              ))}
-            </div>
+              ) : null}
+            </>
           ) : (
             <div className="nx-empty">도크 스케줄을 불러오는 중…</div>
           )}

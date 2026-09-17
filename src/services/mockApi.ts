@@ -1,5 +1,6 @@
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
+import { createDashboardMock, regionOf } from "./mockDashboard";
 import { createWarehouseMock } from "./mockWarehouse";
 
 type AnyRecord = Record<string, any>;
@@ -199,44 +200,42 @@ let policies = [
 
 const policyBuckets = { onHand: 2574, allocated: 107, defect: 12, moving: 50, putawayWait: 295 };
 
-const summary = {
-  logistics: { todayInbound: 4, todayOutbound: 5, totalStock: 2574, working: 9 },
-  inbound: { scheduled: 1, confirmed: 2, putawayWait: 1, returnReceived: 2 },
-  outbound: { waiting: 1, picking: 1, picked: 1, completed: 1, rejected: 1 },
-  stock: { total: 2574, available: 2178, defect: 12, longTerm: 480 },
-  alerts: { replenish: 2, shortage: 2, interfaceError: 2, returnRejected: 1 }
-};
+// 대시보드 요약(/dashboard/summary · /progress)은 mockDashboard.ts 가 아래 배열들에서 계산한다
 
-const progress = {
-  inbound: { 입고예정: 1, 입고등록: 1, 로케이션지정: 1, 입고확정: 2, total: 5, progressPct: 40 },
-  outbound: { 출고대기: 1, 피킹중: 1, 피킹완료: 1, 출고완료: 1, 거부: 1, total: 5, progressPct: 20 }
-};
+const interfaceLogs: AnyRecord[] = [
+  { id: "IF-260617-001", type: "출고결과", direction: "SEND", refNo: "DN20260601019", state: "success", retry: 0, message: "ERP 전송 완료", createdAt: "2026-06-17 09:30" },
+  { id: "IF-260617-002", type: "재고차감", direction: "SEND", refNo: "DN20260601021", state: "fail", retry: 1, message: "중계서버 timeout", createdAt: "2026-06-17 09:45" },
+  { id: "IF-260617-003", type: "외주이동", direction: "SEND", refNo: "TR-OEM-001", state: "excluded", retry: 0, message: "외주 재고는 ERP 미연동", createdAt: "2026-06-17 10:10" }
+];
 
-/* 입고 예정 — 도크/검수라인 점유 스케줄 (분 단위, 08:00=480)
-   실제 운영에서는 도크 예약 테이블에서 내려준다. */
-const dockSchedule = {
-  now: "09:41",
-  nowMin: 581,
-  startMin: 480,
-  endMin: 1080,
-  lanes: [
-    { name: "DOCK 1", sub: "대형 · 리프트 2", tone: "info", blocks: [
-      { inboundNo: "IN-20260606-003", partner: "한성테크놀로지", from: 480, to: 540, status: "confirmed", pct: 100 },
-      { inboundNo: "IN-20260613-001", partner: "한성테크놀로지", from: 570, to: 660, status: "registered", pct: 0 }
-    ] },
-    { name: "DOCK 2", sub: "일반 · 리프트 1", tone: "warning", blocks: [
-      { inboundNo: "IN-20260620-001", partner: "한성테크놀로지", from: 780, to: 900, status: "scheduled", pct: 0 }
-    ] },
-    { name: "DOCK 3", sub: "소형 · 수작업", tone: "success", blocks: [
-      { inboundNo: "IN-MV-20260617-002", partner: "안산공장 이동", from: 510, to: 555, status: "scheduled", pct: 0 },
-      { inboundNo: "IN-20260607-001", partner: "인천외주가공", from: 600, to: 645, status: "located", pct: 100 }
-    ] },
-    { name: "검수라인 A", sub: "검사품 전용", tone: "violet", blocks: [
-      { inboundNo: "IN-20260530-001", partner: "검수 완료", from: 540, to: 580, status: "confirmed", pct: 100 },
-      { inboundNo: "IN-MV-20260616-001", partner: "창원공장 이동", from: 630, to: 720, status: "located", pct: 50, warn: true }
-    ] }
-  ]
-};
+const shortageRows: AnyRecord[] = [
+  { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", safetyStock: 180, leadTime: 5, available: 60, out30: 540, avgDailyOut: 18, reorderPoint: 270, daysOfStock: 3.3, shortageEta: "2026-06-21", risk: "위험" },
+  { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", safetyStock: 300, leadTime: 7, available: 75, out30: 900, avgDailyOut: 30, reorderPoint: 510, daysOfStock: 2.5, shortageEta: "2026-06-20", risk: "위험" },
+  { itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", safetyStock: 120, leadTime: 4, available: 695, out30: 360, avgDailyOut: 12, reorderPoint: 168, daysOfStock: 57.9, shortageEta: null, risk: "정상" }
+];
+
+/* 입고 예정 — 도크·검수라인 예약 (분 단위, 08:00=480)
+   실서버: 도크 예약 테이블. 화면은 하루씩 조회하고(/inbounds/dock-schedule?date=),
+   그날 입고 예정인데 예약이 없는 건은 미배정으로 따로 받는다. 오늘 작업 건의 예약은 mockDashboard 시드가 넣는다. */
+const DOCK_LANES = [
+  { name: "DOCK 1", sub: "대형 · 리프트 2", tone: "info" },
+  { name: "DOCK 2", sub: "일반 · 리프트 1", tone: "warning" },
+  { name: "DOCK 3", sub: "소형 · 수작업", tone: "success" },
+  { name: "검수라인 A", sub: "검사품 전용", tone: "violet" }
+];
+const DOCK_START = 8 * 60;
+const DOCK_END = 18 * 60;
+const DOCK_PROGRESS: Record<string, number> = { scheduled: 0, registered: 25, located: 50, confirmed: 100 };
+/** lane = DOCK_LANES 순번 */
+const dockReservations: AnyRecord[] = [
+  { inboundNo: "IN-20260530-001", date: "2026-05-30", lane: 3, from: 540, to: 580 },
+  { inboundNo: "IN-20260606-003", date: "2026-06-05", lane: 0, from: 480, to: 540 },
+  { inboundNo: "IN-20260607-001", date: "2026-06-07", lane: 2, from: 600, to: 645 },
+  { inboundNo: "IN-20260613-001", date: "2026-06-13", lane: 0, from: 570, to: 660 },
+  { inboundNo: "IN-MV-20260616-001", date: "2026-06-16", lane: 3, from: 630, to: 720 },
+  { inboundNo: "IN-MV-20260617-002", date: today, lane: 2, from: 510, to: 555 },
+  { inboundNo: "IN-20260620-001", date: "2026-06-20", lane: 1, from: 780, to: 900 }
+];
 
 /* 관제 대시보드 — 주요 작업 현황(입고/출고 통합 타임라인) */
 const inboundStatusLabel: Record<string, string> = {
@@ -323,7 +322,7 @@ function asWarehouseLocations(warehouseId: number) {
 
 function dispatchTargets(region: string) {
   return outbounds
-    .filter((o) => (o.status === "피킹완료" || o.status === "출고완료") && !dispatched.some((d) => d.outboundNo === o.outboundNo))
+    .filter((o) => (o.status === "피킹완료" || o.status === "출고완료") && regionOf(o.shipAddress) === region && !dispatched.some((d) => d.outboundNo === o.outboundNo))
     .map((o, idx) => ({
       outboundId: o.id,
       outboundNo: o.outboundNo,
@@ -337,6 +336,46 @@ function dispatchTargets(region: string) {
       palletCount: 1 + idx,
       recommendedVehicle: idx > 1 ? "2.5톤" : "1톤"
     }));
+}
+
+/** 하루치 도크 스케줄 — 예약 블록(입고 상태·진행률·지연)과 예약 없는 그날 입고 예정 */
+function dockScheduleOf(date: string) {
+  const clock = new Date();
+  const nowMin = clock.getHours() * 60 + clock.getMinutes();
+  const isToday = date === today;
+  const reserved = dockReservations.filter((r) => r.date === date);
+  const reservedNos = new Set(reserved.map((r) => r.inboundNo));
+  const blocksOf = (lane: number) =>
+    reserved
+      .filter((r) => r.lane === lane)
+      .flatMap((r) => {
+        const row = inbounds.find((x) => x.inboundNo === r.inboundNo);
+        if (!row) return [];
+        return [{
+          id: row.id,
+          inboundNo: row.inboundNo,
+          partner: row.supplierName,
+          from: r.from,
+          to: r.to,
+          status: row.status,
+          pct: DOCK_PROGRESS[row.status] ?? 0,
+          // 예약 시간이 지났는데 입고확정 전 — 지난 날짜이거나, 오늘 예약 끝 시각이 지남
+          warn: row.status !== "confirmed" && (date < today || (isToday && r.to <= nowMin))
+        }];
+      })
+      .sort((a, b) => a.from - b.from);
+  return {
+    date,
+    isToday,
+    now: `${String(clock.getHours()).padStart(2, "0")}:${String(clock.getMinutes()).padStart(2, "0")}`,
+    nowMin,
+    startMin: DOCK_START,
+    endMin: DOCK_END,
+    lanes: DOCK_LANES.map((lane, index) => ({ ...lane, blocks: blocksOf(index) })),
+    unassigned: inbounds
+      .filter((row) => row.expectedAt === date && !reservedNos.has(row.inboundNo))
+      .map((row) => ({ id: row.id, inboundNo: row.inboundNo, partner: row.supplierName, type: row.type, warehouseName: row.warehouseName, qty: row.qty, status: row.status }))
+  };
 }
 
 function stockTrace(q: string) {
@@ -456,6 +495,28 @@ const warehouseMock = createWarehouseMock({
   replenishment: () => computeReplenishment()
 });
 
+/* 대시보드 현황 · 작업 알림 — 오늘 작업 건을 위 배열에 시드하고, 숫자는 배열에서 계산한다 (이천 재고가 생긴 뒤에 만든다) */
+const dashboardMock = createDashboardMock({
+  today,
+  items,
+  warehouses,
+  inbounds: () => inbounds,
+  inboundLines,
+  dockReservations: () => dockReservations,
+  outbounds: () => outbounds,
+  outboundLines,
+  stocks: () => stocks,
+  nextStockId: () => ++stockSeq,
+  returns: () => returns,
+  stocktakings: () => stocktakings,
+  interfaces: () => interfaceLogs,
+  dispatched: () => dispatched,
+  replenishment: () => computeReplenishment(),
+  shortage: () => shortageRows,
+  erpRows: () => erpCompareRows(today),
+  slots: () => ((warehouseMock.get("/warehouse/layout", new URLSearchParams("warehouseId=4")) as AnyRecord | undefined)?.slots ?? []) as AnyRecord[]
+});
+
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -474,12 +535,13 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   const warehouseData = warehouseMock.get(clean, url.searchParams);
   if (warehouseData !== undefined) return copy(warehouseData) as T;
 
-  if (clean === "/dashboard/summary") return copy(summary) as T;
-  if (clean === "/dashboard/progress") return copy(progress) as T;
+  const dashboardData = dashboardMock.get(clean);
+  if (dashboardData !== undefined) return copy(dashboardData) as T;
+
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
   if (clean === "/inbounds") return copy(inbounds) as T;
-  if (clean === "/inbounds/dock-schedule") return copy(dockSchedule) as T;
+  if (clean === "/inbounds/dock-schedule") return copy(dockScheduleOf(url.searchParams.get("date") ?? today)) as T;
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds) as T;
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
@@ -506,11 +568,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     const unitPrice = 1500 + ([...s.itemCode].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 20) * 400;
     return { itemCode: s.itemCode, itemName: s.itemName, warehouseName: s.warehouseName, locationCode: s.locationCode, lotNo: s.lotNo, receivedDate: s.receivedDate, agingDays, qty: s.onHand, unitPrice, amount: s.onHand * unitPrice, longTerm: agingDays >= 365 };
   })) as T;
-  if (clean === "/analytics/shortage") return copy([
-    { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", safetyStock: 180, leadTime: 5, available: 60, out30: 540, avgDailyOut: 18, reorderPoint: 270, daysOfStock: 3.3, shortageEta: "2026-06-21", risk: "위험" },
-    { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", safetyStock: 300, leadTime: 7, available: 75, out30: 900, avgDailyOut: 30, reorderPoint: 510, daysOfStock: 2.5, shortageEta: "2026-06-20", risk: "위험" },
-    { itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", safetyStock: 120, leadTime: 4, available: 695, out30: 360, avgDailyOut: 12, reorderPoint: 168, daysOfStock: 57.9, shortageEta: null, risk: "정상" }
-  ]) as T;
+  if (clean === "/analytics/shortage") return copy(shortageRows) as T;
   if (clean === "/analytics/inbound-summary" || clean === "/analytics/outbound-summary") return copy(analyticsRows) as T;
   if (clean === "/snapshots/months") return copy(["2026-06", "2026-05"]) as T;
   if (clean === "/snapshots") return copy(items.slice(0, 4).map((item, idx) => ({ snapshotMonth: url.searchParams.get("month") ?? "2026-06", itemCode: item.itemCode, itemName: item.itemName, warehouseName: warehouses[idx]?.name ?? "창원공장", wmsQty: 120 + idx * 85, erpQty: 118 + idx * 85, diff: idx % 2 === 0 ? 2 : 0, capturedAt: "2026-06-17 10:00" }))) as T;
@@ -520,11 +578,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/order-products") return copy(orderProducts()) as T;
   if (clean === "/manual-orders") return copy(manualOrders) as T;
   if (clean === "/notices") return copy(notices) as T;
-  if (clean === "/interfaces") return copy([
-    { id: "IF-260617-001", type: "출고결과", direction: "SEND", refNo: "DN20260601019", state: "success", retry: 0, message: "ERP 전송 완료", createdAt: "2026-06-17 09:30" },
-    { id: "IF-260617-002", type: "재고차감", direction: "SEND", refNo: "DN20260601021", state: "fail", retry: 1, message: "중계서버 timeout", createdAt: "2026-06-17 09:45" },
-    { id: "IF-260617-003", type: "외주이동", direction: "SEND", refNo: "TR-OEM-001", state: "excluded", retry: 0, message: "외주 재고는 ERP 미연동", createdAt: "2026-06-17 10:10" }
-  ]) as T;
+  if (clean === "/interfaces") return copy(interfaceLogs) as T;
   if (clean.startsWith("/history/")) return copy([
     { id: 1, refType: "OUTBOUND", refNo: "DN20260601019", action: "출고확정", detail: "출고확정 및 ERP 전송", erpSent: true, operator: "outbound", createdAt: "2026-06-17 09:30" },
     { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" },
@@ -551,10 +605,12 @@ function handleMutation(clean: string, body: AnyRecord) {
       // 입고확정 → 검수 수량만큼 격납대기(PUTAWAY_WAIT) 재고 생성 (LOT = LOT-{입고번호})
       // 일반/외주/이동입고(공장간이동) 모두 동일하게 격납대기로 이동
       const recvLines: AnyRecord[] = Array.isArray(body.lines) ? body.lines : [];
+      let confirmedQty = 0;
       (inboundLines[id] ?? []).forEach((ln) => {
         const recv = recvLines.find((x) => x.lineId === ln.id);
         const qty = recv ? Number(recv.receivedQty) : ln.expectedQty;
         if (!qty || qty <= 0) return;
+        confirmedQty += qty;
         const loc = locations.find((l) => l.id === ln.locationId);
         const wh = warehouses.find((w) => w.id === row.warehouseId) || warehouses.find((w) => w.name === loc?.warehouseName);
         stocks.push({
@@ -577,16 +633,34 @@ function handleMutation(clean: string, body: AnyRecord) {
           unit: ln.unit
         });
       });
+      // 대시보드 시간별 처리량 · 금일 입고확정에 반영
+      dashboardMock.record("inbound-confirm", confirmedQty, row.inboundNo);
     }
   } else if (clean.match(/^\/outbounds\/\d+\/pick-start$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) row.status = "피킹중";
   } else if (clean.match(/^\/outbounds\/\d+\/pick-complete$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) row.status = "피킹완료";
+    if (row) {
+      row.status = "피킹완료";
+      // 스킵하지 않은 라인은 다 집었다 — 이번에 새로 집은 수량만 대시보드 처리량에 남긴다
+      const skipped = new Set<number>(Array.isArray(body.skippedLineIds) ? body.skippedLineIds.map(Number) : []);
+      const lines = outboundLines[row.id] ?? [];
+      let pickedNow = lines.length ? 0 : Number(row.qty) || 0;
+      lines.forEach((ln) => {
+        if (skipped.has(ln.id)) return;
+        pickedNow += Math.max(Number(ln.orderQty) - Number(ln.pickedQty), 0);
+        ln.pickedQty = ln.orderQty;
+        ln.scanned = true;
+      });
+      dashboardMock.record("picking", pickedNow, row.outboundNo);
+    }
   } else if (clean.match(/^\/outbounds\/\d+\/confirm$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) row.status = "출고완료";
+    if (row) {
+      row.status = "출고완료";
+      dashboardMock.record("outbound-confirm", Number(row.qty) || 0, row.outboundNo);
+    }
   } else if (clean.match(/^\/outbounds\/\d+\/reject$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) {
@@ -599,7 +673,7 @@ function handleMutation(clean: string, body: AnyRecord) {
   } else if (clean === "/dispatch/assign") {
     const row = outbounds.find((r) => r.id === body.outboundId);
     const carrier = carriers.find((c) => c.id === body.carrierId);
-    if (row) dispatched.unshift({ id: Date.now(), dispatchNo: `DP-${Date.now()}`, outboundNo: row.outboundNo, customerName: row.customerName, shipAddress: row.shipAddress, region: "수도권", carrierName: carrier?.name ?? null, vehicleType: body.vehicleType ?? null, totalWeightKg: 260, totalVolumeM3: 2.1, palletCount: 2, dispatchDate: today });
+    if (row) dispatched.unshift({ id: Date.now(), dispatchNo: `DP-${Date.now()}`, outboundNo: row.outboundNo, customerName: row.customerName, shipAddress: row.shipAddress, region: regionOf(row.shipAddress), carrierName: carrier?.name ?? null, vehicleType: body.vehicleType ?? null, totalWeightKg: 260, totalVolumeM3: 2.1, palletCount: 2, dispatchDate: today });
   } else if (clean === "/notices") {
     notices.unshift({ id: Date.now(), category: body.category, title: body.title, content: body.content, author: "관리자", pinned: Boolean(body.pinned), createdAt: new Date().toISOString() });
   } else if (clean === "/carriers") {
@@ -658,6 +732,7 @@ function handleMutation(clean: string, body: AnyRecord) {
       } else if (moved > 0) {
         src.onHand -= moved;
       }
+      dashboardMock.record("putaway", moved, src.lotNo);
     }
   } else if (clean === "/manual-orders") {
     const seq = String(manualOrders.length + 1).padStart(3, "0");

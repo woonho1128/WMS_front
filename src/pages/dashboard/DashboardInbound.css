@@ -32,6 +32,11 @@
   border-radius: var(--r-sm); color-scheme: inherit;
 }
 .inb-period-dash { color: var(--ink-faint); font-size: 12px; }
+/* 도크 스케줄 — 하루 단위 날짜 이동 */
+.inb-weekday {
+  min-width: 18px; text-align: center;
+  font-size: 12.5px; font-weight: 800; color: var(--ink-muted);
+}
 
 /* ---------- 단계 파이프라인 ---------- */
 .inb-stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
@@ -126,6 +131,12 @@
 .inb-no { font-weight: 700; color: var(--ink-strong); font-size: 12.5px; }
 .inb-sub { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
 .inb-date { font-variant-numeric: tabular-nums; color: var(--ink-muted); }
+.inb-date-link {
+  padding: 2px 4px; margin: -2px -4px; border: none; border-radius: var(--r-xs);
+  background: transparent; color: inherit; font: inherit; cursor: pointer;
+  text-decoration: underline dotted; text-underline-offset: 3px;
+}
+.inb-date-link:hover { background: var(--primary-bg); color: var(--primary-ink); text-decoration-style: solid; }
 
 .inb-pager {
   display: flex; align-items: center; justify-content: space-between;
@@ -281,6 +292,51 @@
 .inb-block.tone-warning { border-left-color: var(--c-warning); background: var(--c-warning-bg); }
 .inb-block.tone-success { border-left-color: var(--c-success); background: var(--c-success-bg); }
 .inb-block.is-warn { border-color: var(--c-danger-line); }
+.inb-block.is-sel { box-shadow: var(--ring); z-index: 2; }
+.inb-block.is-dim { opacity: 0.35; }
+.inb-dot.is-late { background: transparent; border: 1.5px solid var(--c-danger); }
+
+/* 그날 요약 · 빈 날 */
+.inb-dock-sum, .inb-dock-empty {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 14px 0; font-size: 12px; color: var(--ink-muted);
+}
+.inb-dock-sum span {
+  padding: 3px 9px; border-radius: var(--r-pill);
+  background: var(--surface-2); border: 1px solid var(--border-soft);
+}
+.inb-dock-sum b { margin-left: 2px; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.inb-dock-sum .is-warn { background: var(--c-warning-bg); border-color: var(--c-warning-line); color: var(--c-warning-ink); }
+.inb-dock-sum .is-warn b { color: inherit; }
+.inb-dock-sum .is-danger { background: var(--c-danger-bg); border-color: var(--c-danger-line); color: var(--c-danger-ink); }
+.inb-dock-sum .is-danger b { color: inherit; }
+.inb-dock-empty > span { margin-right: 4px; font-weight: 600; }
+
+/* 도크 미배정 */
+.inb-unassigned { margin: 0 14px 14px; border: 1px solid var(--c-warning-line); border-radius: var(--r-md); overflow: hidden; }
+.inb-unassigned-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 9px 12px; background: var(--c-warning-bg); color: var(--c-warning-ink);
+  font-size: 12px;
+}
+.inb-unassigned-head b { font-weight: 800; }
+.inb-unassigned-head span { color: var(--ink-muted); }
+.inb-unassigned ul { list-style: none; margin: 0; padding: 0; }
+.inb-unassigned li + li { border-top: 1px solid var(--border-soft); }
+.inb-unassigned-row {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto 70px auto 14px;
+  align-items: center; gap: 10px; padding: 9px 12px;
+  border: none; background: transparent; color: var(--ink); text-align: left;
+  font-family: inherit; cursor: pointer;
+}
+.inb-unassigned-row:hover { background: var(--surface-2); }
+.inb-unassigned-row.is-sel { background: var(--primary-bg); box-shadow: inset 3px 0 0 var(--primary); }
+.inb-unassigned-row.is-dim { opacity: 0.4; }
+.inb-unassigned-row svg { color: var(--ink-faint); }
+.inb-unassigned-no { display: grid; gap: 2px; min-width: 0; }
+.inb-unassigned-no b { font-size: 12.5px; font-weight: 700; color: var(--ink-strong); }
+.inb-unassigned-no small { font-size: 11px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inb-unassigned-qty { text-align: right; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .inb-block-no { font-size: 11px; font-weight: 800; color: var(--ink-strong); white-space: nowrap; }
 .inb-block-sub { font-size: 10px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inb-block .nx-bar { height: 3px; }

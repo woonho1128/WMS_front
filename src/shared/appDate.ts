@@ -32,3 +32,15 @@ export const shiftDays = (n: number) => {
 
 /** 화면 기준 "이번 달" yyyy-MM */
 export const currentMonth = () => todayStr().slice(0, 7);
+
+/** yyyy-MM-dd 에서 n일 이동한 yyyy-MM-dd */
+export const addDays = (ymd: string, n: number) => {
+  const d = new Date(`${ymd}T00:00:00`);
+  d.setDate(d.getDate() + n);
+  return fmtDate(d);
+};
+
+const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+/** yyyy-MM-dd 의 요일 한 글자 (일~토) */
+export const weekdayKo = (ymd: string) => WEEKDAYS_KO[new Date(`${ymd}T00:00:00`).getDay()] ?? "";
