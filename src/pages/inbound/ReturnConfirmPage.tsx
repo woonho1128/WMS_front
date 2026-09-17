@@ -2,13 +2,39 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { apiGet, apiPost } from "../../services/http";
-import { RETURN_STATUS, type ReturnRow } from "./ReturnSchedulePage";
 import "./ReturnConfirmPage.css";
 
 /* ============================================================
    반품 확정 — OMS 반품오더 승인(격납대기 생성) / 반려(영업담당자 알림)
    기준: DOCS/front 운영화면 재설계 (rt 화면)
+   · 반품 예정(반품오더 조회) 메뉴는 OMS2 소관 — WMS 에서는 이 화면의 처리 대기 목록이 수신 반품오더다
    ============================================================ */
+
+type ReturnRow = {
+  id: number;
+  returnNo: string;
+  omsOrderNo: string | null;
+  customerCode: string | null;
+  customerName: string | null;
+  itemCode: string;
+  itemName: string;
+  unit: string;
+  qty: number;
+  reason: string | null;
+  manager: string | null;
+  warehouseName: string;
+  locationCode: string | null;
+  status: string; // received/approved/rejected
+  rejectReason: string | null;
+  receivedAt: string | null;
+  processedAt: string | null;
+};
+
+const RETURN_STATUS: Record<string, { label: string; tone: "gray" | "success" | "danger" }> = {
+  received: { label: "수신", tone: "gray" },
+  approved: { label: "승인", tone: "success" },
+  rejected: { label: "반려", tone: "danger" }
+};
 
 const REJECT_REASONS = ["반품 기한 초과", "상품 상태 불량(고객 과실)", "반품 대상 아님", "기타"];
 

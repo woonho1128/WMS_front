@@ -17,7 +17,6 @@ const DashboardInbound = lazy(() => import("../dashboard/DashboardInbound").then
 const DashboardOutbound = lazy(() => import("../dashboard/DashboardOutbound").then((m) => ({ default: m.DashboardOutbound })));
 const DashboardTransfer = lazy(() => import("../dashboard/DashboardTransfer").then((m) => ({ default: m.DashboardTransfer })));
 const InboundConfirmPage = lazy(() => import("../inbound/InboundConfirmPage").then((m) => ({ default: m.InboundConfirmPage })));
-const ReturnSchedulePage = lazy(() => import("../inbound/ReturnSchedulePage").then((m) => ({ default: m.ReturnSchedulePage })));
 const ReturnConfirmPage = lazy(() => import("../inbound/ReturnConfirmPage").then((m) => ({ default: m.ReturnConfirmPage })));
 const PickingPage = lazy(() => import("../outbound/PickingPage").then((m) => ({ default: m.PickingPage })));
 const ManualOrderPage = lazy(() => import("../outbound/ManualOrderPage").then((m) => ({ default: m.ManualOrderPage })));
@@ -63,7 +62,6 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
     "work-alerts": <WorkAlertsPage />,
     "inbound-schedule": <DashboardInbound />,
     "inbound-confirm": <InboundConfirmPage />,
-    "return-schedule": <ReturnSchedulePage />,
     "return-confirm": <ReturnConfirmPage />,
     putaway: <PutawayPage />,
     replenishment: <ReplenishmentPage />,

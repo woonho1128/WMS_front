@@ -15,7 +15,7 @@ export type MenuSection = {
 
 export type MenuConfigByRole = Record<string, Array<{ section: string; features?: string[] }>>;
 
-// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 38개 화면)
+// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 40개 화면 — v3 41화면에서 반품 예정 OMS2 이관)
 export const menuSections: MenuSection[] = [
   {
     slug: "dashboard",
@@ -40,8 +40,8 @@ export const menuSections: MenuSection[] = [
     features: [
       { slug: "inbound-schedule", label: "입고 예정", description: "입고예정 조회·등록과 ERP PO 검증, CAPA를 관리합니다." },
       { slug: "inbound-confirm", label: "입고 확정", description: "당일 입고 검수, QR 입고라벨 출력, 입고확정을 처리합니다." },
-      { slug: "return-schedule", label: "반품 예정", description: "OMS 반품오더 자동수신 내역을 조회합니다." },
-      { slug: "return-confirm", label: "반품 확정", description: "반품 승인·반려와 반품재고 생성을 처리합니다." }
+      // 반품 예정(반품오더 조회)은 OMS2 메뉴 — 사이트맵 사용 부서 OMS2 (2026-09-17 WMS 에서 제거)
+      { slug: "return-confirm", label: "반품 확정", description: "OMS2 에서 수신한 반품오더의 승인·반려와 반품재고 생성을 처리합니다." }
     ]
   },
   {

@@ -35,11 +35,6 @@ const configMap: Record<string, FeatureScreenConfig> = {
     columns: ["PO번호", "업체", "품목", "예정수량", "실입고수량", "차이", "상태"],
     actions: ["검수", "QR라벨 출력", "수정요청", "입고확정"]
   },
-  "return-schedule": {
-    filters: ["오더번호", "담당자", "기간"],
-    columns: ["반품오더번호", "거래처", "품목", "수량", "반품사유", "상태"],
-    actions: ["조회", "새로고침"]
-  },
   "return-confirm": {
     filters: ["오더번호", "담당자", "상태"],
     columns: ["반품오더번호", "거래처", "품목", "수량", "반품사유", "상태"],
