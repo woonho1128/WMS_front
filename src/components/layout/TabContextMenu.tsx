@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { closeCount, type CloseKind, type OpenTab } from "../../app/store/tabsStore";
+import { PIN_LIMIT, closeCount, type CloseKind, type OpenTab } from "../../app/store/tabsStore";
 import { Icon } from "../ui/Icon";
+import { usePopupMenu } from "./usePopupMenu";
 
 type Props = {
   /** 우클릭 위치 (viewport 좌표) */
@@ -10,6 +10,7 @@ type Props = {
   tab: OpenTab;
   tabs: OpenTab[];
   onAction: (kind: CloseKind) => void;
+  onTogglePin: () => void;
   onDismiss: () => void;
 };
 
@@ -24,60 +25,11 @@ const ITEMS: Array<Item | "sep"> = [
   { kind: "all", label: "모든 탭 닫기", icon: "closeAll", danger: true }
 ];
 
-const EDGE = 8;
-
-/** 작업 탭 우클릭 메뉴. 바깥 클릭·Esc·스크롤·창 크기 변경 시 닫힌다. */
-export const TabContextMenu = ({ x, y, tab, tabs, onAction, onDismiss }: Props) => {
-  const menuRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ left: x, top: y });
-
-  // 화면 밖으로 넘치지 않게 위치 보정
-  useLayoutEffect(() => {
-    const el = menuRef.current;
-    if (!el) return;
-    const { width, height } = el.getBoundingClientRect();
-    setPos({
-      left: Math.max(EDGE, Math.min(x, window.innerWidth - width - EDGE)),
-      top: Math.max(EDGE, Math.min(y, window.innerHeight - height - EDGE))
-    });
-  }, [x, y]);
-
-  // 열리면 첫 활성 항목에 포커스
-  useEffect(() => {
-    menuRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
-  }, [tab.path]);
-
-  useEffect(() => {
-    const onPointerDown = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) onDismiss();
-    };
-    const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onDismiss();
-    };
-    document.addEventListener("mousedown", onPointerDown, true);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onDismiss);
-    window.addEventListener("blur", onDismiss);
-    window.addEventListener("scroll", onDismiss, true);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown, true);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onDismiss);
-      window.removeEventListener("blur", onDismiss);
-      window.removeEventListener("scroll", onDismiss, true);
-    };
-  }, [onDismiss]);
-
-  // ↑↓ 로 항목 이동 (비활성 항목은 건너뛴다)
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Tab") return;
-    event.preventDefault();
-    const buttons = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? []);
-    if (!buttons.length) return;
-    const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    const step = event.key === "ArrowUp" || (event.key === "Tab" && event.shiftKey) ? -1 : 1;
-    buttons[(current + step + buttons.length) % buttons.length].focus();
-  };
+/** 작업 탭 우클릭 메뉴 — 고정/해제 + 닫기 5종. 고정 탭은 어떤 닫기에도 포함되지 않는다 */
+export const TabContextMenu = ({ x, y, tab, tabs, onAction, onTogglePin, onDismiss }: Props) => {
+  const { menuRef, pos, handleKeyDown } = usePopupMenu({ x, y, onDismiss, focusKey: tab.path });
+  const pinnedCount = tabs.filter((item) => item.pinned).length;
+  const pinFull = !tab.pinned && pinnedCount >= PIN_LIMIT;
 
   return createPortal(
     <div
@@ -91,7 +43,16 @@ export const TabContextMenu = ({ x, y, tab, tabs, onAction, onDismiss }: Props) 
     >
       <div className="wms-ctxmenu-head" title={tab.label}>
         {tab.label}
+        {tab.pinned ? <small>고정된 탭 — 고정을 풀어야 닫을 수 있습니다</small> : null}
       </div>
+      <button type="button" role="menuitem" className="wms-ctxmenu-item" disabled={pinFull} onClick={onTogglePin}>
+        <Icon name={tab.pinned ? "pinOff" : "pinTab"} size={15} />
+        <span>{tab.pinned ? "고정 해제" : pinFull ? `탭 고정 — 최대 ${PIN_LIMIT}개` : "탭 고정"}</span>
+        <span className="wms-ctxmenu-count">
+          {pinnedCount}/{PIN_LIMIT}
+        </span>
+      </button>
+      <div className="wms-ctxmenu-sep" role="separator" />
       {ITEMS.map((item, idx) => {
         if (item === "sep") return <div key={`sep-${idx}`} className="wms-ctxmenu-sep" role="separator" />;
         const count = closeCount(tabs, item.kind, tab.path);

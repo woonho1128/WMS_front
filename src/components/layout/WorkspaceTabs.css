@@ -1,9 +1,11 @@
 /* ============================================================
    전역 작업 탭 (본문 상단, 헤더 아래)
    좌측 메뉴에서 연 화면을 탭으로 유지/전환/닫기 한다.
+   최대 10개 · 가로 스크롤 없음 — 모자라면 탭 폭을 줄이고, 최소 폭으로도 넘치면 "+N" 목록
    ============================================================ */
 
 .wms-tabs {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 10px;
@@ -12,17 +14,38 @@
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
+/* gap 은 WorkspaceTabs.tsx 의 TAB_GAP 과 같게 */
 .wms-tabs-scroll {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
 }
-.wms-tabs-scroll::-webkit-scrollbar { height: 5px; }
-.wms-tabs-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--r-sm); border: none; }
+
+/* 넘친 탭 목록 버튼 — 폭은 WorkspaceTabs.tsx 의 MORE_WIDTH */
+.wms-tabs-more {
+  flex: 0 0 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 28px;
+  margin-bottom: 3px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.wms-tabs-more:hover,
+.wms-tabs-more.is-open { border-color: var(--primary-line); background: var(--primary-bg); color: var(--primary-ink); }
 
 /* ---------- 우측: 탭 수 + 전체 닫기 ---------- */
 .wms-tabs-actions {
@@ -45,6 +68,7 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+.wms-tabs-count.is-full { background: var(--c-warning-bg); color: var(--c-warning-ink); cursor: help; }
 .wms-tabs-closeall {
   display: inline-flex;
   align-items: center;
@@ -69,8 +93,11 @@
 }
 .wms-tabs-closeall:disabled { opacity: 0.45; cursor: default; }
 
+/* min-width 는 WorkspaceTabs.tsx 의 MIN_TAB 과 같게 — 공간이 모자라면 여기까지 줄어든다 */
 .wms-tab {
   position: relative;
+  flex: 0 1 auto;
+  min-width: 84px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -119,11 +146,32 @@
 }
 
 .wms-tab-label {
+  flex: 1 1 auto;
+  min-width: 0;
   line-height: 1;
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 고정 탭 — 압정 아이콘, 닫기 버튼 없음 */
+.wms-tab.is-pinned { padding-right: 12px; }
+.wms-tab-pin { flex: 0 0 auto; color: var(--primary-ink); }
+
+/* 촘촘 모드(탭이 좁아졌을 때) — 안 보는 탭의 닫기 버튼은 마우스를 올릴 때 이름 위에 겹쳐 띄운다 */
+.wms-tabs.is-compact .wms-tab { padding: 0 10px; }
+.wms-tabs.is-compact .wms-tab.active:not(.is-pinned) { padding-right: 6px; }
+.wms-tabs.is-compact .wms-tab:not(.active) .wms-tab-close {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  opacity: 0;
+  background: var(--surface-2);
+}
+.wms-tabs.is-compact .wms-tab:not(.active):hover .wms-tab-close,
+.wms-tabs.is-compact .wms-tab:not(.active) .wms-tab-close:focus-visible { opacity: 1; }
+.wms-tabs.is-compact .wms-tab:not(.active) .wms-tab-close:hover { background: var(--c-danger-bg); }
 
 .wms-tab-close {
   display: grid;
@@ -144,6 +192,58 @@
 
 /* 우클릭 메뉴가 열린 탭 */
 .wms-tab.is-menu:not(.active) { background: var(--surface-2); color: var(--ink); border-color: var(--border); }
+
+/* ---------- 한도를 넘어 자동으로 닫힌 탭 알림 ---------- */
+.wms-tabs-notice {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 12px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(560px, calc(100% - 24px));
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  background-image: var(--sheen);
+  box-shadow: var(--sh-pop);
+  animation: wms-ctx-in 0.16s var(--ease-out);
+}
+.wms-tabs-notice-text { display: grid; gap: 2px; min-width: 0; font-size: 12.5px; color: var(--ink); }
+.wms-tabs-notice-text b { font-weight: 800; color: var(--ink-strong); }
+.wms-tabs-notice-text small { font-size: 11px; color: var(--ink-faint); }
+.wms-tabs-notice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--primary-line);
+  border-radius: var(--r-sm);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.wms-tabs-notice-btn:hover { border-color: var(--primary); }
+.wms-tabs-notice-x {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.wms-tabs-notice-x:hover { background: var(--surface-3); color: var(--ink); }
 
 /* ============================================================
    탭 우클릭 메뉴 (body 포털)
@@ -220,6 +320,27 @@
   font-variant-numeric: tabular-nums;
 }
 .wms-ctxmenu-sep { height: 1px; margin: 5px 4px; background: var(--border); }
+.wms-ctxmenu-head small { display: block; margin-top: 3px; font-size: 10.5px; font-weight: 600; color: var(--c-warning-ink); white-space: normal; }
+
+/* 넘친 탭 목록 */
+.wms-tabs-overflow { min-width: 240px; max-width: 320px; }
+.wms-tabs-overflow-row { display: flex; align-items: center; gap: 2px; }
+.wms-tabs-overflow-row .wms-ctxmenu-item { flex: 1; min-width: 0; }
+.wms-tabs-overflow-row .wms-ctxmenu-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wms-ctxmenu-item.is-active { background: var(--primary-bg); color: var(--primary-ink); }
+.wms-tabs-overflow-x {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.wms-tabs-overflow-x:hover { background: var(--c-danger-bg); color: var(--c-danger-ink); }
 
 @media (max-width: 640px) {
   .wms-tabs { padding: 6px 10px 0; }

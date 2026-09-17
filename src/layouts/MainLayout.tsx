@@ -52,6 +52,7 @@ export const MainLayout = () => {
     const sourceFeature = featureSlug
       ? source.features.find((item) => item.slug === featureSlug)
       : undefined;
+    if (featureSlug && !sourceFeature) return; // 메뉴에 없는 화면(제거된 메뉴·잘못 친 주소)은 탭을 만들지 않는다
     openTab({ path: location.pathname, label: sourceFeature?.label ?? source.label });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
