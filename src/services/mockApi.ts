@@ -31,7 +31,8 @@ const warehouses = [
   { id: 1, code: "CW", name: "창원공장", type: "일반" },
   { id: 2, code: "JC", name: "제천공장", type: "일반" },
   { id: 3, code: "AS", name: "안산공장", type: "일반" },
-  { id: 4, code: "YI", name: "용인물류센터", type: "일반" },
+  // 구 용인물류센터 — 이천으로 이전 (코드도 이천 기준: 창고 IC · 로케이션 PI-)
+  { id: 4, code: "IC", name: "이천물류센터", type: "일반" },
   { id: 5, code: "OEM", name: "외주공장", type: "외주" }
 ];
 
@@ -40,7 +41,7 @@ const zones = [
   { id: 12, code: "C-B", name: "창원 B존", warehouseName: "창원공장" },
   { id: 21, code: "J-A", name: "제천 A존", warehouseName: "제천공장" },
   { id: 31, code: "A-A", name: "안산 A존", warehouseName: "안산공장" },
-  // 용인물류센터 구역(41~52)은 레이아웃과 함께 mockWarehouse.ts 에서 만든다
+  // 이천물류센터 구역(41~52)은 레이아웃과 함께 mockWarehouse.ts 에서 만든다
   { id: 51, code: "O-X", name: "외주 X존", warehouseName: "외주공장" }
 ] as Array<Record<string, any>>;
 
@@ -54,7 +55,7 @@ let locations = [
   { id: 203, code: "PJ-A-02", locationType: "PICKING", status: "가용", maxQty: 500, active: true, zoneId: 21, zoneName: "제천 A존", warehouseName: "제천공장", stockCount: 0 },
   { id: 204, code: "XD-J-01", locationType: "CROSS_DOCK", status: "가용", maxQty: 300, active: true, zoneId: 21, zoneName: "제천 A존", warehouseName: "제천공장", stockCount: 0 },
   { id: 301, code: "PA-A-01", locationType: "PICKING", status: "가용", maxQty: 450, active: true, zoneId: 31, zoneName: "안산 A존", warehouseName: "안산공장", stockCount: 1 },
-  { id: 401, code: "PY-A-01", locationType: "PICKING", status: "가용", maxQty: 650, active: true, zoneId: 41, zoneName: "용인 A존", warehouseName: "용인물류센터", stockCount: 1 },
+  { id: 401, code: "PI-A-01", locationType: "PICKING", status: "가용", maxQty: 650, active: true, zoneId: 41, zoneName: "이천 A존", warehouseName: "이천물류센터", stockCount: 1 },
   { id: 501, code: "OT-X-01", locationType: "PICKING", status: "가용", maxQty: 400, active: true, zoneId: 51, zoneName: "외주 X존", warehouseName: "외주공장", stockCount: 1 },
   { id: 900, code: "QC-WAIT", locationType: "RESERVE", status: "가용", maxQty: 1000, active: true, zoneId: 11, zoneName: "창원 A존", warehouseName: "창원공장", stockCount: 2 }
 ];
@@ -71,7 +72,7 @@ const items = [
 let stocks = [
   { stockId: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", zoneName: "창원 A존", locationCode: "PC-A-01", locationType: "PICKING", lotNo: "LOT260407-0006", stockStatus: "AVAILABLE", receivedDate: "2026-04-07", onHand: 260, allocated: 45, available: 215, safetyStock: 120, unit: "EA" },
   { stockId: 2, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", zoneName: "창원 B존", locationCode: "PC-B-01", locationType: "RESERVE", lotNo: "LOT260418-0005", stockStatus: "AVAILABLE", receivedDate: "2026-04-18", onHand: 480, allocated: 0, available: 480, safetyStock: 120, unit: "EA" },
-  { stockId: 3, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", warehouseId: 4, warehouseName: "용인물류센터", warehouseType: "일반", zoneName: "용인 A존", locationCode: "PY-A-01", locationType: "PICKING", lotNo: "LOT260515-0008", stockStatus: "AVAILABLE", receivedDate: "2026-05-15", onHand: 95, allocated: 35, available: 60, safetyStock: 180, unit: "EA" },
+  { stockId: 3, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", warehouseId: 4, warehouseName: "이천물류센터", warehouseType: "일반", zoneName: "이천 A존", locationCode: "PI-A-01", locationType: "PICKING", lotNo: "LOT260515-0008", stockStatus: "AVAILABLE", receivedDate: "2026-05-15", onHand: 95, allocated: 35, available: 60, safetyStock: 180, unit: "EA" },
   { stockId: 4, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", zoneName: "제천 A존", locationCode: "PJ-A-01", locationType: "PICKING", lotNo: "LOT-IN-20260606-003", stockStatus: "PUTAWAY_WAIT", receivedDate: "2026-06-06", onHand: 295, allocated: 0, available: 0, safetyStock: 80, unit: "EA" },
   { stockId: 5, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", warehouseId: 5, warehouseName: "외주공장", warehouseType: "외주", zoneName: "외주 X존", locationCode: "OT-X-01", locationType: "PICKING", lotNo: "LOT-OEM-0605", stockStatus: "AVAILABLE", receivedDate: "2026-06-05", onHand: 160, allocated: 12, available: 148, safetyStock: 40, unit: "SET" },
   { stockId: 6, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", zoneName: "창원 B존", locationCode: "PC-B-01", locationType: "RESERVE", lotNo: "LOT260405-0013", stockStatus: "AVAILABLE", receivedDate: "2026-04-05", onHand: 1200, allocated: 0, available: 1200, safetyStock: 300, unit: "EA" },
@@ -154,7 +155,7 @@ let outbounds = [
 ];
 
 const outboundLines: Record<number, AnyRecord[]> = {
-  46: [{ id: 1, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", consign: false, orderQty: 5, pickedQty: 0, availableQty: 60, lotNo: "LOT260515-0008", locationCode: "PY-A-01", scanned: false }],
+  46: [{ id: 1, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", consign: false, orderQty: 5, pickedQty: 0, availableQty: 60, lotNo: "LOT260515-0008", locationCode: "PI-A-01", scanned: false }],
   62: [{ id: 2, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", consign: false, orderQty: 32, pickedQty: 32, availableQty: 215, lotNo: "LOT260407-0006", locationCode: "PC-A-01", scanned: true }],
   70: [
     { id: 3, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", consign: false, orderQty: 84, pickedQty: 36, availableQty: 75, lotNo: "LOT260520-0014", locationCode: "PC-A-02", scanned: true },
@@ -179,14 +180,14 @@ let notices = [
 ];
 
 let returns = [
-  { id: 1, returnNo: "RT-260617-001", omsOrderNo: "OMS-RT-26061701", customerCode: "219475", customerName: "대림 스마트몰", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", qty: 3, reason: "초기불량", manager: "이지은", warehouseName: "용인물류센터", locationCode: "PY-A-01", status: "received", rejectReason: null, receivedAt: today + " 09:20", processedAt: null },
+  { id: 1, returnNo: "RT-260617-001", omsOrderNo: "OMS-RT-26061701", customerCode: "219475", customerName: "대림 스마트몰", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", qty: 3, reason: "초기불량", manager: "이지은", warehouseName: "이천물류센터", locationCode: "PI-A-01", status: "received", rejectReason: null, receivedAt: today + " 09:20", processedAt: null },
   { id: 2, returnNo: "RT-260616-002", omsOrderNo: "OMS-RT-26061602", customerCode: "127419", customerName: "(주)코스트코리아", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", qty: 2, reason: "단순변심", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "rejected", rejectReason: "반품 기한 초과", receivedAt: "2026-06-16 14:10", processedAt: "2026-06-17 10:00" },
   { id: 3, returnNo: "RT-260615-003", omsOrderNo: "OMS-RT-26061503", customerCode: "771205", customerName: "이마트 트레이더스", itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", qty: 10, reason: "오배송", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "approved", rejectReason: null, receivedAt: "2026-06-15 11:05", processedAt: "2026-06-16 09:30" }
 ];
 
 let stocktakings: AnyRecord[] = [
   { id: 1, countDate: today, warehouseName: "창원공장", locationCode: "PC-A-01", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", lotNo: "LOT260407-0006", systemQty: 260, countedQty: 258, diff: -2, status: "COUNTED", memo: null, createdBy: "admin", adjustedAt: null },
-  { id: 2, countDate: today, warehouseName: "용인물류센터", locationCode: "PY-A-01", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", lotNo: "LOT260515-0008", systemQty: 95, countedQty: 95, diff: 0, status: "COUNTED", memo: null, createdBy: "admin", adjustedAt: null }
+  { id: 2, countDate: today, warehouseName: "이천물류센터", locationCode: "PI-A-01", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", lotNo: "LOT260515-0008", systemQty: 95, countedQty: 95, diff: 0, status: "COUNTED", memo: null, createdBy: "admin", adjustedAt: null }
 ];
 
 let policies = [
@@ -404,7 +405,7 @@ function computeReplenishment() {
 }
 
 // B-2: ERP/WMS 시점 재고 비교 — 일별(과거 날짜 지정), 상품·로케이션·수량별 차이. 시드 불일치 3건.
-const erpDiffSeed: Record<string, number> = { "SKU-10241|PC-A-01": 2, "SKU-10822|PY-A-01": -3, "SKU-30001|PC-A-02": 5 };
+const erpDiffSeed: Record<string, number> = { "SKU-10241|PC-A-01": 2, "SKU-10822|PI-A-01": -3, "SKU-30001|PC-A-02": 5 };
 function erpCompareRows(date: string) {
   return stocks
     .filter((s) => s.stockStatus === "AVAILABLE")

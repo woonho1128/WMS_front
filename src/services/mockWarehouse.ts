@@ -75,7 +75,7 @@ const round2 = (value: number) => Math.round(value * 100) / 100;
 const byCode = (a: string, b: string) => a.localeCompare(b, "ko", { numeric: true });
 
 /* ============================================================
-   용인물류센터 시드 — 기존 3D 모습(구역 위치·랙 수·적치율)을 그대로 재현
+   이천물류센터(구 용인물류센터) 시드 — 기존 3D 모습(구역 위치·랙 수·적치율)을 그대로 재현
    ============================================================ */
 
 const EXTRA_ITEMS = [
@@ -127,7 +127,7 @@ type ZoneSeed = {
   longTerm?: boolean;
 };
 
-const YONGIN_ZONES: ZoneSeed[] = [
+const ICHEON_ZONES: ZoneSeed[] = [
   { letter: "A", floor: "1F", purpose: "PICKING", x: -17, z: -9, bays: 4, rows: 2, levels: 4, fill: 0.85, manager: "김현우 대리", recentIn: "09:20", recentOut: "14:10" },
   { letter: "B", floor: "1F", purpose: "PICKING", x: 0, z: -9, bays: 4, rows: 2, levels: 4, fill: 0.62, manager: "이상민 주임", recentIn: "08:45", recentOut: "13:30" },
   { letter: "C", floor: "1F", purpose: "RESERVE", x: 17, z: -9, bays: 4, rows: 2, levels: 5, fill: 0.73, manager: "박정호 과장", recentIn: "10:15", recentOut: "14:25" },
@@ -143,27 +143,27 @@ const YONGIN_ZONES: ZoneSeed[] = [
 ];
 
 export function createWarehouseMock(ctx: WarehouseMockCtx) {
-  const YONGIN_ID = 4;
+  const ICHEON_ID = 4;
 
   const floors: AnyRecord[] = [
-    { warehouseId: YONGIN_ID, code: "1F", width: 66, depth: 46, bgImageUrl: null, bgScale: null },
-    { warehouseId: YONGIN_ID, code: "2F", width: 66, depth: 46, bgImageUrl: null, bgScale: null },
-    { warehouseId: YONGIN_ID, code: "3F", width: 66, depth: 46, bgImageUrl: null, bgScale: null }
+    { warehouseId: ICHEON_ID, code: "1F", width: 66, depth: 46, bgImageUrl: null, bgScale: null },
+    { warehouseId: ICHEON_ID, code: "2F", width: 66, depth: 46, bgImageUrl: null, bgScale: null },
+    { warehouseId: ICHEON_ID, code: "3F", width: 66, depth: 46, bgImageUrl: null, bgScale: null }
   ];
 
   const racks: AnyRecord[] = [];
 
   const objects: AnyRecord[] = [
-    { id: 1, warehouseId: YONGIN_ID, floor: "1F", kind: "DOCK_IN", x: -22, z: 18, width: 7, depth: 3, rotation: 0, label: "입고 1" },
-    { id: 2, warehouseId: YONGIN_ID, floor: "1F", kind: "DOCK_IN", x: -12, z: 18, width: 7, depth: 3, rotation: 0, label: "입고 2" },
-    { id: 3, warehouseId: YONGIN_ID, floor: "1F", kind: "DOCK_OUT", x: 12, z: 18, width: 7, depth: 3, rotation: 0, label: "출고 1" },
-    { id: 4, warehouseId: YONGIN_ID, floor: "1F", kind: "DOCK_OUT", x: 22, z: 18, width: 7, depth: 3, rotation: 0, label: "출고 2" }
+    { id: 1, warehouseId: ICHEON_ID, floor: "1F", kind: "DOCK_IN", x: -22, z: 18, width: 7, depth: 3, rotation: 0, label: "입고 1" },
+    { id: 2, warehouseId: ICHEON_ID, floor: "1F", kind: "DOCK_IN", x: -12, z: 18, width: 7, depth: 3, rotation: 0, label: "입고 2" },
+    { id: 3, warehouseId: ICHEON_ID, floor: "1F", kind: "DOCK_OUT", x: 12, z: 18, width: 7, depth: 3, rotation: 0, label: "출고 1" },
+    { id: 4, warehouseId: ICHEON_ID, floor: "1F", kind: "DOCK_OUT", x: 22, z: 18, width: 7, depth: 3, rotation: 0, label: "출고 2" }
   ];
 
   const vehicles: AnyRecord[] = [
-    { id: "FL-01", warehouseId: YONGIN_ID, kind: "FORKLIFT", floor: "1F", path: [[-8.5, -18], [-8.5, 14], [8.5, 14], [8.5, -18]], speed: 3.4 },
-    { id: "AGV-07", warehouseId: YONGIN_ID, kind: "AGV", floor: "1F", path: [[25, 14], [25, -17], [-25, -17], [-25, 14]], speed: 4.6 },
-    { id: "FL-02", warehouseId: YONGIN_ID, kind: "FORKLIFT", floor: "2F", path: [[0, -17], [0, 14], [20, 14], [20, -17]], speed: 3.0 }
+    { id: "FL-01", warehouseId: ICHEON_ID, kind: "FORKLIFT", floor: "1F", path: [[-8.5, -18], [-8.5, 14], [8.5, 14], [8.5, -18]], speed: 3.4 },
+    { id: "AGV-07", warehouseId: ICHEON_ID, kind: "AGV", floor: "1F", path: [[25, 14], [25, -17], [-25, -17], [-25, 14]], speed: 4.6 },
+    { id: "FL-02", warehouseId: ICHEON_ID, kind: "FORKLIFT", floor: "2F", path: [[0, -17], [0, 14], [20, 14], [20, -17]], speed: 3.0 }
   ];
 
   const transferLog: AnyRecord[] = [
@@ -203,7 +203,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       ctx.items.push({ id: 100 + idx, consign: false, active: true, ...item });
     });
 
-    const warehouse = warehouseOf(YONGIN_ID)!;
+    const warehouse = warehouseOf(ICHEON_ID)!;
     // 기존 구역 ID(11~51)와 겹치지 않게 400번대를 쓴다
     let zoneId = 401;
     let rackId = 4101;
@@ -211,14 +211,14 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
     let lotSeq = 1;
     const looseTargets = new Set(["A:3", "F:5"]);
 
-    YONGIN_ZONES.forEach((spec) => {
+    ICHEON_ZONES.forEach((spec) => {
       const width = round2(spec.bays * BAY_W + (spec.bays - 1) * BAY_GAP + PAD * 2);
       const depth = round2(spec.rows * ROW_D + (spec.rows - 1) * AISLE + PAD * 2);
       const zone = {
         id: zoneId++,
         code: `Y-${spec.letter}`,
         name: `${spec.letter} 구역`,
-        warehouseId: YONGIN_ID,
+        warehouseId: ICHEON_ID,
         warehouseName: warehouse.name,
         floor: spec.floor,
         purpose: spec.purpose,
@@ -239,7 +239,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       const zoneRacks = Array.from({ length: spec.rows }, (_, row) => {
         const rack = {
           id: rackId++,
-          warehouseId: YONGIN_ID,
+          warehouseId: ICHEON_ID,
           zoneId: zone.id,
           code: `${spec.letter}-R${pad(row + 1)}`,
           x: spec.x,
@@ -343,7 +343,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
           stockId: ctx.nextStockId(),
           itemCode,
           itemName: item.itemName,
-          warehouseId: YONGIN_ID,
+          warehouseId: ICHEON_ID,
           warehouseName: warehouse.name,
           warehouseType: warehouse.type,
           zoneName: zone.name,
@@ -361,7 +361,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       });
     });
 
-    // 기존 로케이션 PY-A-01 은 좌표 없이 쓰던 데이터 — 미배치로 남겨 "미배치 트레이" 흐름을 보여준다
+    // 기존 로케이션 PI-A-01 은 좌표 없이 쓰던 데이터 — 미배치로 남겨 "미배치 트레이" 흐름을 보여준다
     ctx.locations().forEach((loc) => {
       loc.rackId ??= null;
       loc.bay ??= null;
@@ -374,10 +374,10 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       }
     });
     ctx.stocks().forEach((stock) => {
-      if (stock.locationCode === "PY-A-01") stock.zoneName = "A 구역";
+      if (stock.locationCode === "PI-A-01") stock.zoneName = "A 구역";
     });
 
-    // 용인 피킹 재고를 쓰는 주문 라인 — 3D 우클릭의 "피킹 대기 주문" 연결을 보여주기 위해
+    // 이천 피킹 재고를 쓰는 주문 라인 — 3D 우클릭의 "피킹 대기 주문" 연결을 보여주기 위해
     const attachLine = (outboundId: number, locationCode: string, lineId: number) => {
       const order = ctx.outbounds().find((row) => row.id === outboundId);
       const stock = ctx.stocks().find((row) => row.locationCode === locationCode && row.stockStatus === "AVAILABLE" && row.available > 0);
@@ -966,7 +966,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
   /* ---------------- 배치 초안 · 게시 ---------------- */
 
   const versions = new Map<number, { version: number; publishedAt: string | null; publishedBy: string | null }>([
-    [YONGIN_ID, { version: 1, publishedAt: "2026-06-10 09:00", publishedBy: "admin" }]
+    [ICHEON_ID, { version: 1, publishedAt: "2026-06-10 09:00", publishedBy: "admin" }]
   ]);
   const drafts = new Map<number, { draft: LayoutDraft; savedAt: string; savedBy: string }>();
 
@@ -1216,10 +1216,10 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
 
   /** GET — 처리하지 않는 경로면 undefined */
   const get = (clean: string, params: URLSearchParams): unknown => {
-    if (clean === "/warehouse/layout") return computeLayout(Number(params.get("warehouseId") ?? YONGIN_ID));
+    if (clean === "/warehouse/layout") return computeLayout(Number(params.get("warehouseId") ?? ICHEON_ID));
     if (clean === "/warehouse/layout-summary") return layoutSummary();
-    if (clean === "/warehouse/layout/draft") return getDraft(Number(params.get("warehouseId") ?? YONGIN_ID));
-    if (clean === "/warehouse/search") return searchMap(Number(params.get("warehouseId") ?? YONGIN_ID), params.get("q") ?? "");
+    if (clean === "/warehouse/layout/draft") return getDraft(Number(params.get("warehouseId") ?? ICHEON_ID));
+    if (clean === "/warehouse/search") return searchMap(Number(params.get("warehouseId") ?? ICHEON_ID), params.get("q") ?? "");
     if (clean === "/locations") {
       const warehouseId = params.get("warehouseId");
       return ctx
