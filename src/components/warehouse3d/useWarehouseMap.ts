@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiGet } from "../../services/http";
-import type {
-  ColorMode,
-  FocusRequest,
-  LayoutSummaryRow,
-  MapSelection,
-  SlotDetail,
-  WarehouseLayout
+import {
+  zoneHoldsRacks,
+  type ColorMode,
+  type FocusRequest,
+  type LayoutSummaryRow,
+  type MapSelection,
+  type SlotDetail,
+  type WarehouseLayout
 } from "./types";
 
 /* ============================================================
@@ -115,7 +116,10 @@ export const useWarehouseMap = (options: Options = {}) => {
           layout.unplaced.some((loc) => loc.locationId === prev.locationId);
         return exists ? prev : { zoneId: prev.zoneId, locationId: null };
       }
-      const first = autoSelectZone ? layout.zones.find((zone) => zone.floor === floor) : undefined;
+      // 처음 고르는 구역은 보관 구역부터 — 사무실 · 입고장이 먼저 잡히지 않게
+      const first = autoSelectZone
+        ? layout.zones.find((zone) => zone.floor === floor && zoneHoldsRacks(zone)) ?? layout.zones.find((zone) => zone.floor === floor)
+        : undefined;
       const next = { zoneId: first?.id ?? null, locationId: null };
       return prev.zoneId === next.zoneId && prev.locationId === null ? prev : next;
     });

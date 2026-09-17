@@ -7,17 +7,22 @@
    적치율은 저장값이 아니라 재고에서 계산한 값이다.
    ============================================================ */
 
-export type ZonePurpose = "PICKING" | "RESERVE" | "CROSS_DOCK" | "RETURN";
+/** 장소 유형 — 랙을 두는 보관 구역 4종 + 작업장(입고장 · 출고장) + 지원 공간(사무실 · 기타) */
+export type ZonePurpose = "PICKING" | "RESERVE" | "CROSS_DOCK" | "RETURN" | "INBOUND" | "OUTBOUND" | "OFFICE" | "ETC";
 export type StorageKind = "RACK" | "FLOOR";
 export type LocationType = "PICKING" | "RESERVE" | "CROSS_DOCK" | "DEFECT" | "DAMAGED";
+/** 자유형 장소의 꼭짓점 [x, z] — 구역 로컬 좌표(중심 원점, 회전 전), m. null 이면 가로 × 세로 사각형 */
+export type ZoneShape = Array<[number, number]>;
 /** 시설물(도크·기둥·벽·통로)은 90° 단위로만 돌린다. 구역·랙은 임의 각도(°) */
 export type RackRotation = 0 | 90 | 180 | 270;
 
 export type LayoutFloor = {
   code: string;
-  /** 층 외곽 치수(m) — 층 중앙이 원점 */
+  /** 층 외곽 치수(m) — 층 중앙이 원점. 자유형이면 원점 기준 대칭으로 모든 꼭짓점을 담는 크기 */
   width: number;
   depth: number;
+  /** 건물(층) 모양 — 층 좌표 꼭짓점 [[x, z], …]. 없거나 null 이면 가로 × 세로 사각형 */
+  shape?: ZoneShape | null;
   /** 도면 배경 — 도면 수령 후 채운다 */
   bgImageUrl: string | null;
   bgScale: number | null;
@@ -31,12 +36,15 @@ export type LayoutZone = {
   purpose: ZonePurpose;
   purposeName: string;
   storage: StorageKind;
+  /** 외곽(자유형이면 꼭짓점을 감싼 사각형)의 중심 */
   x: number;
   z: number;
   width: number;
   depth: number;
   /** 중심 기준 회전(°) — 위에서 봐서 시계 방향. 안의 랙 좌표·방향에는 이미 반영되어 있다 */
   rotation: number;
+  /** 자유형 외곽 — null 이면 가로 × 세로 사각형 */
+  shape: ZoneShape | null;
   manager: string;
   temp: string;
   recentIn: string;
@@ -286,6 +294,38 @@ export const bucketOf = (util: number): UtilBucket => {
   if (util < 85) return UTIL_BUCKETS[2];
   return UTIL_BUCKETS[3];
 };
+
+/* ---------- 장소 유형 — 편집기 · 3D · 목록이 같이 쓴다 ---------- */
+
+export type ZonePurposeMeta = {
+  value: ZonePurpose;
+  label: string;
+  group: "보관 구역" | "작업장" | "지원 공간";
+  /** 랙(과 랙 칸 로케이션)을 둘 수 있는가 — 입고장·출고장·사무실은 바닥 공간 */
+  racks: boolean;
+  /** 이 구역 랙 칸에 로케이션을 만들 때 기본 유형 */
+  locationType: LocationType | null;
+  color: number;
+  token: string;
+  hint: string;
+};
+
+export const ZONE_PURPOSES: ZonePurposeMeta[] = [
+  { value: "PICKING", label: "피킹 구역", group: "보관 구역", racks: true, locationType: "PICKING", color: 0x2f6bff, token: "var(--primary)", hint: "피킹 랙 — 오더 피킹" },
+  { value: "RESERVE", label: "보관 구역", group: "보관 구역", racks: true, locationType: "RESERVE", color: 0x8b5cf6, token: "var(--c-violet)", hint: "보관 랙 — 보충 출발지" },
+  { value: "CROSS_DOCK", label: "직출 구역", group: "보관 구역", racks: true, locationType: "CROSS_DOCK", color: 0x14b8a6, token: "var(--c-teal)", hint: "입고 후 바로 출고" },
+  { value: "RETURN", label: "반품·불량", group: "보관 구역", racks: true, locationType: "DEFECT", color: 0xef4444, token: "var(--c-danger)", hint: "반품 · 불량 · 파손 보관" },
+  { value: "INBOUND", label: "입고장", group: "작업장", racks: false, locationType: null, color: 0x22d3ee, token: "var(--accent)", hint: "하차 · 검수 · 입고 대기" },
+  { value: "OUTBOUND", label: "출고장", group: "작업장", racks: false, locationType: null, color: 0xf59e0b, token: "var(--c-warning)", hint: "출고 대기 · 상차" },
+  { value: "OFFICE", label: "사무실", group: "지원 공간", racks: false, locationType: null, color: 0x94a3b8, token: "var(--ink-muted)", hint: "사무 · 회의 공간" },
+  { value: "ETC", label: "기타 공간", group: "지원 공간", racks: false, locationType: null, color: 0x64748b, token: "var(--ink-faint)", hint: "휴게실 · 충전장 · 설비 등" }
+];
+
+export const purposeMeta = (purpose: ZonePurpose | string | null | undefined): ZonePurposeMeta =>
+  ZONE_PURPOSES.find((item) => item.value === purpose) ?? ZONE_PURPOSES[1];
+
+/** 랙 · 적치율이 의미 있는 구역인가 (보관 구역 4종) */
+export const zoneHoldsRacks = (zone: { purpose: ZonePurpose | string }) => purposeMeta(zone.purpose).racks;
 
 export const LOCATION_TYPE_LABEL: Record<LocationType, string> = {
   PICKING: "피킹",

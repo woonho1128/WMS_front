@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "../../../components/ui/Icon";
-import { PALLET_SPECS, normalizeDeg, rackFootprint, stepRotation } from "../../../components/warehouse3d/geometry";
+import { PALLET_SPECS, floorPoints, normalizeDeg, polygonArea, polygonBounds, rackFootprint, stepRotation, zoneWorldPoints } from "../../../components/warehouse3d/geometry";
 import type { DraftRack, LayoutDraft, RuleIssue } from "../../../components/warehouse3d/layoutRules";
-import { LOCATION_TYPE_LABEL, type LocationType, type RackRotation } from "../../../components/warehouse3d/types";
+import { LOCATION_TYPE_LABEL, purposeMeta, type LocationType, type RackRotation, type ZonePurpose } from "../../../components/warehouse3d/types";
 import {
   OBJECT_DEFAULTS,
   PURPOSE_OPTIONS,
@@ -18,7 +18,11 @@ import {
   placeZone,
   removeFloor,
   resizeRack,
+  restoreFloorFreeform,
+  restoreFreeform,
   setFloorSize,
+  toFloorRectangle,
+  toRectangle,
   type EditorLocation,
   type EditorSelection
 } from "./draftOps";
@@ -166,20 +170,96 @@ const FloorInspector = ({ draft, floor, readOnly, onChange, onSelect, onFloorRem
   const bound = Object.values(draft.bindings).filter((placement) => placement && floorRacks.some((rack) => rack.id === placement.rackId)).length;
 
   if (!info) return <div className="le-empty">층을 선택하세요.</div>;
+  const floorFree = Boolean(info.shape);
+  /** [사각형]으로 바꾸기 전에 그린 건물 모양의 꼭짓점 수 — 0 이면 기억한 모양 없음 */
+  const rememberedFloor = !floorFree && info.lastShape && info.lastShape.length >= 3 ? info.lastShape.length : 0;
+  const floorOutline = floorPoints(info);
+  const floorBox = polygonBounds(floorOutline);
+  const floorArea = Math.round(polygonArea(floorOutline));
 
   return (
     <div className="le-inspector">
       <div className="le-ins-head">
         <span className="nx-eyebrow">FLOOR</span>
         <h4>{floor} 층</h4>
-        <p>캔버스에서 구역·랙·시설물을 누르면 속성이 여기에 나옵니다.</p>
+        <p>캔버스에서 장소·랙·시설물을 누르면 속성이 여기에 나옵니다. 입고장·출고장·사무실은 [새 장소]에서 유형을 고른 뒤 장소·자유형 도구로 놓습니다.</p>
       </div>
 
-      <Section title="층 외곽">
-        <div className="le-grid2">
-          <NumberField label="가로" value={info.width} step={1} min={4} disabled={readOnly} onCommit={(value) => onChange(setFloorSize(draft, floor, value, info.depth))} />
-          <NumberField label="세로" value={info.depth} step={1} min={4} disabled={readOnly} onCommit={(value) => onChange(setFloorSize(draft, floor, info.width, value))} />
+      <Section title="층 외곽 · 건물 모양" aside={<small className="le-aside">면적 {floorArea.toLocaleString()} m²</small>}>
+        <div className="le-seg le-shape-seg">
+          <button
+            type="button"
+            className={!floorFree ? "is-on" : ""}
+            disabled={readOnly || !floorFree}
+            onClick={() => {
+              onChange(toFloorRectangle(draft, floor));
+              notify("info", `${floor} 외곽을 사각형(${info.width} × ${info.depth} m)으로 바꿨습니다 — [자유형]을 누르면 그린 모양으로 돌아갑니다`);
+            }}
+            title={floorFree ? "모든 꼭짓점을 담는 사각형으로 바꿉니다 — 그린 모양은 기억해 둡니다" : ""}
+          >
+            <Icon name="grid" size={13} />
+            사각형
+          </button>
+          <button
+            type="button"
+            className={floorFree ? "is-on" : ""}
+            disabled={readOnly || floorFree}
+            onClick={() => {
+              onChange(restoreFloorFreeform(draft, floor));
+              notify(
+                "info",
+                rememberedFloor
+                  ? `${floor} 외곽을 전에 그린 건물 모양(꼭짓점 ${rememberedFloor}개)으로 되돌렸습니다`
+                  : "건물 모양 편집 — 캔버스에서 층 테두리의 꼭짓점·변을 끌고, 변 가운데 + 를 끌어 꼭짓점을 더하세요"
+              );
+            }}
+            title={rememberedFloor ? `전에 그린 건물 모양(꼭짓점 ${rememberedFloor}개)으로 돌아갑니다` : ""}
+          >
+            <Icon name="shape" size={13} />
+            자유형
+          </button>
         </div>
+        {floorFree ? (
+          <dl className="le-stats">
+            <div><dt>꼭짓점</dt><dd>{floorOutline.length}</dd></div>
+            <div><dt>외곽 가로</dt><dd>{Math.round((floorBox.maxX - floorBox.minX) * 100) / 100}</dd></div>
+            <div><dt>외곽 세로</dt><dd>{Math.round((floorBox.maxZ - floorBox.minZ) * 100) / 100}</dd></div>
+            <div><dt>면적 m²</dt><dd>{floorArea.toLocaleString()}</dd></div>
+          </dl>
+        ) : null}
+        <div className="le-grid2">
+          <NumberField
+            label={floorFree ? "가로 (비율 조절)" : "가로"}
+            value={info.width}
+            step={1}
+            min={4}
+            disabled={readOnly}
+            onCommit={(value) => onChange(setFloorSize(draft, floor, value, info.depth))}
+          />
+          <NumberField
+            label={floorFree ? "세로 (비율 조절)" : "세로"}
+            value={info.depth}
+            step={1}
+            min={4}
+            disabled={readOnly}
+            onCommit={(value) => onChange(setFloorSize(draft, floor, info.width, value))}
+          />
+        </div>
+        <p className="le-note">
+          {floorFree ? (
+            <>
+              캔버스에서 <b>층 테두리</b>를 바로 고칩니다 — 꼭짓점 끌기(<b>Shift</b> 직각) · 더블클릭 삭제 / 변 끌기 = 그 벽만 안팎으로 / 변 가운데 <b>+</b> 끌기 = 꼭짓점 추가. 위층을 새로 만들면 이 모양을 이어받습니다.
+            </>
+          ) : rememberedFloor ? (
+            <>
+              <b>[자유형]</b>을 누르면 전에 그린 건물 모양(꼭짓점 {rememberedFloor}개)으로 돌아갑니다. 캔버스에서 사각형 테두리를 바로 끌면 지금 사각형에서 새로 그립니다.
+            </>
+          ) : (
+            <>
+              건물이 ㄱ자·ㄷ자처럼 네모가 아니면 <b>[자유형]</b>으로 바꾸거나, 캔버스에서 층 테두리 변 가운데 <b>+</b> · 꼭짓점을 바로 끌어 보세요.
+            </>
+          )}
+        </p>
         <p className="le-note">
           <Icon name="flag" size={12} />
           도면을 받으면 배경으로 깔고 축척을 맞출 수 있게 자리를 비워 두었습니다.
@@ -188,24 +268,33 @@ const FloorInspector = ({ draft, floor, readOnly, onChange, onSelect, onFloorRem
 
       <Section title="이 층 요약">
         <dl className="le-stats">
-          <div><dt>구역</dt><dd>{floorZones.length}</dd></div>
+          <div><dt>장소</dt><dd>{floorZones.length}</dd></div>
           <div><dt>랙</dt><dd>{floorRacks.length}</dd></div>
           <div><dt>랙 칸</dt><dd>{cells}</dd></div>
           <div><dt>배정된 칸</dt><dd>{bound}</dd></div>
         </dl>
         <div className="le-list">
-          {floorZones.map((zone) => (
-            <button key={zone.id} type="button" onClick={() => onSelect({ kind: "zone", id: zone.id })}>
-              <b>{zone.name}</b>
-              <small>{zone.code} · {draft.racks.filter((rack) => rack.zoneId === zone.id).length} 랙</small>
-            </button>
-          ))}
+          {floorZones.map((zone) => {
+            const meta = purposeMeta(zone.purpose);
+            return (
+              <button key={zone.id} type="button" onClick={() => onSelect({ kind: "zone", id: zone.id })}>
+                <b>
+                  <i className="le-purpose-dot" style={{ background: meta.token }} aria-hidden="true" />
+                  {zone.name}
+                </b>
+                <small>
+                  {zone.code} · {meta.racks ? `${draft.racks.filter((rack) => rack.zoneId === zone.id).length} 랙` : meta.label}
+                  {zone.shape ? " · 자유형" : ""}
+                </small>
+              </button>
+            );
+          })}
         </div>
       </Section>
 
       {unplacedZones.length ? (
-        <Section title={`배치 안 된 구역 ${unplacedZones.length}`}>
-          <p className="le-note">마스터에는 있지만 평면에 놓이지 않은 구역입니다.</p>
+        <Section title={`배치 안 된 장소 ${unplacedZones.length}`}>
+          <p className="le-note">마스터에는 있지만 평면에 놓이지 않은 장소입니다.</p>
           <div className="le-list">
             {unplacedZones.map((zone) => (
               <div key={zone.id} className="le-list-row">
@@ -254,12 +343,25 @@ const ZoneInspector = ({ draft, readOnly, onChange, onSelect, notify, zoneId }: 
   const zone = draft.zones.find((item) => item.id === zoneId)!;
   const zoneRacks = draft.racks.filter((rack) => rack.zoneId === zone.id);
   const isNew = zone.id < 0;
+  const meta = purposeMeta(zone.purpose);
+  const free = Boolean(zone.shape);
+  /** [사각형]으로 바꾸기 전에 그린 모양의 꼭짓점 수 — 0 이면 기억한 모양 없음 */
+  const remembered = !free && zone.lastShape && zone.lastShape.length >= 3 ? zone.lastShape.length : 0;
+  const outline = zoneWorldPoints(zone);
+  const area = Math.round(polygonArea(outline) * 10) / 10;
+  const round2 = (value: number) => Math.round(value * 100) / 100;
   return (
     <div className="le-inspector">
       <div className="le-ins-head">
-        <span className="nx-eyebrow">ZONE{isNew ? " · 새 구역" : ""}</span>
+        <span className="nx-eyebrow">
+          {meta.racks ? "ZONE" : "PLACE"} · {meta.label}
+          {isNew ? " · 새로" : ""}
+        </span>
         <h4>{zone.name}</h4>
-        <p>구역을 옮기거나 돌리면 안의 랙도 함께 움직입니다. 모서리 핸들로 크기를 바꿉니다.</p>
+        <p>
+          옮기거나 돌리면 안의 랙도 함께 움직입니다.{" "}
+          {free ? "꼭짓점·변을 끌어 모양을 바꿉니다." : "모서리로 크기를, 변 가운데 + 를 끌면 모양을 바꿉니다."}
+        </p>
       </div>
 
       <Section title="기본 정보">
@@ -268,28 +370,105 @@ const ZoneInspector = ({ draft, readOnly, onChange, onSelect, notify, zoneId }: 
           <TextField label="이름" value={zone.name} disabled={readOnly} onCommit={(value) => onChange(patchZone(draft, zone.id, { name: value }))} />
         </div>
         <label className="le-text">
-          <span>용도</span>
+          <span>장소 유형</span>
           <select
             value={zone.purpose}
             disabled={readOnly}
-            onChange={(event) => onChange(patchZone(draft, zone.id, { purpose: event.target.value as typeof zone.purpose }))}
+            onChange={(event) => {
+              const purpose = event.target.value as ZonePurpose;
+              onChange(patchZone(draft, zone.id, { purpose }));
+              if (!purposeMeta(purpose).racks && zoneRacks.length) {
+                notify("danger", `${purposeMeta(purpose).label}에는 랙을 둘 수 없습니다 — 랙 ${zoneRacks.length}개를 옮기거나 지우세요 (게시 전 검증 오류)`);
+              }
+            }}
           >
-            {PURPOSE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
+            {(["보관 구역", "작업장", "지원 공간"] as const).map((group) => (
+              <optgroup key={group} label={group}>
+                {PURPOSE_OPTIONS.filter((option) => option.group === group).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} — {option.hint}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
         <TextField label="담당자" value={zone.manager} disabled={readOnly} onCommit={(value) => onChange(patchZone(draft, zone.id, { manager: value }))} />
       </Section>
 
+      <Section title="모양" aside={<small className="le-aside">면적 {area.toLocaleString()} m²</small>}>
+        <div className="le-seg le-shape-seg">
+          <button
+            type="button"
+            className={!free ? "is-on" : ""}
+            disabled={readOnly || !free}
+            onClick={() => {
+              onChange(toRectangle(draft, zone.id));
+              notify("info", `${zone.name} 을(를) 외곽 사각형(${round2(zone.width)} × ${round2(zone.depth)} m)으로 바꿨습니다 — [자유형]을 누르면 그린 모양으로 돌아갑니다`);
+            }}
+            title={free ? "꼭짓점을 감싼 사각형으로 바꿉니다 — 그린 모양은 기억해 둡니다" : ""}
+          >
+            <Icon name="grid" size={13} />
+            사각형
+          </button>
+          <button
+            type="button"
+            className={free ? "is-on" : ""}
+            disabled={readOnly || free}
+            onClick={() => {
+              onChange(restoreFreeform(draft, zone.id));
+              notify(
+                "info",
+                remembered
+                  ? `${zone.name} 을(를) 전에 그린 모양(꼭짓점 ${remembered}개)으로 되돌렸습니다`
+                  : "자유형 — 꼭짓점·변을 끌고, 변 가운데 + 를 끌어 꼭짓점을 더하세요"
+              );
+            }}
+            title={remembered ? `전에 그린 모양(꼭짓점 ${remembered}개)으로 돌아갑니다` : ""}
+          >
+            <Icon name="shape" size={13} />
+            자유형
+          </button>
+        </div>
+        {free ? (
+          <>
+            <dl className="le-stats">
+              <div><dt>꼭짓점</dt><dd>{outline.length}</dd></div>
+              <div><dt>외곽 가로</dt><dd>{round2(zone.width)}</dd></div>
+              <div><dt>외곽 세로</dt><dd>{round2(zone.depth)}</dd></div>
+              <div><dt>면적 m²</dt><dd>{area.toLocaleString()}</dd></div>
+            </dl>
+            <p className="le-note">
+              꼭짓점 끌기 · <b>Shift</b> 누르면 직각 · 더블클릭 삭제 / 변 끌기 = 그 변만 안팎으로 / 변 가운데 <b>+</b> 끌기 = 꼭짓점 추가
+            </p>
+          </>
+        ) : remembered ? (
+          <p className="le-note">
+            <b>[자유형]</b>을 누르면 전에 그린 모양(꼭짓점 {remembered}개)으로 돌아갑니다. 캔버스에서 사각형을 바로 끌면 지금 사각형에서 새로 그립니다.
+          </p>
+        ) : (
+          <p className="le-note">실제 공간이 ㄱ자·ㄷ자처럼 넓었다 좁았다 하면 자유형으로 바꾸거나, 변 가운데 + 를 바로 끌어 보세요.</p>
+        )}
+      </Section>
+
       <Section title="위치 · 크기">
         <div className="le-grid2">
           <NumberField label="중심 X" value={zone.x} disabled={readOnly} onCommit={(value) => onChange(patchZone(draft, zone.id, { x: value }))} />
           <NumberField label="중심 Z" value={zone.z} disabled={readOnly} onCommit={(value) => onChange(patchZone(draft, zone.id, { z: value }))} />
-          <NumberField label="가로" value={zone.width} min={4} disabled={readOnly} onCommit={(value) => onChange(patchZone(draft, zone.id, { width: value }))} />
-          <NumberField label="세로" value={zone.depth} min={4} disabled={readOnly} onCommit={(value) => onChange(patchZone(draft, zone.id, { depth: value }))} />
+          <NumberField
+            label={free ? "외곽 가로 (비율 조절)" : "가로"}
+            value={zone.width}
+            min={1}
+            disabled={readOnly}
+            onCommit={(value) => onChange(patchZone(draft, zone.id, { width: value }))}
+          />
+          <NumberField
+            label={free ? "외곽 세로 (비율 조절)" : "세로"}
+            value={zone.depth}
+            min={1}
+            disabled={readOnly}
+            onCommit={(value) => onChange(patchZone(draft, zone.id, { depth: value }))}
+          />
           <NumberField
             label="회전 (시계 방향)"
             value={zone.rotation ?? 0}
@@ -322,10 +501,18 @@ const ZoneInspector = ({ draft, readOnly, onChange, onSelect, notify, zoneId }: 
         </div>
       </Section>
 
+      {!meta.racks && !zoneRacks.length ? (
+        <Section title="랙">
+          <p className="le-note">
+            <Icon name="flag" size={12} />
+            {meta.label}은(는) 바닥 공간이라 랙을 두지 않습니다. 랙이 필요하면 유형을 보관 구역(피킹 · 보관 · 직출 · 반품)으로 바꾸세요.
+          </p>
+        </Section>
+      ) : (
       <Section
         title={`랙 ${zoneRacks.length}`}
         aside={
-          !readOnly ? (
+          !readOnly && meta.racks ? (
             <button
               type="button"
               className="le-mini"
@@ -354,8 +541,12 @@ const ZoneInspector = ({ draft, readOnly, onChange, onSelect, notify, zoneId }: 
             );
           })}
           {!zoneRacks.length ? <p className="le-note">랙이 없습니다. [랙 추가] 또는 랙 도구로 구역 안을 클릭하세요.</p> : null}
+          {!meta.racks && zoneRacks.length ? (
+            <p className="le-note is-bad">{meta.label}에는 랙을 둘 수 없습니다 — 랙을 다른 보관 구역으로 옮기거나 지우세요.</p>
+          ) : null}
         </div>
       </Section>
+      )}
 
       {!readOnly ? (
         <button

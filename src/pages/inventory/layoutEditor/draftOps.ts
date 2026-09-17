@@ -6,23 +6,32 @@ import {
   AISLE,
   RACK_DEFAULTS,
   ZONE_PAD,
+  centeredExtent,
+  classifyPoint,
+  floorPoints,
   localToWorld,
   normalizeDeg,
+  polygonBounds,
+  polygonInside,
   rackLength,
   rackRect,
-  rectInside,
+  rectPoints,
   rectsOverlap,
   snap,
-  worldToLocal
+  worldToLocal,
+  zoneLocalPoints,
+  type Pt
 } from "../../../components/warehouse3d/geometry";
-import { zoneRect, type DraftNewLocation, type DraftObject, type DraftPlacement, type DraftRack, type DraftZone, type LayoutDraft } from "../../../components/warehouse3d/layoutRules";
-import type {
-  LayoutObjectKind,
-  LayoutSlot,
-  LayoutZone,
-  LocationType,
-  WarehouseLayout,
-  ZonePurpose
+import { zonePolygon, type DraftNewLocation, type DraftObject, type DraftPlacement, type DraftRack, type DraftZone, type LayoutDraft } from "../../../components/warehouse3d/layoutRules";
+import {
+  ZONE_PURPOSES,
+  purposeMeta,
+  type LayoutObjectKind,
+  type LayoutSlot,
+  type LayoutZone,
+  type LocationType,
+  type WarehouseLayout,
+  type ZonePurpose
 } from "../../../components/warehouse3d/types";
 
 export type EditorLocation = {
@@ -52,14 +61,11 @@ export type DraftResponse = {
 
 export type EditorSelection = { kind: "zone" | "rack" | "object"; id: number } | null;
 
-export type Tool = "select" | "zone" | "rack" | LayoutObjectKind;
+/** zone = 사각형 장소 놓기, polygon = 꼭짓점을 찍어 자유형 장소 그리기 */
+export type Tool = "select" | "zone" | "polygon" | "rack" | LayoutObjectKind;
 
-export const PURPOSE_OPTIONS: Array<{ value: ZonePurpose; label: string; locationType: LocationType }> = [
-  { value: "PICKING", label: "피킹 구역", locationType: "PICKING" },
-  { value: "RESERVE", label: "보관 구역", locationType: "RESERVE" },
-  { value: "CROSS_DOCK", label: "직출 구역", locationType: "CROSS_DOCK" },
-  { value: "RETURN", label: "반품·불량", locationType: "DEFECT" }
-];
+/** 장소 유형 선택지 — 3D · 목록과 같은 정의(types.ts ZONE_PURPOSES) */
+export const PURPOSE_OPTIONS = ZONE_PURPOSES;
 
 export const OBJECT_DEFAULTS: Record<LayoutObjectKind, { width: number; depth: number; label: string; name: string }> = {
   DOCK_IN: { width: 7, depth: 3, label: "입고 도크", name: "입고 도크" },
@@ -95,7 +101,8 @@ export const addFloor = (draft: LayoutDraft): { draft: LayoutDraft; code: string
   const numbers = next.floors.map((floor) => Number.parseInt(floor.code, 10)).filter(Number.isFinite);
   const code = `${(numbers.length ? Math.max(...numbers) : 0) + 1}F`;
   const base = next.floors[next.floors.length - 1];
-  next.floors.push({ code, width: base?.width ?? 60, depth: base?.depth ?? 40, bgImageUrl: null, bgScale: null });
+  // 위층은 보통 같은 건물 모양 — 아래층 외곽(자유형 포함)을 그대로 이어받는다
+  next.floors.push({ code, width: base?.width ?? 60, depth: base?.depth ?? 40, shape: base?.shape ? clone(base.shape) : null, bgImageUrl: null, bgScale: null });
   return { draft: next, code };
 };
 
@@ -112,40 +119,214 @@ export const setFloorSize = (draft: LayoutDraft, code: string, width: number, de
   const next = clone(draft);
   const floor = next.floors.find((item) => item.code === code);
   if (floor) {
-    floor.width = Math.max(4, snap(width, 1));
-    floor.depth = Math.max(4, snap(depth, 1));
+    const nextWidth = Math.max(4, snap(width, 1));
+    const nextDepth = Math.max(4, snap(depth, 1));
+    // 자유형 건물이면 모양을 같은 비율로 늘이거나 줄인다 (원점 기준)
+    if (floor.shape && floor.width > 0 && floor.depth > 0) {
+      const sx = nextWidth / floor.width;
+      const sz = nextDepth / floor.depth;
+      floor.shape = floor.shape.map(([x, z]): [number, number] => [Math.round(x * sx * 1000) / 1000, Math.round(z * sz * 1000) / 1000]);
+    }
+    floor.width = nextWidth;
+    floor.depth = nextDepth;
   }
   return next;
 };
 
-/* ---------------- 구역 ---------------- */
+/* ---- 층(건물) 외곽 모양 — 건물이 네모가 아닐 때 ---- */
 
-export const addZone = (draft: LayoutDraft, floorCode: string, x: number, z: number) => {
+/** 층 외곽 꼭짓점(층 좌표)을 바꾼다 — 원점은 그대로 두고, 가로 · 세로는 모든 꼭짓점을 담는 원점 대칭 크기로 */
+export const setFloorShape = (draft: LayoutDraft, code: string, points: Pt[]) => {
+  const next = clone(draft);
+  const floor = next.floors.find((item) => item.code === code);
+  if (floor && points.length >= 3) {
+    const rounded = points.map((point): [number, number] => [Math.round(point.x * 1000) / 1000, Math.round(point.z * 1000) / 1000]);
+    const extent = centeredExtent(rounded.map(([x, z]) => ({ x, z })));
+    floor.shape = rounded;
+    floor.width = Math.round(extent.width * 1000) / 1000;
+    floor.depth = Math.round(extent.depth * 1000) / 1000;
+    // 다시 자유형이 됐으니 기억해 둔 모양은 버린다 — 기억은 사각형일 때만 쓴다
+    delete floor.lastShape;
+  }
+  return next;
+};
+
+/** 사각형 → 자유형: 네 모서리가 꼭짓점이 된다 (캔버스에서 사각형 테두리를 바로 끌 때) */
+export const toFloorFreeform = (draft: LayoutDraft, code: string) => {
+  const floor = draft.floors.find((item) => item.code === code);
+  return floor ? setFloorShape(draft, code, floorPoints({ width: floor.width, depth: floor.depth })) : draft;
+};
+
+/** [자유형] 버튼 — [사각형]으로 바꾸기 전에 그린 모양이 있으면 그 모양으로, 없으면 네 모서리부터 */
+export const restoreFloorFreeform = (draft: LayoutDraft, code: string) => {
+  const memo = draft.floors.find((item) => item.code === code)?.lastShape;
+  return memo && memo.length >= 3 ? setFloorShape(draft, code, memo.map(([x, z]) => ({ x, z }))) : toFloorFreeform(draft, code);
+};
+
+/** 자유형 → 사각형: 모든 꼭짓점을 담는 원점 중심 사각형 (안의 장소는 그대로 안에 남는다). 그린 모양은 기억해 둔다 */
+export const toFloorRectangle = (draft: LayoutDraft, code: string) => {
+  const next = clone(draft);
+  const floor = next.floors.find((item) => item.code === code);
+  if (floor?.shape) {
+    floor.lastShape = floor.shape;
+    floor.shape = null;
+  }
+  return next;
+};
+
+export const insertFloorVertex = (draft: LayoutDraft, code: string, index: number, point: Pt) => {
+  const floor = draft.floors.find((item) => item.code === code);
+  if (!floor) return { draft, index: -1 };
+  const points = floorPoints(floor);
+  points.splice(index + 1, 0, point);
+  return { draft: setFloorShape(draft, code, points), index: index + 1 };
+};
+
+export const removeFloorVertex = (draft: LayoutDraft, code: string, index: number) => {
+  const floor = draft.floors.find((item) => item.code === code);
+  if (!floor) return draft;
+  const points = floorPoints(floor);
+  if (points.length <= 3) return draft;
+  points.splice(index, 1);
+  return setFloorShape(draft, code, points);
+};
+
+/* ---------------- 구역(장소) ---------------- */
+
+/** 사각형 장소 기본 크기 — 보관 구역은 랙 두 줄, 작업장·사무실은 조금 작게 */
+export const zoneDefaultSize = (purpose: ZonePurpose) => (purposeMeta(purpose).racks ? { width: 14, depth: 10 } : { width: 10, depth: 6 });
+
+/** 새 장소의 코드 · 이름 — 보관 구역은 "A 구역", 나머지는 "입고장 2" 처럼 유형 이름 */
+const newZoneIdentity = (draft: LayoutDraft, purpose: ZonePurpose) => {
+  const used = new Set(draft.zones.map((zone) => letterOf(zone.code).toUpperCase()));
+  const letter = "ABCDEFGHJKLMNPQRSTUVWXYZ".split("").find((ch) => !used.has(ch)) ?? `Z${draft.zones.length + 1}`;
+  const prefix = draft.zones.find((zone) => zone.code.includes("-"))?.code.split("-")[0];
+  const meta = purposeMeta(purpose);
+  const sameKind = draft.zones.filter((zone) => zone.purpose === purpose && zone.floor).length;
+  return {
+    code: prefix ? `${prefix}-${letter}` : letter,
+    name: meta.racks ? `${letter} 구역` : `${meta.label}${sameKind ? ` ${sameKind + 1}` : ""}`,
+    purposeName: meta.label,
+    storage: (meta.racks ? "RACK" : "FLOOR") as DraftZone["storage"]
+  };
+};
+
+export const addZone = (draft: LayoutDraft, floorCode: string, x: number, z: number, purpose: ZonePurpose = "RESERVE") => {
   const next = clone(draft);
   const floor = next.floors.find((item) => item.code === floorCode);
-  const used = new Set(next.zones.map((zone) => letterOf(zone.code).toUpperCase()));
-  const letter = "ABCDEFGHJKLMNPQRSTUVWXYZ".split("").find((ch) => !used.has(ch)) ?? `Z${next.zones.length + 1}`;
-  const prefix = next.zones.find((zone) => zone.code.includes("-"))?.code.split("-")[0];
-  const width = 14;
-  const depth = 10;
+  const { width, depth } = zoneDefaultSize(purpose);
   const zone: DraftZone = {
     id: tempId(next),
-    code: prefix ? `${prefix}-${letter}` : letter,
-    name: `${letter} 구역`,
+    ...newZoneIdentity(next, purpose),
     floor: floorCode,
-    purpose: "RESERVE",
-    purposeName: "보관 구역",
-    storage: "RACK",
+    purpose,
     x: floor ? clampInside(snap(x), width / 2, -floor.width / 2, floor.width / 2) : snap(x),
     z: floor ? clampInside(snap(z), depth / 2, -floor.depth / 2, floor.depth / 2) : snap(z),
     width,
     depth,
     rotation: 0,
+    shape: null,
     manager: "-"
   };
   next.zones.push(zone);
   return { draft: next, id: zone.id };
 };
+
+const round3 = (value: number) => Math.round(value * 1000) / 1000;
+
+/** 꼭짓점(로컬) 목록을 구역에 넣는다 — 꼭짓점을 감싼 사각형의 중심이 구역 중심이 되도록 다시 맞춘다.
+    바닥에서의 모양은 그대로이고, 안의 랙도 움직이지 않는다 */
+const applyShape = (zone: DraftZone, local: Pt[]) => {
+  const box = polygonBounds(local);
+  const cx = (box.minX + box.maxX) / 2;
+  const cz = (box.minZ + box.maxZ) / 2;
+  const center = localToWorld(zone.x, zone.z, zone.rotation ?? 0, cx, cz);
+  zone.x = round3(center.x);
+  zone.z = round3(center.z);
+  zone.width = round3(box.maxX - box.minX);
+  zone.depth = round3(box.maxZ - box.minZ);
+  zone.shape = local.map((point): [number, number] => [round3(point.x - cx), round3(point.z - cz)]);
+  // 다시 자유형이 됐으니 기억해 둔 모양은 버린다 — 기억은 사각형일 때만 쓴다
+  delete zone.lastShape;
+};
+
+/** 꼭짓점을 찍어 그린 자유형 장소 — points 는 바닥 좌표 */
+export const addPolygonZone = (draft: LayoutDraft, floorCode: string, points: Pt[], purpose: ZonePurpose = "RESERVE") => {
+  const next = clone(draft);
+  const box = polygonBounds(points);
+  const cx = (box.minX + box.maxX) / 2;
+  const cz = (box.minZ + box.maxZ) / 2;
+  const zone: DraftZone = {
+    id: tempId(next),
+    ...newZoneIdentity(next, purpose),
+    floor: floorCode,
+    purpose,
+    x: cx,
+    z: cz,
+    width: 0,
+    depth: 0,
+    rotation: 0,
+    shape: null,
+    manager: "-"
+  };
+  applyShape(zone, points.map((point) => ({ x: point.x - cx, z: point.z - cz })));
+  next.zones.push(zone);
+  return { draft: next, id: zone.id };
+};
+
+/** 구역의 로컬 꼭짓점을 바꾼다 — 캔버스 꼭짓점 · 변 끌기가 매 프레임 base 초안에서 부른다 */
+export const setZoneShape = (draft: LayoutDraft, zoneId: number, local: Pt[]) => {
+  const next = clone(draft);
+  const zone = next.zones.find((item) => item.id === zoneId);
+  if (zone && local.length >= 3) applyShape(zone, local);
+  return next;
+};
+
+/** 사각형 → 자유형: 네 모서리가 꼭짓점이 된다 (캔버스에서 사각형을 바로 끌 때) */
+export const toFreeform = (draft: LayoutDraft, zoneId: number) => {
+  const zone = draft.zones.find((item) => item.id === zoneId);
+  return zone ? setZoneShape(draft, zoneId, zoneLocalPoints({ width: zone.width, depth: zone.depth })) : draft;
+};
+
+/** [자유형] 버튼 — [사각형]으로 바꾸기 전에 그린 모양이 있으면 그 모양으로(지금 중심 · 각도 기준), 없으면 네 모서리부터 */
+export const restoreFreeform = (draft: LayoutDraft, zoneId: number) => {
+  const memo = draft.zones.find((item) => item.id === zoneId)?.lastShape;
+  return memo && memo.length >= 3 ? setZoneShape(draft, zoneId, memo.map(([x, z]) => ({ x, z }))) : toFreeform(draft, zoneId);
+};
+
+/** 자유형 → 사각형: 꼭짓점을 감싼 사각형(지금 외곽 크기)으로. 그린 모양은 기억해 둔다 */
+export const toRectangle = (draft: LayoutDraft, zoneId: number) => {
+  const next = clone(draft);
+  const zone = next.zones.find((item) => item.id === zoneId);
+  if (zone?.shape) {
+    zone.lastShape = zone.shape;
+    zone.shape = null;
+  }
+  return next;
+};
+
+/** index 뒤(변 index → index+1 사이)에 꼭짓점을 넣는다 */
+export const insertZoneVertex = (draft: LayoutDraft, zoneId: number, index: number, point: Pt) => {
+  const zone = draft.zones.find((item) => item.id === zoneId);
+  if (!zone) return { draft, index: -1 };
+  const local = zoneLocalPoints(zone);
+  local.splice(index + 1, 0, point);
+  return { draft: setZoneShape(draft, zoneId, local), index: index + 1 };
+};
+
+/** 꼭짓점을 지운다 — 세 개는 남아야 한다 */
+export const removeZoneVertex = (draft: LayoutDraft, zoneId: number, index: number) => {
+  const zone = draft.zones.find((item) => item.id === zoneId);
+  if (!zone) return draft;
+  const local = zoneLocalPoints(zone);
+  if (local.length <= 3) return draft;
+  local.splice(index, 1);
+  return setZoneShape(draft, zoneId, local);
+};
+
+/** 바닥 좌표가 들어 있는 장소 (그 층) — 랙 도구 · 클릭 판정 */
+export const zoneAt = (draft: LayoutDraft, floorCode: string, x: number, z: number) =>
+  draft.zones.find((zone) => zone.floor === floorCode && classifyPoint({ x, z }, zonePolygon(zone)) !== "outside");
 
 /** 배치에서 빠져 있던 구역을 층 가운데에 놓는다 */
 export const placeZone = (draft: LayoutDraft, zoneId: number, floorCode: string) => {
@@ -155,8 +336,10 @@ export const placeZone = (draft: LayoutDraft, zoneId: number, floorCode: string)
     zone.floor = floorCode;
     zone.x = 0;
     zone.z = 0;
-    zone.width = Math.max(zone.width, 12);
-    zone.depth = Math.max(zone.depth, 8);
+    if (!zone.shape) {
+      zone.width = Math.max(zone.width, 12);
+      zone.depth = Math.max(zone.depth, 8);
+    }
   }
   return next;
 };
@@ -173,8 +356,18 @@ export const patchZone = (draft: LayoutDraft, id: number, patch: Partial<DraftZo
   const turn = toRotation - fromRotation;
   const dx = patch.x != null ? patch.x - fromX : 0;
   const dz = patch.z != null ? patch.z - fromZ : 0;
+  // 자유형의 외곽 크기를 숫자로 바꾸면 꼭짓점을 같은 비율로 늘이거나 줄인다
+  if (zone.shape && ((patch.width != null && patch.width !== zone.width) || (patch.depth != null && patch.depth !== zone.depth))) {
+    const sx = patch.width != null && zone.width > 0 ? patch.width / zone.width : 1;
+    const sz = patch.depth != null && zone.depth > 0 ? patch.depth / zone.depth : 1;
+    zone.shape = zone.shape.map(([px, pz]): [number, number] => [round3(px * sx), round3(pz * sz)]);
+  }
   Object.assign(zone, patch, { rotation: toRotation });
-  if (patch.purpose) zone.purposeName = PURPOSE_OPTIONS.find((option) => option.value === patch.purpose)?.label ?? zone.purposeName;
+  if (patch.purpose) {
+    const meta = purposeMeta(patch.purpose);
+    zone.purposeName = meta.label;
+    zone.storage = meta.racks ? "RACK" : "FLOOR";
+  }
   if (dx || dz || turn) {
     next.racks.forEach((rack) => {
       if (rack.zoneId !== id) return;
@@ -224,9 +417,13 @@ export const addRack = (draft: LayoutDraft, zoneId: number, x?: number, z?: numb
   const maxZ = zone.depth / 2 - ZONE_PAD - rack.depth / 2;
   const others = next.racks.filter((item) => item.zoneId === zoneId);
   const worldAt = (lx: number, lz: number) => localToWorld(zone.x, zone.z, rotation, lx, lz);
+  const outline = zonePolygon(zone);
   const fits = (lx: number, lz: number) => {
     const point = worldAt(lx, lz);
-    return !others.some((other) => rectsOverlap({ x: point.x, z: point.z, width: length, depth: rack.depth, rotation }, rackRect(other)));
+    const footprint = { x: point.x, z: point.z, width: length, depth: rack.depth, rotation };
+    // 자유형 장소면 외곽 사각형 안이라도 파인 곳이 있다 — 꼭짓점 외곽 안인지도 본다
+    if (zone.shape && !polygonInside(rectPoints(footprint), outline)) return false;
+    return !others.some((other) => rectsOverlap(footprint, rackRect(other)));
   };
   const put = (lx: number, lz: number) => {
     const point = worldAt(lx, lz);
@@ -520,6 +717,7 @@ export const buildPreviewLayout = (
         width: zone.width,
         depth: zone.depth,
         rotation: zone.rotation ?? 0,
+        shape: zone.shape ?? null,
         manager: zone.manager,
         temp: "상온",
         recentIn: "—",
@@ -575,15 +773,22 @@ export const summarizeChanges = (before: LayoutDraft, after: LayoutDraft): strin
   const floorsRemoved = before.floors.filter((floor) => !afterFloors.has(floor.code)).map((floor) => floor.code);
   const floorsResized = after.floors.filter((floor) => {
     const prev = beforeFloors.get(floor.code);
-    return prev && (prev.width !== floor.width || prev.depth !== floor.depth);
+    return prev && (prev.width !== floor.width || prev.depth !== floor.depth || sig(prev.shape ?? null) !== sig(floor.shape ?? null));
   });
   if (floorsAdded.length) lines.push(`층 추가: ${floorsAdded.join(", ")}`);
   if (floorsRemoved.length) lines.push(`층 삭제: ${floorsRemoved.join(", ")}`);
-  if (floorsResized.length) lines.push(`층 크기 변경: ${floorsResized.map((floor) => `${floor.code} ${floor.width}×${floor.depth}m`).join(", ")}`);
+  if (floorsResized.length) {
+    lines.push(
+      `층 외곽 변경: ${floorsResized
+        .map((floor) => (floor.shape ? `${floor.code} 건물 모양 꼭짓점 ${floor.shape.length}개` : `${floor.code} ${floor.width}×${floor.depth}m`))
+        .join(", ")}`
+    );
+  }
 
   const beforeZones = new Map(before.zones.map((zone) => [zone.id, zone]));
   // 회전은 따로 알린다 — "몇 도에서 몇 도로"가 게시 확인에 더 읽기 쉽다
-  const zoneShape = (zone: DraftZone) => sig([zone.code, zone.name, zone.floor, zone.purpose, zone.x, zone.z, zone.width, zone.depth, zone.manager]);
+  const zoneShape = (zone: DraftZone) =>
+    sig([zone.code, zone.name, zone.floor, zone.purpose, zone.x, zone.z, zone.width, zone.depth, zone.shape ?? null, zone.manager]);
   const zonesTurned = after.zones.filter((zone) => {
     const prev = beforeZones.get(zone.id);
     return zone.id > 0 && zone.floor && prev?.floor && (prev.rotation ?? 0) !== (zone.rotation ?? 0);
@@ -595,13 +800,15 @@ export const summarizeChanges = (before: LayoutDraft, after: LayoutDraft): strin
     const prev = beforeZones.get(zone.id);
     return zone.id > 0 && zone.floor && prev?.floor && zoneShape(prev) !== zoneShape(zone);
   });
-  if (zonesNew.length) lines.push(`새 구역 ${zonesNew.length}개: ${zonesNew.map((zone) => zone.name).join(", ")}`);
-  if (zonesPlaced.length) lines.push(`구역 배치: ${zonesPlaced.map((zone) => zone.name).join(", ")}`);
-  if (zonesPulled.length) lines.push(`배치에서 뺀 구역: ${zonesPulled.map((zone) => zone.name).join(", ")}`);
-  if (zonesChanged.length) lines.push(`위치·크기·속성이 바뀐 구역 ${zonesChanged.length}개: ${zonesChanged.map((zone) => zone.name).join(", ")}`);
+  // 장소 = 보관 구역 + 입고장 · 출고장 · 사무실 등. 유형 이름을 붙여 무엇이 바뀌는지 읽히게 한다
+  const named = (zone: DraftZone) => (purposeMeta(zone.purpose).racks ? zone.name : `${zone.name}(${purposeMeta(zone.purpose).label})`);
+  if (zonesNew.length) lines.push(`새 장소 ${zonesNew.length}개: ${zonesNew.map(named).join(", ")}`);
+  if (zonesPlaced.length) lines.push(`장소 배치: ${zonesPlaced.map(named).join(", ")}`);
+  if (zonesPulled.length) lines.push(`배치에서 뺀 장소: ${zonesPulled.map(named).join(", ")}`);
+  if (zonesChanged.length) lines.push(`위치·모양·속성이 바뀐 장소 ${zonesChanged.length}개: ${zonesChanged.map(named).join(", ")}`);
   if (zonesTurned.length) {
     lines.push(
-      `회전한 구역 ${zonesTurned.length}개: ${zonesTurned.map((zone) => `${zone.name} ${beforeZones.get(zone.id)?.rotation ?? 0}° → ${zone.rotation ?? 0}°`).join(", ")}`
+      `회전한 장소 ${zonesTurned.length}개: ${zonesTurned.map((zone) => `${zone.name} ${beforeZones.get(zone.id)?.rotation ?? 0}° → ${zone.rotation ?? 0}°`).join(", ")}`
     );
   }
 
@@ -646,8 +853,8 @@ export const summarizeChanges = (before: LayoutDraft, after: LayoutDraft): strin
   return lines;
 };
 
-/** 랙이 구역 안에 온전히 있는가 — 캔버스 경고 표시에 쓴다 */
+/** 랙이 구역 안에 온전히 있는가 — 캔버스 경고 표시에 쓴다 (자유형이면 꼭짓점 외곽 기준) */
 export const rackOutsideZone = (draft: LayoutDraft, rack: DraftRack) => {
   const zone = draft.zones.find((item) => item.id === rack.zoneId);
-  return !zone || !rectInside(rackRect(rack), zoneRect(zone));
+  return !zone || !polygonInside(rectPoints(rackRect(rack)), zonePolygon(zone));
 };

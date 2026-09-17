@@ -2,12 +2,25 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Icon } from "../ui/Icon";
-import { BASE_H, normalizeDeg, rackYaw, slotCenter, zoneHeight } from "./geometry";
+import {
+  BASE_H,
+  floorPoints,
+  interiorPoint,
+  localToWorld,
+  normalizeDeg,
+  rackYaw,
+  slotCenter,
+  worldToLocal,
+  zoneHeight,
+  zoneLocalPoints,
+  zoneWorldPoints
+} from "./geometry";
 import {
   COLOR_MODE_LABEL,
   LOCATION_TYPE_LABEL,
   bucketOf,
   legendFor,
+  purposeMeta,
   slotColorOf,
   type ColorMode,
   type FocusRequest,
@@ -102,10 +115,14 @@ type ZoneVisual = {
   height: number;
   /** 구역에 속한 모든 메시를 담는다 — 배치 편집에서 통째로 옮기고 돌린다 */
   group: THREE.Group;
-  /** 끄는 중 구역 중심 — 라벨이 따라간다 */
+  /** 끄는 중 구역 중심 */
   center: { x: number; z: number };
+  /** 라벨 자리 — 장소 안쪽 한 점(ㄱ자면 무게중심이 밖이라 따로 구한다). 끌면 따라간다 */
+  anchor: { x: number; z: number };
+  /** 중심 기준 로컬 좌표의 라벨 자리 */
+  anchorLocal: { x: number; z: number };
   platform: THREE.Mesh;
-  edge: THREE.LineSegments;
+  edge: THREE.Line;
   hitbox: THREE.Mesh;
   filled: THREE.InstancedMesh;
   empty: THREE.InstancedMesh;
@@ -143,8 +160,8 @@ type Core = {
   selectOutline: THREE.LineSegments;
   hoverOutline: THREE.LineSegments;
   dropOutline: THREE.LineSegments;
-  /** 구역을 끄는 동안 원래 자리를 점선 테두리로 남긴다 */
-  originOutline: THREE.LineSegments;
+  /** 구역을 끄는 동안 원래 자리를 테두리로 남긴다 (자유형 외곽 그대로) */
+  originShape: THREE.LineLoop;
   movers: Array<{ group: THREE.Group; points: THREE.Vector3[]; lengths: number[]; total: number; speed: number; offset: number }>;
   tween: Tween | null;
   frame: number;
@@ -361,13 +378,7 @@ export const Warehouse3D = ({
     gridMat.opacity = theme === "dark" ? 0.42 : 0.6;
     grid.position.y = 0.02;
     world.add(grid);
-
-    const shell = new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(floorWidth, 13, floorDepth)),
-      new THREE.LineBasicMaterial({ color: pal.envelope, transparent: true, opacity: theme === "dark" ? 0.34 : 0.5 })
-    );
-    shell.position.y = 6.5;
-    world.add(shell);
+    // 건물 외곽 윤곽선(벽)은 층 모양(자유형 포함)을 따라 2) 에서 그린다
 
     const content = new THREE.Group();
     scene.add(content);
@@ -404,7 +415,16 @@ export const Warehouse3D = ({
       selectOutline: outline(pal.select, 1),
       hoverOutline: outline(pal.envelope, 0.9),
       dropOutline: outline(DROP_OK, 1),
-      originOutline: outline(pal.envelope, 0.75),
+      originShape: (() => {
+        const loop = new THREE.LineLoop(
+          new THREE.BufferGeometry(),
+          new THREE.LineBasicMaterial({ color: pal.envelope, transparent: true, opacity: 0.75, depthTest: false })
+        );
+        loop.renderOrder = 10;
+        loop.visible = false;
+        scene.add(loop);
+        return loop;
+      })(),
       movers: [],
       tween: null,
       frame: 0,
@@ -477,8 +497,8 @@ export const Warehouse3D = ({
       };
       core.zones.forEach((visual, zoneId) => {
         const el = labelRefs.current.get(zoneId);
-        // 끄는 중이면 옮긴 중심을 따라간다 (돌릴 때는 중심이 그대로)
-        if (el) place(el, visual.center.x, visual.height + 1.6, visual.center.z);
+        // 끄는 중이면 옮기거나 돌린 자리를 따라간다
+        if (el) place(el, visual.anchor.x, visual.height + 1.6, visual.anchor.z);
       });
       const slotEl = slotLabelRef.current;
       const labelSlotId = slotEl?.dataset.locationId ? Number(slotEl.dataset.locationId) : null;
@@ -570,6 +590,7 @@ export const Warehouse3D = ({
       visual.group.rotation.set(0, yaw, 0);
       visual.group.position.set(x - (cx * cos + cz * sin), 0, z - (-cx * sin + cz * cos));
       visual.center = { x, z };
+      visual.anchor = localToWorld(x, z, rotation, visual.anchorLocal.x, visual.anchorLocal.z);
     };
 
     const onPointerDown = (event: PointerEvent) => {
@@ -648,11 +669,14 @@ export const Warehouse3D = ({
         if (!point) return;
         if (!zoneGrab.moved) {
           zoneGrab.moved = true;
-          // 원래 자리를 테두리로 남긴다 — 돌린 구역이면 그 방향 그대로
-          core.originOutline.position.set(zoneGrab.startX, BASE_H + 0.03, zoneGrab.startZ);
-          core.originOutline.rotation.set(0, rackYaw(zoneGrab.startRotation), 0);
-          core.originOutline.scale.set(visual.zone.width, 0.02, visual.zone.depth);
-          core.originOutline.visible = true;
+          // 원래 자리를 테두리로 남긴다 — 돌린 구역 · 자유형이면 그 모양 그대로
+          core.originShape.geometry.dispose();
+          core.originShape.geometry = new THREE.BufferGeometry().setFromPoints(
+            zoneLocalPoints(visual.zone).map((point) => new THREE.Vector3(point.x, 0, point.z))
+          );
+          core.originShape.position.set(zoneGrab.startX, BASE_H + 0.03, zoneGrab.startZ);
+          core.originShape.rotation.set(0, rackYaw(zoneGrab.startRotation), 0);
+          core.originShape.visible = true;
         }
 
         if (zoneGrab.kind === "rotate") {
@@ -727,7 +751,7 @@ export const Warehouse3D = ({
         zoneGrab = null;
         const edit = live.current.zoneEdit;
         const visual = core.zones.get(grab.zoneId);
-        core.originOutline.visible = false;
+        core.originShape.visible = false;
         const unchanged = grab.kind === "rotate" ? grab.rotation === grab.startRotation : grab.x === grab.startX && grab.z === grab.startZ;
         if (!grab.moved) {
           edit?.onSelect?.(grab.zoneId);
@@ -944,41 +968,56 @@ export const Warehouse3D = ({
     };
 
     for (const zone of floorZones) {
+      const meta = purposeMeta(zone.purpose);
       const height = zoneHeight(zone, floorRacks);
-      const bucketColor = new THREE.Color(bucketOf(zone.util).color);
+      // 보관 구역 테두리는 적치율 색, 입고장 · 출고장 · 사무실은 장소 유형 색
+      const edgeColor = new THREE.Color(meta.racks ? bucketOf(zone.util).color : meta.color);
       // 구역 단위 그룹 — 배치 편집에서 그룹만 옮기고 돌리면 랙·파레트·판정 박스가 함께 움직인다
       const group = new THREE.Group();
       core.content.add(group);
       // 바닥판·테두리·판정 박스는 구역 방향으로 돌린다 (랙·슬롯 좌표에는 회전이 이미 들어 있다)
       const zoneYaw = rackYaw(zone.rotation ?? 0);
 
+      // 외곽 — 자유형이면 꼭짓점, 아니면 사각형. three.js Shape 는 XY 평면이라 로컬 z 를 -y 로 넣고 X축으로 눕힌다
+      const outline = zoneLocalPoints(zone);
+      const shape = new THREE.Shape(outline.map((point) => new THREE.Vector2(point.x, -point.z)));
+      const slab = (thickness: number) => {
+        const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+        geometry.rotateX(-Math.PI / 2);
+        return geometry;
+      };
+
       const platform = new THREE.Mesh(
-        new THREE.BoxGeometry(zone.width, BASE_H, zone.depth),
-        new THREE.MeshStandardMaterial({ color: pal.platform, roughness: 0.85, metalness: 0.1 })
+        slab(BASE_H),
+        new THREE.MeshStandardMaterial({
+          color: meta.racks ? pal.platform : new THREE.Color(pal.platform).lerp(new THREE.Color(meta.color), theme === "dark" ? 0.32 : 0.22),
+          roughness: 0.85,
+          metalness: 0.1
+        })
       );
-      platform.position.set(zone.x, BASE_H / 2, zone.z);
+      platform.position.set(zone.x, 0, zone.z);
       platform.rotation.y = zoneYaw;
       platform.receiveShadow = true;
       group.add(platform);
 
-      // 구역 전체 부피를 덮는 투명 판정 박스 — 랙 어디를 짚어도 구역이 잡힌다
-      const hitbox = new THREE.Mesh(
-        new THREE.BoxGeometry(zone.width, height, zone.depth),
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-      );
-      hitbox.position.set(zone.x, height / 2, zone.z);
+      // 구역 전체 부피를 덮는 투명 판정 입체 — 랙 어디를 짚어도 구역이 잡힌다
+      const hitbox = new THREE.Mesh(slab(height), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      hitbox.position.set(zone.x, 0, zone.z);
       hitbox.rotation.y = zoneYaw;
       hitbox.userData = { zoneId: zone.id };
       group.add(hitbox);
       core.hitboxes.push(hitbox);
 
-      const edge = new THREE.LineSegments(
-        new THREE.EdgesGeometry(new THREE.BoxGeometry(zone.width, 0.04, zone.depth)),
-        new THREE.LineBasicMaterial({ color: bucketColor, transparent: true, opacity: 0.85 })
+      const edge = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(outline.map((point) => new THREE.Vector3(point.x, 0, point.z))),
+        new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: 0.85 })
       );
       edge.position.set(zone.x, BASE_H + 0.02, zone.z);
       edge.rotation.y = zoneYaw;
       group.add(edge);
+
+      const anchor = interiorPoint(zoneWorldPoints(zone));
+      const anchorLocal = worldToLocal(zone.x, zone.z, zone.rotation ?? 0, anchor.x, anchor.z);
 
       const zoneSlots = floorSlots.filter((slot) => slot.zoneId === zone.id);
       const filledSlots = zoneSlots.filter((slot) => slot.pallets > 0);
@@ -1061,7 +1100,36 @@ export const Warehouse3D = ({
         group.add(voidMesh);
       }
 
-      core.zones.set(zone.id, { zone, height, group, center: { x: zone.x, z: zone.z }, platform, edge, hitbox, filled, empty, filledSlots, emptySlots });
+      core.zones.set(zone.id, { zone, height, group, center: { x: zone.x, z: zone.z }, anchor, anchorLocal, platform, edge, hitbox, filled, empty, filledSlots, emptySlots });
+    }
+
+    /* ---- 건물 외곽 — 층 모양대로 벽 윤곽선(바닥 · 천장 테두리 + 모서리 기둥선), 자유형이면 건물 바닥을 한 톤 밝게 ---- */
+    if (floorInfo) {
+      const WALL_H = 13;
+      const outline = floorPoints(floorInfo);
+      const segments: number[] = [];
+      outline.forEach((point, idx) => {
+        const next = outline[(idx + 1) % outline.length];
+        segments.push(point.x, 0, point.z, next.x, 0, next.z);
+        segments.push(point.x, WALL_H, point.z, next.x, WALL_H, next.z);
+        segments.push(point.x, 0, point.z, point.x, WALL_H, point.z);
+      });
+      const shellGeometry = new THREE.BufferGeometry();
+      shellGeometry.setAttribute("position", new THREE.Float32BufferAttribute(segments, 3));
+      core.content.add(
+        new THREE.LineSegments(shellGeometry, new THREE.LineBasicMaterial({ color: pal.envelope, transparent: true, opacity: theme === "dark" ? 0.34 : 0.5 }))
+      );
+      if (floorInfo.shape) {
+        const slabGeometry = new THREE.ShapeGeometry(new THREE.Shape(outline.map((point) => new THREE.Vector2(point.x, -point.z))));
+        slabGeometry.rotateX(-Math.PI / 2);
+        const slab = new THREE.Mesh(
+          slabGeometry,
+          new THREE.MeshStandardMaterial({ color: new THREE.Color(pal.floor).lerp(new THREE.Color(pal.envelope), theme === "dark" ? 0.1 : 0.06), roughness: 0.95 })
+        );
+        slab.position.y = 0.012;
+        slab.receiveShadow = true;
+        core.content.add(slab);
+      }
     }
 
     /* ---- 시설물 ---- */
@@ -1120,7 +1188,7 @@ export const Warehouse3D = ({
       core.movers.push({ group, points, lengths, total, speed: vehicle.speed, offset: total * Math.random() });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, theme, floorZones, floorRacks, floorSlots, floorObjects, floorVehicles]);
+  }, [ready, theme, floorInfo, floorZones, floorRacks, floorSlots, floorObjects, floorVehicles]);
 
   /* ----------------------------------------------------------------
      3) 칠하기 — 색 기준 · 선택 · 검색 강조 · 끌기 상태 (지오메트리는 그대로)
@@ -1152,9 +1220,11 @@ export const Warehouse3D = ({
       const edgeMat = visual.edge.material as THREE.LineBasicMaterial;
       const dragging = zoneDrag?.zoneId === zoneId;
       // 끄는 중인 구역 테두리: 놓을 수 있으면 초록, 겹치거나 벗어나면 빨강
+      const meta = purposeMeta(zone.purpose);
       edgeMat.color.set(
         dragging ? (zoneDrag?.reason ? DROP_BAD : DROP_OK)
         : zoneEdit?.enabled && active ? pal.select
+        : !meta.racks ? meta.color
         : colorMode === "util" ? bucketOf(zone.util).color : pal.edgeNeutral
       );
       edgeMat.opacity = dragging || active ? 1 : hovered ? 0.95 : 0.6;
@@ -1315,18 +1385,26 @@ export const Warehouse3D = ({
       <div className="wh3d-labels" aria-hidden="true">
         {floorZones.map((zone) => {
           const bucket = bucketOf(zone.util);
+          const meta = purposeMeta(zone.purpose);
           return (
             <div
               key={zone.id}
-              className={`wh3d-label tone-${colorMode === "util" ? bucket.key : "neutral"}${selection.zoneId === zone.id ? " is-active" : ""}`}
+              className={`wh3d-label tone-${!meta.racks ? "place" : colorMode === "util" ? bucket.key : "neutral"}${selection.zoneId === zone.id ? " is-active" : ""}`}
+              style={!meta.racks ? { borderColor: meta.token } : undefined}
               ref={(el) => {
                 if (el) labelRefs.current.set(zone.id, el);
                 else labelRefs.current.delete(zone.id);
               }}
             >
               <span className="wh3d-label-name">{zone.name}</span>
-              <span className="wh3d-label-util">{zone.util}%</span>
-              <span className="wh3d-label-code">{zone.codeRange}</span>
+              {meta.racks ? (
+                <>
+                  <span className="wh3d-label-util">{zone.util}%</span>
+                  <span className="wh3d-label-code">{zone.codeRange}</span>
+                </>
+              ) : (
+                <span className="wh3d-label-code">{zone.name.startsWith(meta.label) ? meta.hint : `${meta.label} · ${meta.hint}`}</span>
+              )}
             </div>
           );
         })}

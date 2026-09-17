@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 /** 디자인(standalone)에서 가져온 stroke 아이콘 세트 (24 viewbox) */
 export const ICON_PATHS: Record<string, string> = {
   grid: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
+  /** 자유형 장소 — 꼭짓점이 찍힌 다각형 */
+  shape: "M4 5h9v5h7v9H4zM4 5.01M13 5.01M13 10.01M20 10.01M20 19.01M4 19.01",
   inbox: "M3 12h5l2 3h4l2-3h5M5 5h14l2 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z",
   truck: "M3 6h11v9H3zM14 9h4l3 3v3h-7M6.5 18.5a1.5 1.5 0 1 0 0-.01M17.5 18.5a1.5 1.5 0 1 0 0-.01",
   boxes: "M3.3 7 12 11l8.7-4M12 11v9M3 7l9-4 9 4v9l-9 4-9-4z",

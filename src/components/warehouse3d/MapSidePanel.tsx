@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { Icon } from "../ui/Icon";
 import { RackFaceGrid } from "./RackFaceGrid";
+import { polygonArea, zoneWorldPoints } from "./geometry";
 import {
   LOCATION_TYPE_LABEL,
   TYPE_LEGEND,
   bucketOf,
   formatKg,
+  purposeMeta,
   type LayoutSlot,
   type LayoutZone,
   type SlotStock
@@ -106,6 +108,50 @@ export const MapSidePanel = ({ map, title = "로케이션 현황", stockAction, 
 
 const ZoneRow = ({ zone, active, onSelect }: { zone: LayoutZone; active: boolean; onSelect: () => void }) => {
   const bucket = bucketOf(zone.util);
+  const meta = purposeMeta(zone.purpose);
+  if (!meta.racks) {
+    // 입고장 · 출고장 · 사무실 — 적치율 대신 유형과 면적
+    const area = Math.round(polygonArea(zoneWorldPoints(zone)));
+    return (
+      <div className={`wmp-zone is-place${active ? " is-active" : ""}`}>
+        <button type="button" className="wmp-zone-head" onClick={onSelect}>
+          <span className="wmp-zone-badge" style={{ background: meta.token }}>
+            {meta.label.slice(0, 1)}
+          </span>
+          <span className="wmp-zone-text">
+            <span className="wmp-zone-name">{zone.name}</span>
+            <span className="wmp-zone-code">{meta.hint}</span>
+          </span>
+          <span className="wmp-zone-figures">
+            <span className="wmp-zone-util" style={{ color: meta.token }}>
+              {meta.label}
+            </span>
+            <span className="wmp-zone-cap">{area.toLocaleString()} m²{zone.shape ? " · 자유형" : ""}</span>
+          </span>
+        </button>
+        {active ? (
+          <dl className="wmp-zone-detail">
+            <div>
+              <dt>장소 유형</dt>
+              <dd>{meta.label}</dd>
+            </div>
+            <div>
+              <dt>면적</dt>
+              <dd>{area.toLocaleString()} m²</dd>
+            </div>
+            <div>
+              <dt>담당자</dt>
+              <dd>{zone.manager}</dd>
+            </div>
+            <div>
+              <dt>모양</dt>
+              <dd>{zone.shape ? `자유형 · 꼭짓점 ${zone.shape.length}` : `사각형 ${zone.width} × ${zone.depth} m`}</dd>
+            </div>
+          </dl>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div className={`wmp-zone${active ? " is-active" : ""}`}>
       <button type="button" className="wmp-zone-head" onClick={onSelect}>

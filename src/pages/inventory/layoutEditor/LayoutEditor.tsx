@@ -4,15 +4,16 @@ import { useAuthStore } from "../../../app/store/authStore";
 import { useUiStore } from "../../../app/store/uiStore";
 import { Icon } from "../../../components/ui/Icon";
 import { Modal } from "../../../components/ui/Modal";
-import { stepRotation } from "../../../components/warehouse3d/geometry";
+import { polygonArea, polygonIsSimple, stepRotation, type Pt } from "../../../components/warehouse3d/geometry";
 import { hasErrors, validateDraft, type LayoutDraft, type RuleIssue } from "../../../components/warehouse3d/layoutRules";
-import type { LayoutSummaryRow, MapSelection, WarehouseLayout } from "../../../components/warehouse3d/types";
+import { ZONE_PURPOSES, purposeMeta, type LayoutSummaryRow, type MapSelection, type WarehouseLayout, type ZonePurpose } from "../../../components/warehouse3d/types";
 import { PlanCanvas } from "./PlanCanvas";
 import { Inspector, TrayPanel, type Notify } from "./EditorPanels";
 import {
   OBJECT_DEFAULTS,
   addFloor,
   addObject,
+  addPolygonZone,
   addRack,
   addZone,
   buildPreviewLayout,
@@ -22,6 +23,7 @@ import {
   positionOf,
   rotateRack,
   summarizeChanges,
+  zoneAt,
   type DraftResponse,
   type EditorSelection,
   type Tool
@@ -43,9 +45,10 @@ const EDIT_ROLES = ["admin", "logistics"];
 
 type History = { past: LayoutDraft[]; present: LayoutDraft; future: LayoutDraft[] };
 
-const TOOLS: Array<{ tool: Tool; label: string; key: string; icon: string }> = [
+const TOOLS: Array<{ tool: Tool; label: string; key: string; icon: string; title?: string }> = [
   { tool: "select", label: "선택", key: "V", icon: "move" },
-  { tool: "zone", label: "구역", key: "Z", icon: "grid" },
+  { tool: "zone", label: "장소", key: "Z", icon: "grid", title: "사각형 장소 — 클릭한 자리에 놓고 모서리로 크기 조절" },
+  { tool: "polygon", label: "자유형", key: "F", icon: "shape", title: "자유형 장소 — 꼭짓점을 찍어 모양대로 그리기" },
   { tool: "rack", label: "랙", key: "K", icon: "layers" },
   { tool: "DOCK_IN", label: "입고 도크", key: "I", icon: "inbox" },
   { tool: "DOCK_OUT", label: "출고 도크", key: "O", icon: "truck" },
@@ -76,7 +79,9 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [floor, setFloor] = useState("1F");
-  const [tool, setTool] = useState<Tool>("select");
+  const [tool, setToolState] = useState<Tool>("select");
+  /** 장소 · 자유형 도구로 새로 만들 장소 유형 */
+  const [newPurpose, setNewPurpose] = useState<ZonePurpose>("RESERVE");
   const [selection, setSelection] = useState<EditorSelection>(null);
   const [snapOn, setSnapOn] = useState(true);
   const [preview, setPreview] = useState(true);
@@ -99,6 +104,12 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
   latest.current = draft;
 
   const notify: Notify = useCallback((tone, text) => setToast({ tone, text }), []);
+
+  // 자유형을 그리기 시작하면 선택을 푼다 — 그리다가 Backspace 로 선택한 장소를 지우지 않게
+  const setTool = useCallback((next: Tool) => {
+    setToolState(next);
+    if (next === "polygon") setSelection(null);
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -271,27 +282,48 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
       return;
     }
     if (kind === "zone") {
-      const result = addZone(draft, floor, x, z);
+      const result = addZone(draft, floor, x, z, newPurpose);
       commit(result.draft);
       setSelection({ kind: "zone", id: result.id });
+      notify("info", `${purposeMeta(newPurpose).label} 추가 — 모서리로 크기를, 변 가운데 + 를 끌면 모양을 바꿉니다`);
     } else if (kind === "rack") {
-      const zone = draft.zones.find(
-        (item) => item.floor === floor && Math.abs(item.x - x) <= item.width / 2 && Math.abs(item.z - z) <= item.depth / 2
-      );
+      const zone = zoneAt(draft, floor, x, z);
       if (!zone) {
         notify("danger", "랙은 구역 안을 클릭해서 놓습니다");
+        return;
+      }
+      if (!purposeMeta(zone.purpose).racks) {
+        notify("danger", `${zone.name} 은(는) ${purposeMeta(zone.purpose).label}이라 랙을 둘 수 없습니다 — 보관 구역 안을 클릭하세요`);
         return;
       }
       const result = addRack(draft, zone.id, x, z);
       commit(result.draft);
       if (result.id != null) setSelection({ kind: "rack", id: result.id });
-    } else if (kind !== "select") {
+    } else if (kind !== "select" && kind !== "polygon") {
       const result = addObject(draft, floor, kind, x, z);
       commit(result.draft);
       setSelection({ kind: "object", id: result.id });
       notify("info", `${OBJECT_DEFAULTS[kind].name} 추가 — 모서리 핸들로 크기를 맞추세요`);
     }
     setTool("select");
+  };
+
+  /** 자유형 도구로 다 그린 장소 — 꼬인 선 · 너무 작은 면적은 만들지 않는다 */
+  const createPolygon = (points: Pt[]) => {
+    if (!draft || readOnly) return;
+    if (!polygonIsSimple(points)) {
+      notify("danger", "선이 서로 꼬였습니다 — 다시 그려 주세요");
+      return;
+    }
+    if (polygonArea(points) < 1) {
+      notify("danger", "장소가 너무 작습니다 (1 m² 이상)");
+      return;
+    }
+    const result = addPolygonZone(draft, floor, points, newPurpose);
+    commit(result.draft);
+    setSelection({ kind: "zone", id: result.id });
+    setTool("select");
+    notify("success", `${purposeMeta(newPurpose).label} 자유형 추가 (꼭짓점 ${points.length}개) — 꼭짓점·변을 끌어 다듬으세요`);
   };
 
   const nudge = (dx: number, dz: number) => {
@@ -348,6 +380,8 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
         return;
       }
       if (readOnly || !draft) return;
+      // 자유형을 그리는 중이면 Enter · Backspace 는 캔버스가 쓴다
+      if (tool === "polygon" && (event.key === "Enter" || event.key === "Backspace")) return;
       if ((event.key === "Delete" || event.key === "Backspace") && selection) {
         event.preventDefault();
         commit(deleteSelection(draft, selection));
@@ -385,7 +419,9 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
     if (!draft) return;
     setBusy(true);
     try {
+      // 저장 대기를 끊는다 — ref 를 비우지 않으면 게시 뒤 load() 가 게시 전 초안(새 장소 음수 ID)을 다시 저장해 같은 장소가 또 생긴다
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
+      saveTimer.current = null;
       const res = await apiPost<{ published: { version: number }; warnings: string[] }>("/warehouse/layout/publish", { draft, operator });
       setConfirm(null);
       notify("success", `v${res.published.version} 게시 완료 — 대시보드·재고 이동 3D 에 바로 반영됩니다${res.warnings.length ? ` (주의 ${res.warnings.length}건)` : ""}`);
@@ -542,7 +578,7 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
                 type="button"
                 className={tool === item.tool ? "is-on" : ""}
                 onClick={() => setTool(item.tool)}
-                title={`${item.label} (${item.key})`}
+                title={`${item.title ?? item.label} (${item.key})`}
                 disabled={!draft.floors.length && item.tool !== "select"}
               >
                 <Icon name={item.icon} size={14} />
@@ -551,6 +587,24 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
               </button>
             ))}
           </div>
+        ) : null}
+
+        {!readOnly ? (
+          <label className={`le-purpose${tool === "zone" || tool === "polygon" ? " is-active" : ""}`} title="장소 · 자유형 도구로 만들 장소의 유형">
+            <i style={{ background: purposeMeta(newPurpose).token }} aria-hidden="true" />
+            <span>새 장소</span>
+            <select value={newPurpose} onChange={(event) => setNewPurpose(event.target.value as ZonePurpose)}>
+              {(["보관 구역", "작업장", "지원 공간"] as const).map((group) => (
+                <optgroup key={group} label={group}>
+                  {ZONE_PURPOSES.filter((item) => item.group === group).map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
         ) : null}
 
         <div className="le-view-tools">
@@ -597,8 +651,11 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
                 readOnly={readOnly}
                 snapOn={snapOn}
                 errorKeys={errorKeys}
+                newPurpose={newPurpose}
                 onSelect={setSelection}
                 onCreate={create}
+                onCreatePolygon={createPolygon}
+                onCommit={commit}
                 onDragStart={onDragStart}
                 onDrag={onDrag}
                 onDragEnd={onDragEnd}
@@ -630,10 +687,18 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
             {!readOnly && draft.floors.length ? (
               <div className="le-canvas-hint">
                 {tool === "select"
-                  ? "끌어서 이동 · 모서리로 크기 · R 회전 · Del 삭제 · 방향키 0.5m(Shift 0.1m) · 빈 곳 끌기 화면 이동 · Ctrl+휠 확대"
-                  : tool === "rack"
-                    ? "구역 안을 클릭하면 랙이 놓입니다 · Esc 취소"
-                    : "클릭한 자리에 만듭니다 · Esc 취소"}
+                  ? !selection
+                    ? "건물 모양: 층 테두리 꼭짓점·변 끌기(Shift 직각) · 변 가운데 + 끌기 = 꼭짓점 추가 · 더블클릭 삭제 · 빈 곳 끌기 화면 이동 · Ctrl+휠 확대"
+                    : selection.kind === "zone"
+                      ? "끌어서 이동 · 변 가운데 + 끌기 = 꼭짓점 추가 · 꼭짓점·변 끌기(Shift 직각) · 꼭짓점 더블클릭 삭제 · Q/E 45° · Del 빼기"
+                      : "끌어서 이동 · 모서리로 크기 · R 회전 · Del 삭제 · 방향키 0.5m(Shift 0.1m) · 빈 곳 끌기 화면 이동 · Ctrl+휠 확대"
+                  : tool === "polygon"
+                    ? `${purposeMeta(newPurpose).label} 그리기 — 클릭으로 꼭짓점 · 첫 점/더블클릭/Enter 로 완성 · Shift 직각 · Backspace 한 점 취소 · Esc 취소`
+                    : tool === "rack"
+                      ? "보관 구역 안을 클릭하면 랙이 놓입니다 · Esc 취소"
+                      : tool === "zone"
+                        ? `클릭한 자리에 ${purposeMeta(newPurpose).label} 을(를) 놓습니다 · Esc 취소`
+                        : "클릭한 자리에 만듭니다 · Esc 취소"}
               </div>
             ) : null}
           </div>

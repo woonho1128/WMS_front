@@ -38,8 +38,21 @@ const PURPOSE_NAME: Record<string, string> = {
   PICKING: "피킹 구역",
   RESERVE: "보관 구역",
   CROSS_DOCK: "직출 구역",
-  RETURN: "반품·불량"
+  RETURN: "반품·불량",
+  INBOUND: "입고장",
+  OUTBOUND: "출고장",
+  OFFICE: "사무실",
+  ETC: "기타 공간"
 };
+
+/** 랙 없는 장소 — 입고장 · 출고장 · 사무실. shape 는 구역 로컬 꼭짓점(외곽 사각형 중심 원점), null = 사각형 */
+const ICHEON_PLACES: Array<{ code: string; name: string; floor: string; purpose: string; x: number; z: number; width: number; depth: number; shape: Array<[number, number]> | null; manager: string }> = [
+  // 입고 도크 앞 하차 · 검수 대기 — 1번 도크 쪽이 더 깊다
+  { code: "Y-IN", name: "입고장", floor: "1F", purpose: "INBOUND", x: -16.5, z: 14, width: 21, depth: 4, shape: [[-10.5, -2], [-0.5, -2], [-0.5, -0.5], [10.5, -0.5], [10.5, 2], [-10.5, 2]], manager: "김현우 대리" },
+  { code: "Y-OUT", name: "출고장", floor: "1F", purpose: "OUTBOUND", x: 16.5, z: 14, width: 21, depth: 4, shape: null, manager: "한지민 대리" },
+  // 왼쪽 위 모서리 ㄱ자 사무실
+  { code: "Y-OF", name: "사무실", floor: "1F", purpose: "OFFICE", x: -26, z: -18.75, width: 12, depth: 6.5, shape: [[-6, -3.25], [6, -3.25], [6, 0.25], [0, 0.25], [0, 3.25], [-6, 3.25]], manager: "박정호 과장" }
+];
 
 export const ADJUST_REASONS: Record<string, string> = {
   COUNT_DIFF: "실사 차이",
@@ -361,6 +374,22 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       });
     });
 
+    // 랙 없는 장소 (입고장 · 출고장 · 사무실) — 자유형 예시 포함
+    ICHEON_PLACES.forEach((place) => {
+      ctx.zones.push({
+        id: zoneId++,
+        warehouseId: ICHEON_ID,
+        warehouseName: warehouse.name,
+        purposeName: PURPOSE_NAME[place.purpose],
+        storage: "FLOOR",
+        rotation: 0,
+        temp: "상온",
+        recentIn: "—",
+        recentOut: "—",
+        ...place
+      });
+    });
+
     // 기존 로케이션 PI-A-01 은 좌표 없이 쓰던 데이터 — 미배치로 남겨 "미배치 트레이" 흐름을 보여준다
     ctx.locations().forEach((loc) => {
       loc.rackId ??= null;
@@ -511,6 +540,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
           width: zone.width,
           depth: zone.depth,
           rotation: Number(zone.rotation) || 0,
+          shape: zone.shape ?? null,
           manager: zone.manager ?? "-",
           temp: zone.temp ?? "상온",
           recentIn: zone.recentIn ?? "—",
@@ -1030,6 +1060,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
           width: zone.width ?? 12,
           depth: zone.depth ?? 8,
           rotation: Number(zone.rotation) || 0,
+          shape: zone.shape ?? null,
           manager: zone.manager ?? "-"
         })),
       racks: racks.filter((rack) => zoneIds.has(rack.zoneId)).map(strip) as LayoutDraft["racks"],
@@ -1091,7 +1122,8 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
 
     // 1) 층
     for (let i = floors.length - 1; i >= 0; i -= 1) if (floors[i].warehouseId === warehouseId) floors.splice(i, 1);
-    draft.floors.forEach((floor) => floors.push({ ...floor, warehouseId }));
+    // lastShape([자유형]으로 되돌릴 모양)는 초안 전용 — 게시본에는 남기지 않는다
+    draft.floors.forEach(({ lastShape: _memo, ...floor }) => floors.push({ ...floor, warehouseId }));
 
     // 2) 구역 — 새 구역은 마스터에도 만든다. 기존 구역은 형상·이름만 바꾼다
     const zoneIdMap = new Map<number, number>();
@@ -1109,6 +1141,7 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
         width: dz.width,
         depth: dz.depth,
         rotation: Number(dz.rotation) || 0,
+        shape: dz.shape ?? null,
         manager: dz.manager
       };
       if (dz.id > 0) {

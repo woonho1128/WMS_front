@@ -111,6 +111,9 @@
 .wh3d-label.tone-busy   .wh3d-label-util { color: var(--c-warning-ink); }
 .wh3d-label.tone-full   .wh3d-label-util { color: var(--c-danger-ink); }
 .wh3d-label.tone-neutral { border-color: var(--border-strong); }
+/* 입고장 · 출고장 · 사무실 — 테두리는 장소 유형 색(인라인), 설명 한 줄 */
+.wh3d-label.tone-place { border-style: dashed; }
+.wh3d-label.tone-place .wh3d-label-code { color: var(--ink-muted); }
 .wh3d-label.tone-neutral .wh3d-label-util { color: var(--ink-muted); }
 .wh3d-label.is-active {
   box-shadow: var(--sh-pop), 0 0 0 2px var(--primary);

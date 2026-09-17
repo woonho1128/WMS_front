@@ -4,7 +4,7 @@ import { Icon } from "../../components/ui/Icon";
 import { MapSearch } from "../../components/warehouse3d/MapSearch";
 import { MapSidePanel } from "../../components/warehouse3d/MapSidePanel";
 import { useWarehouseMap } from "../../components/warehouse3d/useWarehouseMap";
-import { bucketOf, type MapSearchItem, type MapSearchLocation } from "../../components/warehouse3d/types";
+import { bucketOf, zoneHoldsRacks, type MapSearchItem, type MapSearchLocation } from "../../components/warehouse3d/types";
 import { LocationLabelDialog, type LabelTarget } from "./LocationLabels";
 import { RackBoard } from "./RackBoard";
 import "./LocationPage.css";
@@ -80,7 +80,9 @@ export const LocationCapaView = ({ warehouseId, onWarehouseChange, focusRequest,
 
   const capaRows = useMemo(() => {
     if (!layout) return [];
-    return [...layout.zones]
+    // CAPA 는 랙이 있는 보관 구역만 — 입고장 · 출고장 · 사무실은 파레트 자리가 없다
+    return layout.zones
+      .filter(zoneHoldsRacks)
       .sort((a, b) => a.floor.localeCompare(b.floor) || a.code.localeCompare(b.code))
       .map((zone) => {
         const free = Math.max(zone.positions - zone.usedPositions, 0);

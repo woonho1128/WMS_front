@@ -4,7 +4,7 @@
    회전: 도(°), 위에서 내려다볼 때 시계 방향이 + (0° 에서 +x 로 뻗은 변이 90° 에서 +z 로 향한다)
    ============================================================ */
 
-import type { LayoutRack, LayoutZone } from "./types";
+import type { LayoutRack, LayoutZone, ZoneShape } from "./types";
 
 /** 랙 기둥 간격(베이 사이) */
 export const BAY_GAP = 0.45;
@@ -166,3 +166,195 @@ export const zoneHeight = (zone: Pick<LayoutZone, "id">, racks: Array<Pick<Layou
 };
 
 export const snap = (value: number, step = 0.5) => Math.round(value / step) * step;
+
+/* ============================================================
+   자유형 장소 — 다각형
+   구역은 중심(x, z) · 회전 · 로컬 꼭짓점(shape)으로 둔다. shape 가 없으면 가로 × 세로 사각형.
+   판정은 전부 바닥 좌표 꼭짓점으로 한다 — 맞닿기만 한 것은 겹침이 아니다.
+   ============================================================ */
+
+export type Pt = { x: number; z: number };
+
+type ZoneOutline = { x: number; z: number; width: number; depth: number; rotation?: number; shape?: ZoneShape | null };
+
+/** 구역 로컬 꼭짓점 — 위에서 봐서 시계 방향(사각형 기준) */
+export const zoneLocalPoints = (zone: Pick<ZoneOutline, "width" | "depth" | "shape">): Pt[] => {
+  if (zone.shape && zone.shape.length >= 3) return zone.shape.map(([x, z]) => ({ x, z }));
+  const hw = zone.width / 2;
+  const hd = zone.depth / 2;
+  return [
+    { x: -hw, z: -hd },
+    { x: hw, z: -hd },
+    { x: hw, z: hd },
+    { x: -hw, z: hd }
+  ];
+};
+
+/** 구역 외곽 꼭짓점 — 바닥 좌표 */
+export const zoneWorldPoints = (zone: ZoneOutline): Pt[] =>
+  zoneLocalPoints(zone).map((point) => localToWorld(zone.x, zone.z, zone.rotation ?? 0, point.x, point.z));
+
+/** 층(건물) 외곽 꼭짓점 — 층 좌표 그대로. 자유형이 아니면 원점 중심 가로 × 세로 사각형 */
+export const floorPoints = (floor: { width: number; depth: number; shape?: ZoneShape | null }): Pt[] => zoneLocalPoints(floor);
+
+export const rectPoints = (rect: Rect): Pt[] => rectCorners(rect);
+
+export const polygonArea = (points: Pt[]) => {
+  let sum = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    sum += a.x * b.z - b.x * a.z;
+  }
+  return Math.abs(sum) / 2;
+};
+
+export const polygonBounds = (points: Pt[]) => {
+  const xs = points.map((point) => point.x);
+  const zs = points.map((point) => point.z);
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
+};
+
+/** 원점 기준 대칭으로 모든 점을 담는 가로 · 세로 — 층은 원점 중심 사각형을 가정하는 곳(3D 바닥판 · 화면 맞춤)이 많다 */
+export const centeredExtent = (points: Pt[]) => {
+  const box = polygonBounds(points);
+  return { width: 2 * Math.max(Math.abs(box.minX), Math.abs(box.maxX)), depth: 2 * Math.max(Math.abs(box.minZ), Math.abs(box.maxZ)) };
+};
+
+const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x);
+
+const distance = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
+
+export const distToSegment = (p: Pt, a: Pt, b: Pt) => {
+  const len2 = (b.x - a.x) ** 2 + (b.z - a.z) ** 2;
+  if (len2 === 0) return distance(p, a);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.z - a.z) * (b.z - a.z)) / len2));
+  return distance(p, { x: a.x + t * (b.x - a.x), z: a.z + t * (b.z - a.z) });
+};
+
+/** 점이 다각형 안 / 경계 위 / 밖 — 경계는 tolerance(m) 안쪽 거리 */
+export const classifyPoint = (p: Pt, polygon: Pt[], tolerance = 0.001): "inside" | "boundary" | "outside" => {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const a = polygon[i];
+    const b = polygon[j];
+    if (distToSegment(p, a, b) <= tolerance) return "boundary";
+    if (a.z > p.z !== b.z > p.z && p.x < ((b.x - a.x) * (p.z - a.z)) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside ? "inside" : "outside";
+};
+
+/** 두 선분이 서로를 가로지르는가 — 끝점이 닿거나 겹쳐 놓인 것은 가로지름이 아니다 */
+const segmentsCross = (p1: Pt, p2: Pt, q1: Pt, q2: Pt, tolerance = 0.001) => {
+  const lp = distance(p1, p2);
+  const lq = distance(q1, q2);
+  if (lp === 0 || lq === 0) return false;
+  const d1 = cross(q1, q2, p1) / lq;
+  const d2 = cross(q1, q2, p2) / lq;
+  const d3 = cross(p1, p2, q1) / lp;
+  const d4 = cross(p1, p2, q2) / lp;
+  const opposite = (u: number, v: number) => (u > tolerance && v < -tolerance) || (u < -tolerance && v > tolerance);
+  return opposite(d1, d2) && opposite(d3, d4);
+};
+
+const edgesOf = (points: Pt[]) => points.map((point, idx) => [point, points[(idx + 1) % points.length]] as const);
+
+/** 외곽선이 꼬이지 않은 다각형인가 — 이웃하지 않은 변끼리 가로지르거나 닿으면 안 된다 */
+export const polygonIsSimple = (points: Pt[], tolerance = 0.001) => {
+  const n = points.length;
+  if (n < 3) return false;
+  const edges = edgesOf(points);
+  for (let i = 0; i < n; i += 1) {
+    if (distance(edges[i][0], edges[i][1]) <= tolerance) return false;
+    for (let j = i + 1; j < n; j += 1) {
+      if (j === i + 1 || (i === 0 && j === n - 1)) continue;
+      const [a1, a2] = edges[i];
+      const [b1, b2] = edges[j];
+      if (segmentsCross(a1, a2, b1, b2, tolerance)) return false;
+      if (distToSegment(b1, a1, a2) <= tolerance || distToSegment(b2, a1, a2) <= tolerance) return false;
+      if (distToSegment(a1, b1, b2) <= tolerance || distToSegment(a2, b1, b2) <= tolerance) return false;
+    }
+  }
+  return polygonArea(points) > tolerance;
+};
+
+/** inner 가 outer 안에 온전히 들어가는가 — 경계에 닿는 것은 괜찮다 (오목한 outer 도 판정) */
+export const polygonInside = (inner: Pt[], outer: Pt[], tolerance = 0.001) => {
+  if (inner.some((point) => classifyPoint(point, outer, tolerance) === "outside")) return false;
+  const innerEdges = edgesOf(inner);
+  const outerEdges = edgesOf(outer);
+  for (const [a1, a2] of innerEdges) {
+    for (const [b1, b2] of outerEdges) {
+      if (segmentsCross(a1, a2, b1, b2, tolerance)) return false;
+    }
+    // 오목한 모서리를 스치며 바깥으로 나가는 변 — 변 위 몇 점을 더 본다
+    for (const t of [0.25, 0.5, 0.75]) {
+      const probe = { x: a1.x + (a2.x - a1.x) * t, z: a1.z + (a2.z - a1.z) * t };
+      if (classifyPoint(probe, outer, tolerance) === "outside") return false;
+    }
+  }
+  return true;
+};
+
+/** 두 다각형의 안쪽이 겹치는가 — 변끼리 맞닿기만 한 것은 겹침이 아니다 */
+export const polygonsOverlap = (a: Pt[], b: Pt[], tolerance = 0.001) => {
+  const ea = edgesOf(a);
+  const eb = edgesOf(b);
+  for (const [a1, a2] of ea) {
+    for (const [b1, b2] of eb) {
+      if (segmentsCross(a1, a2, b1, b2, tolerance)) return true;
+    }
+  }
+  if (a.some((point) => classifyPoint(point, b, tolerance) === "inside")) return true;
+  if (b.some((point) => classifyPoint(point, a, tolerance) === "inside")) return true;
+  // 꼭짓점이 모두 서로의 경계에 놓인 경우(같은 모양이 포개짐 등) — 변 가운데에서 안쪽으로 조금 들어간 점으로 본다
+  const probeInside = (from: Pt[], other: Pt[]) =>
+    edgesOf(from).some(([p1, p2]) => {
+      const len = distance(p1, p2);
+      if (len <= tolerance) return false;
+      const mid = { x: (p1.x + p2.x) / 2, z: (p1.z + p2.z) / 2 };
+      const nx = -(p2.z - p1.z) / len;
+      const nz = (p2.x - p1.x) / len;
+      const step = Math.min(0.05, len / 4);
+      return [1, -1].some((sign) => {
+        const probe = { x: mid.x + nx * step * sign, z: mid.z + nz * step * sign };
+        return classifyPoint(probe, from, tolerance) === "inside" && classifyPoint(probe, other, tolerance) === "inside";
+      });
+    });
+  return probeInside(a, b) || probeInside(b, a);
+};
+
+/** 다각형 안쪽의 한 점 — 라벨 자리. 무게중심이 밖이면(ㄱ자 등) 경계에서 가장 먼 격자점 */
+export const interiorPoint = (points: Pt[]): Pt => {
+  let area = 0;
+  let cx = 0;
+  let cz = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    const f = a.x * b.z - b.x * a.z;
+    area += f;
+    cx += (a.x + b.x) * f;
+    cz += (a.z + b.z) * f;
+  }
+  if (Math.abs(area) > 1e-9) {
+    const centroid = { x: cx / (3 * area), z: cz / (3 * area) };
+    if (classifyPoint(centroid, points) === "inside") return centroid;
+  }
+  const box = polygonBounds(points);
+  let best: Pt | null = null;
+  let bestDist = -1;
+  const steps = 18;
+  for (let i = 1; i < steps; i += 1) {
+    for (let j = 1; j < steps; j += 1) {
+      const probe = { x: box.minX + ((box.maxX - box.minX) * i) / steps, z: box.minZ + ((box.maxZ - box.minZ) * j) / steps };
+      if (classifyPoint(probe, points) !== "inside") continue;
+      const nearest = Math.min(...edgesOf(points).map(([p1, p2]) => distToSegment(probe, p1, p2)));
+      if (nearest > bestDist) {
+        bestDist = nearest;
+        best = probe;
+      }
+    }
+  }
+  return best ?? points[0];
+};

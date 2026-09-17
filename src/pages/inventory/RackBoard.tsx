@@ -5,6 +5,7 @@ import { RackFaceGrid, RackFaceLegend } from "../../components/warehouse3d/RackF
 import {
   bucketOf,
   isOverweight,
+  zoneHoldsRacks,
   type LayoutSlot,
   type MapSearchItem,
   type MapSearchLocation
@@ -34,7 +35,8 @@ export const RackBoard = ({ map, onPrint }: Props) => {
     () =>
       (layout?.floors ?? []).map((floor) => ({
         floor: floor.code,
-        zones: (layout?.zones ?? []).filter((item) => item.floor === floor.code).sort((a, b) => byCode(a.code, b.code))
+        // 랙 정면은 보관 구역만 — 입고장 · 출고장 · 사무실에는 랙이 없다
+        zones: (layout?.zones ?? []).filter((item) => item.floor === floor.code && zoneHoldsRacks(item)).sort((a, b) => byCode(a.code, b.code))
       })),
     [layout]
   );

@@ -5,7 +5,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
-import type { LayoutRack, LayoutSummaryRow } from "../../components/warehouse3d/types";
+import { zoneHoldsRacks, type LayoutRack, type LayoutSummaryRow } from "../../components/warehouse3d/types";
 import { LocationCapaView } from "./LocationCapaView";
 import { LocationLabelDialog, type LabelTarget } from "./LocationLabels";
 import { LayoutEditor } from "./layoutEditor/LayoutEditor";
@@ -60,7 +60,7 @@ const weightCell = (r: LocationRow) =>
     "-"
   );
 
-type ZoneOption = { id: number; code: string; name: string; warehouseName: string; warehouseId?: number | null; floor?: string | null };
+type ZoneOption = { id: number; code: string; name: string; warehouseName: string; warehouseId?: number | null; floor?: string | null; purpose?: string | null };
 
 type Tab = "list" | "capa" | "layout";
 
@@ -309,7 +309,7 @@ export const InventoryLocationPage = () => {
               ? "로케이션이 있는지는 여기서 정합니다. 추가·삭제하면 3D 에 바로 반영됩니다."
               : tab === "capa"
                 ? "구역별 파레트 자리 점유·가용을 3D 와 표로 봅니다."
-                : "랙이 어디에 놓였는지를 정합니다. 편집은 초안에 쌓이고 게시해야 운영에 반영됩니다."}
+                : "장소(보관 구역 · 입고장 · 출고장 · 사무실)와 랙이 어디에 어떤 모양으로 놓였는지 정합니다. 편집은 초안에 쌓이고 게시해야 운영에 반영됩니다."}
           </p>
         </div>
         <div className="lp-tabs" role="tablist" aria-label="로케이션 관리 보기">
@@ -514,7 +514,8 @@ export const InventoryLocationPage = () => {
           <span>Zone</span>
           <select value={newZone} onChange={(e) => setNewZone(e.target.value === "" ? "" : Number(e.target.value))}>
             <option value="">Zone 선택</option>
-            {zones.map((z) => <option key={z.id} value={z.id}>{z.warehouseName} · {z.name} ({z.code})</option>)}
+            {/* 로케이션은 보관 구역에만 — 사무실 · 입고장 · 출고장 같은 바닥 공간은 고르지 않는다 (유형 없는 예전 Zone 은 그대로) */}
+            {zones.filter((z) => !z.purpose || zoneHoldsRacks({ purpose: z.purpose })).map((z) => <option key={z.id} value={z.id}>{z.warehouseName} · {z.name} ({z.code})</option>)}
           </select>
         </label>
         <label className="ds-field" style={{ marginTop: 10 }}>

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { apiGet, apiPost } from "../../../services/http";
-import { normalizeDeg, rectInside, rectsOverlap, stepRotation } from "../../../components/warehouse3d/geometry";
-import { floorRect, objectRect, zoneRect, type LayoutDraft } from "../../../components/warehouse3d/layoutRules";
+import { normalizeDeg, polygonInside, polygonsOverlap, rectPoints, stepRotation } from "../../../components/warehouse3d/geometry";
+import { floorPolygon, objectRect, zonePolygon, type LayoutDraft } from "../../../components/warehouse3d/layoutRules";
 import type { WarehouseLayout } from "../../../components/warehouse3d/types";
 import type { WarehouseMapState } from "../../../components/warehouse3d/useWarehouseMap";
 import { OBJECT_DEFAULTS, buildPreviewLayout, patchZone, summarizeChanges, type DraftResponse, type EditorLocation } from "./draftOps";
@@ -57,19 +57,19 @@ export const useZoneEditSession = (map: WarehouseMapState, operator: string) => 
     setSelectedZoneId(null);
   }, []);
 
-  /** 놓을 수 없으면 사유 — 층 외곽 · 다른 구역 · 도크/기둥/벽과 겹침 (돌린 모양 그대로 판정) */
+  /** 놓을 수 없으면 사유 — 층 외곽 · 다른 장소 · 도크/기둥/벽과 겹침 (돌린 모양 · 자유형 외곽 그대로 판정) */
   const check = useCallback(
     (zoneId: number, x: number, z: number, rotation?: number): string | null => {
       if (!draft) return "편집 정보가 없습니다";
       const zone = draft.zones.find((item) => item.id === zoneId);
       const floor = zone ? draft.floors.find((item) => item.code === zone.floor) : undefined;
       if (!zone || !floor) return "구역을 찾을 수 없습니다";
-      const rect = { x, z, width: zone.width, depth: zone.depth, rotation: rotation ?? zone.rotation ?? 0 };
-      if (!rectInside(rect, floorRect(floor))) return `${floor.code} 외곽을 벗어납니다`;
-      const other = draft.zones.find((item) => item.id !== zoneId && item.floor === zone.floor && rectsOverlap(rect, zoneRect(item)));
+      const outline = zonePolygon({ ...zone, x, z, rotation: rotation ?? zone.rotation ?? 0 });
+      if (!polygonInside(outline, floorPolygon(floor))) return `${floor.code} 외곽을 벗어납니다`;
+      const other = draft.zones.find((item) => item.id !== zoneId && item.floor === zone.floor && polygonsOverlap(outline, zonePolygon(item)));
       if (other) return `${other.name}과(와) 겹칩니다`;
       const object = draft.objects.find(
-        (item) => item.floor === zone.floor && item.kind !== "AISLE" && rectsOverlap(rect, objectRect(item))
+        (item) => item.floor === zone.floor && item.kind !== "AISLE" && polygonsOverlap(outline, rectPoints(objectRect(item)))
       );
       if (object) return `${object.label || OBJECT_DEFAULTS[object.kind].name}과(와) 겹칩니다`;
       return null;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Icon } from "../../../components/ui/Icon";
+import { purposeMeta } from "../../../components/warehouse3d/types";
 import { ZONE_ROTATE_STEP, type ZoneEditSession } from "./useZoneEditSession";
 import "./zoneEdit.css";
 
@@ -164,7 +165,8 @@ export const ZoneEditPanel = ({ session, floor, onSave, onCancel }: PanelProps) 
             <header>
               <span>{selected.name} 위치 · 방향</span>
               <small>
-                {selected.width} × {selected.depth} m · 랙 {rackCount}
+                {selected.shape ? `자유형 · 외곽 ${selected.width} × ${selected.depth} m` : `${selected.width} × ${selected.depth} m`}
+                {purposeMeta(selected.purpose).racks ? ` · 랙 ${rackCount}` : ` · ${purposeMeta(selected.purpose).label}`}
               </small>
             </header>
             <div className="zep-coords">
