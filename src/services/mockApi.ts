@@ -113,10 +113,10 @@ let manualOrders: AnyRecord[] = [
 ];
 
 let inbounds = [
-  { id: 112, inboundNo: "IN-20260620-001", poNo: "PO-9018", supplierCode: "SUP001", supplierName: "한성테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "운송장 별도 확인", status: "scheduled", expectedAt: "2026-06-20", qty: 660 },
-  { id: 113, inboundNo: "IN-20260613-001", poNo: "PO-9014", supplierCode: "SUP001", supplierName: "한성테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "긴급 입고", status: "registered", expectedAt: "2026-06-13", qty: 330 },
+  { id: 112, inboundNo: "IN-20260620-001", poNo: "PO-9018", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "운송장 별도 확인", status: "scheduled", expectedAt: "2026-06-20", qty: 660 },
+  { id: 113, inboundNo: "IN-20260613-001", poNo: "PO-9014", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "긴급 입고", status: "registered", expectedAt: "2026-06-13", qty: 330 },
   { id: 111, inboundNo: "IN-20260607-001", poNo: "OPO-002", supplierCode: "OEM002", supplierName: "인천외주가공", warehouseId: 5, warehouseName: "외주공장", warehouseType: "외주", type: "외주", inTypeCode: "OEM", inTypeName: "외주입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: null, status: "located", expectedAt: "2026-06-07", qty: 120 },
-  { id: 116, inboundNo: "IN-20260606-003", poNo: "PO-9003", supplierCode: "SUP001", supplierName: "한성테크놀로지", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "분할 납품 1차", status: "confirmed", expectedAt: "2026-06-05", qty: 420 },
+  { id: 116, inboundNo: "IN-20260606-003", poNo: "PO-9003", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "분할 납품 1차", status: "confirmed", expectedAt: "2026-06-05", qty: 420 },
   { id: 125, inboundNo: "IN-20260530-001", poNo: "PO-9006", supplierCode: "SUP003", supplierName: "대성정밀공업", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", type: "일반", inTypeCode: "IMP", inTypeName: "수입입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "통관 완료분", status: "confirmed", expectedAt: "2026-05-30", qty: 600 },
   // 공장 간 재고 이동 → 입고 프로세스로 처리(이동입고). 일반입고와 구분(type=이동, MVR).
   { id: 140, inboundNo: "IN-MV-20260616-001", poNo: null, moveRef: "MV-20260616-001", supplierCode: "WH-CW", supplierName: "창원공장(출발)", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "창원→제천 공장 간 재고 이동 (로케이션 지정 완료)", status: "located", expectedAt: "2026-06-16", qty: 150 },
@@ -150,10 +150,10 @@ const inboundLines: Record<number, AnyRecord[]> = {
 
 let outbounds = [
   { id: 46, outboundNo: "DN20260601020", scheduledDate: "2026-06-19", customerCode: "051794", customerName: "대림바스(주)", outType: "A/S 출고(유상)", qty: 5, carrier: "사내차량", shipAddress: "충북 청주시 흥덕구 가경로 50", invoiceNo: null, status: "출고대기", rejectReason: null },
-  { id: 62, outboundNo: "DN20260601021", scheduledDate: "2026-06-20", customerCode: "219475", customerName: "대림 스마트몰", outType: "도소매출고", qty: 32, carrier: "롯데택배", shipAddress: "경기 화성시 동탄대로 620", invoiceNo: "LT2606210088", status: "피킹완료", rejectReason: null },
-  { id: 57, outboundNo: "DN20260601019", scheduledDate: "2026-06-18", customerCode: "132906", customerName: "주식회사 부방유통", outType: "도소매출고", qty: 31, carrier: "CJ대한통운", shipAddress: "경기 부천시 길주로 210", invoiceNo: "CJ2606190077", status: "출고완료", rejectReason: null },
-  { id: 52, outboundNo: "DN20260601018", scheduledDate: "2026-06-17", customerCode: "127419", customerName: "(주)코스트코리아", outType: "도소매출고", qty: 19, carrier: "로젠택배", shipAddress: "경기 고양시 일산동구 중앙로 1275", invoiceNo: null, status: "거부", rejectReason: "주소 오류" },
-  { id: 70, outboundNo: "DN20260601022", scheduledDate: today, customerCode: "771205", customerName: "이마트 트레이더스", outType: "도소매출고", qty: 84, carrier: "한진택배", shipAddress: "서울 강남구 테헤란로 152", invoiceNo: null, status: "피킹중", rejectReason: null }
+  { id: 62, outboundNo: "DN20260601021", scheduledDate: "2026-06-20", customerCode: "219475", customerName: "대림 스마트몰", outType: "도소매출고", qty: 32, carrier: "가람택배", shipAddress: "경기 화성시 동탄대로 620", invoiceNo: "GR2606210088", status: "피킹완료", rejectReason: null },
+  { id: 57, outboundNo: "DN20260601019", scheduledDate: "2026-06-18", customerCode: "132906", customerName: "주식회사 나래유통", outType: "도소매출고", qty: 31, carrier: "한길택배", shipAddress: "경기 부천시 길주로 210", invoiceNo: "HG2606190077", status: "출고완료", rejectReason: null },
+  { id: 52, outboundNo: "DN20260601018", scheduledDate: "2026-06-17", customerCode: "127419", customerName: "(주)가온마트", outType: "도소매출고", qty: 19, carrier: "온길택배", shipAddress: "경기 고양시 일산동구 중앙로 1275", invoiceNo: null, status: "거부", rejectReason: "주소 오류" },
+  { id: 70, outboundNo: "DN20260601022", scheduledDate: today, customerCode: "771205", customerName: "한울 트레이더스", outType: "도소매출고", qty: 84, carrier: "나루택배", shipAddress: "서울 강남구 테헤란로 152", invoiceNo: null, status: "피킹중", rejectReason: null }
 ];
 
 const outboundLines: Record<number, AnyRecord[]> = {
@@ -166,14 +166,14 @@ const outboundLines: Record<number, AnyRecord[]> = {
 };
 
 let carriers: AnyRecord[] = [
-  { id: 1, code: "CJ", name: "CJ대한통운", region: "전국", manager: "김배송", phone: "1588-1255", accountUser: "carrier_cj", portalRole: "배차공유", active: true },
-  { id: 2, code: "LOTTE", name: "롯데택배", region: "수도권", manager: "이수도", phone: "1588-2121", accountUser: "carrier_lotte", portalRole: "조회", active: true },
-  { id: 3, code: "HANJIN", name: "한진택배", region: "지방권", manager: "박지방", phone: "1588-0011", accountUser: "carrier_hanjin", portalRole: "조회", active: true },
+  { id: 1, code: "HG", name: "한길택배", region: "전국", manager: "김배송", phone: "1588-0001", accountUser: "carrier_hg", portalRole: "배차공유", active: true },
+  { id: 2, code: "GARAM", name: "가람택배", region: "수도권", manager: "이수도", phone: "1588-0002", accountUser: "carrier_garam", portalRole: "조회", active: true },
+  { id: 3, code: "NARU", name: "나루택배", region: "지방권", manager: "박지방", phone: "1588-0003", accountUser: "carrier_naru", portalRole: "조회", active: true },
   { id: 4, code: "INHOUSE", name: "사내차량", region: "전국", manager: "물류팀", phone: "055-000-0000", accountUser: null, portalRole: "조회", active: true }
 ];
 
 let dispatched: AnyRecord[] = [
-  { id: 1, dispatchNo: "DP-260617-001", outboundNo: "DN20260601019", customerName: "주식회사 부방유통", shipAddress: "경기 부천시 길주로 210", region: "수도권", carrierName: "CJ대한통운", vehicleType: "1톤", totalWeightKg: 420, totalVolumeM3: 2.8, palletCount: 2, dispatchDate: today }
+  { id: 1, dispatchNo: "DP-260617-001", outboundNo: "DN20260601019", customerName: "주식회사 나래유통", shipAddress: "경기 부천시 길주로 210", region: "수도권", carrierName: "한길택배", vehicleType: "1톤", totalWeightKg: 420, totalVolumeM3: 2.8, palletCount: 2, dispatchDate: today }
 ];
 
 let notices = [
@@ -183,8 +183,8 @@ let notices = [
 
 let returns = [
   { id: 1, returnNo: "RT-260617-001", omsOrderNo: "OMS-RT-26061701", customerCode: "219475", customerName: "대림 스마트몰", itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", qty: 3, reason: "초기불량", manager: "이지은", warehouseName: "이천물류센터", locationCode: "PI-A-01", status: "received", rejectReason: null, receivedAt: today + " 09:20", processedAt: null },
-  { id: 2, returnNo: "RT-260616-002", omsOrderNo: "OMS-RT-26061602", customerCode: "127419", customerName: "(주)코스트코리아", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", qty: 2, reason: "단순변심", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "rejected", rejectReason: "반품 기한 초과", receivedAt: "2026-06-16 14:10", processedAt: "2026-06-17 10:00" },
-  { id: 3, returnNo: "RT-260615-003", omsOrderNo: "OMS-RT-26061503", customerCode: "771205", customerName: "이마트 트레이더스", itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", qty: 10, reason: "오배송", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "approved", rejectReason: null, receivedAt: "2026-06-15 11:05", processedAt: "2026-06-16 09:30" }
+  { id: 2, returnNo: "RT-260616-002", omsOrderNo: "OMS-RT-26061602", customerCode: "127419", customerName: "(주)가온마트", itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", unit: "EA", qty: 2, reason: "단순변심", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "rejected", rejectReason: "반품 기한 초과", receivedAt: "2026-06-16 14:10", processedAt: "2026-06-17 10:00" },
+  { id: 3, returnNo: "RT-260615-003", omsOrderNo: "OMS-RT-26061503", customerCode: "771205", customerName: "한울 트레이더스", itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", qty: 10, reason: "오배송", manager: "박서준", warehouseName: "창원공장", locationCode: "QC-WAIT", status: "approved", rejectReason: null, receivedAt: "2026-06-15 11:05", processedAt: "2026-06-16 09:30" }
 ];
 
 let stocktakings: AnyRecord[] = [

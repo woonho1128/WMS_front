@@ -103,7 +103,7 @@ const SHIPPED_30D = 3900;
 
 /* ---------------- 오늘 작업 시드 ---------------- */
 const SUPPLIERS = [
-  { code: "SUP001", name: "한성테크놀로지" },
+  { code: "SUP001", name: "다온테크놀로지" },
   { code: "SUP002", name: "미래전자부품" },
   { code: "SUP003", name: "대성정밀공업" },
   { code: "SUP004", name: "글로벌패키징" },
@@ -134,17 +134,17 @@ const INBOUND_PLAN: InboundPlan[] = [
 ];
 
 const CUSTOMERS = [
-  { code: "219475", name: "대림 스마트몰", address: "경기 화성시 동탄대로 620", carrier: "롯데택배" },
-  { code: "305118", name: "한빛유통", address: "인천 남동구 논현로 45", carrier: "CJ대한통운" },
-  { code: "552031", name: "동래종합상사", address: "부산 동래구 충렬대로 210", carrier: "CJ대한통운" },
-  { code: "410227", name: "세진상사", address: "대전 유성구 테크노중앙로 12", carrier: "한진택배" },
-  { code: "660912", name: "(주)동원리테일", address: "경기 용인시 기흥구 중부대로 184", carrier: "로젠택배" },
+  { code: "219475", name: "대림 스마트몰", address: "경기 화성시 동탄대로 620", carrier: "가람택배" },
+  { code: "305118", name: "도담유통", address: "인천 남동구 논현로 45", carrier: "한길택배" },
+  { code: "552031", name: "청람종합상사", address: "부산 동래구 충렬대로 210", carrier: "한길택배" },
+  { code: "410227", name: "해림상사", address: "대전 유성구 테크노중앙로 12", carrier: "나루택배" },
+  { code: "660912", name: "(주)해든리테일", address: "경기 용인시 기흥구 중부대로 184", carrier: "온길택배" },
   { code: "051794", name: "대림바스(주)", address: "충북 청주시 흥덕구 가경로 50", carrier: "사내차량" },
-  { code: "771205", name: "이마트 트레이더스", address: "서울 강남구 테헤란로 152", carrier: "한진택배" },
-  { code: "132906", name: "주식회사 부방유통", address: "경기 부천시 길주로 210", carrier: "CJ대한통운" }
+  { code: "771205", name: "한울 트레이더스", address: "서울 강남구 테헤란로 152", carrier: "나루택배" },
+  { code: "132906", name: "주식회사 나래유통", address: "경기 부천시 길주로 210", carrier: "한길택배" }
 ];
 
-const CARRIER_CODE: Record<string, string> = { CJ대한통운: "CJ", 롯데택배: "LT", 한진택배: "HJ", 로젠택배: "LG", 사내차량: "IN" };
+const CARRIER_CODE: Record<string, string> = { 한길택배: "HG", 가람택배: "GR", 나루택배: "NR", 온길택배: "OG", 사내차량: "IN" };
 
 type OutboundPlan = {
   customer: number;

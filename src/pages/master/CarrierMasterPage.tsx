@@ -159,12 +159,12 @@ export const CarrierMasterPage = () => {
         }
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <label className="ds-field"><span>코드</span><input value={form.code} disabled={editId != null} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="예: CJ" /></label>
-          <label className="ds-field"><span>배송사명</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: CJ대한통운" /></label>
+          <label className="ds-field"><span>코드</span><input value={form.code} disabled={editId != null} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="예: HG" /></label>
+          <label className="ds-field"><span>배송사명</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="예: 한길택배" /></label>
           <label className="ds-field"><span>권역</span><select value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}>{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
           <label className="ds-field"><span>담당자</span><input value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} /></label>
           <label className="ds-field"><span>연락처</span><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-          <label className="ds-field"><span>포털 계정</span><input value={form.accountUser} onChange={(e) => setForm({ ...form, accountUser: e.target.value })} placeholder="예: carrier_cj" /></label>
+          <label className="ds-field"><span>포털 계정</span><input value={form.accountUser} onChange={(e) => setForm({ ...form, accountUser: e.target.value })} placeholder="예: carrier_hg" /></label>
           <label className="ds-field"><span>계정 권한</span><select value={form.portalRole} onChange={(e) => setForm({ ...form, portalRole: e.target.value })}>{ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
           <label className="ds-field"><span>사용여부</span><select value={form.active ? "1" : "0"} onChange={(e) => setForm({ ...form, active: e.target.value === "1" })}><option value="1">사용</option><option value="0">미사용</option></select></label>
         </div>
