@@ -82,6 +82,11 @@ const configMap: Record<string, FeatureScreenConfig> = {
     columns: ["오더번호", "납품처", "수량", "ERP 전송", "상태"],
     actions: ["출고확정", "ERP 재전송", "예외처리"]
   },
+  "outbound-photo": {
+    filters: ["출고일", "출하번호", "거래처", "미촬영만"],
+    columns: ["출하번호", "거래처", "배송사·송장", "수량", "상태", "사진"],
+    actions: ["사진 찍기", "앨범에서", "구분 바꾸기", "삭제(사유)"]
+  },
   "delivery-note": {
     filters: ["출고일", "배송사", "납품처"],
     columns: ["오더번호", "납품처", "배송사", "차량", "송장번호", "출고수량"],

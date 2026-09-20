@@ -57,6 +57,9 @@ export const ICON_PATHS: Record<string, string> = {
   upload: "M12 20V8M7 13l5-5 5 5M5 4h14",
   printer: "M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2M6 14h12v7H6z",
   barChart: "M3 3v18h18M8 17v-6M13 17V7M18 17v-4",
+  /* 출고 사진 */
+  camera: "M3 7h4l2-3h6l2 3h4v13H3zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
+  image: "M3 4h18v16H3zM8.5 10a1.5 1.5 0 1 0 0-.01M21 15l-5-5-11 10",
   rotateCw: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5",
   rotateCcw: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5",
   /* 탭 닫기 메뉴 */

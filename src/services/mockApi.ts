@@ -1,6 +1,7 @@
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
 import { createDashboardMock, regionOf } from "./mockDashboard";
+import { createOutboundPhotoMock } from "./mockOutboundPhoto";
 import { createWarehouseMock } from "./mockWarehouse";
 
 type AnyRecord = Record<string, any>;
@@ -517,6 +518,12 @@ const dashboardMock = createDashboardMock({
   slots: () => ((warehouseMock.get("/warehouse/layout", new URLSearchParams("warehouseId=4")) as AnyRecord | undefined)?.slots ?? []) as AnyRecord[]
 });
 
+/* 출고 사진(증빙) — 그날 출고 건에 사진을 올린다. 사진은 메모리에만 있다 (설계 DOCS/WMS_출고사진_설계.md) */
+const outboundPhotoMock = createOutboundPhotoMock({
+  today,
+  outbounds: () => outbounds
+});
+
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -528,6 +535,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
     const handled = warehouseMock.mutate(method, clean, body);
     if (handled !== undefined) return copy(handled) as T;
+    const photoHandled = outboundPhotoMock.mutate(method, clean, body, url.searchParams);
+    if (photoHandled !== undefined) return copy(photoHandled) as T;
     handleMutation(clean, body);
     return copy({ ok: true }) as T;
   }
@@ -537,6 +546,9 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
 
   const dashboardData = dashboardMock.get(clean);
   if (dashboardData !== undefined) return copy(dashboardData) as T;
+
+  const photoData = outboundPhotoMock.get(clean, url.searchParams);
+  if (photoData !== undefined) return copy(photoData) as T;
 
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;

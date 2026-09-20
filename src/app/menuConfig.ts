@@ -15,7 +15,7 @@ export type MenuSection = {
 
 export type MenuConfigByRole = Record<string, Array<{ section: string; features?: string[] }>>;
 
-// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 40개 화면 — v3 41화면에서 반품 예정 OMS2 이관)
+// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 41개 화면 — 반품 예정 OMS2 이관, 출고 사진 신규 2026-09-20)
 export const menuSections: MenuSection[] = [
   {
     slug: "dashboard",
@@ -74,6 +74,7 @@ export const menuSections: MenuSection[] = [
       { slug: "manual-order", label: "비운영 주문 등록", description: "상품 선택 기반 비운영 주문 등록과 BOM 구성품 자동 전개를 제공합니다." },
       { slug: "picking", label: "피킹 작업", description: "오더 QR 스캔과 로케이션 안내, 피킹재고 차감을 처리합니다." },
       { slug: "outbound-confirm", label: "출고 확정", description: "출고확정과 ERP I/F 전송, 실패건 예외처리를 관리합니다." },
+      { slug: "outbound-photo", label: "출고 사진", description: "출고 건별 상차·포장·송장 사진을 찍어 증빙으로 남깁니다." },
       { slug: "delivery-note", label: "배송 내역서", description: "일일 출고·배송·운송정보 조회와 내역서 출력을 제공합니다." }
     ]
   },
