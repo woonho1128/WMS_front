@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiGet, apiPost, apiPut } from "../../../services/http";
+import { useIsPhone } from "../../../shared/useIsPhone";
 import { useAuthStore } from "../../../app/store/authStore";
 import { useUiStore } from "../../../app/store/uiStore";
 import { Icon } from "../../../components/ui/Icon";
@@ -93,6 +94,7 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [toast, setToast] = useState<{ tone: "success" | "danger" | "info"; text: string } | null>(null);
   const [confirm, setConfirm] = useState<"publish" | "discard" | null>(null);
+  const phone = useIsPhone();
   const [busy, setBusy] = useState(false);
   const [previewSelection, setPreviewSelection] = useState<MapSelection>({ zoneId: null, locationId: null });
 
@@ -466,6 +468,7 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
   }
 
   const errorCount = issues.filter((issue) => issue.level === "error").length;
+  // 폰에서는 캔버스를 띄우지 않는다 — 손가락으로 꼭짓점·핸들을 집을 수 없다
   const saveLabel =
     readOnly ? "보기 전용"
     : saveState === "pending" ? "변경 사항 저장 대기…"
@@ -475,7 +478,7 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
     : "게시본과 같음";
 
   return (
-    <div className={`le${readOnly ? " is-readonly" : ""}`}>
+    <div className={`le${readOnly ? " is-readonly" : ""}${phone ? " is-phone" : ""}`}>
       {/* 편집 배너 — 지금 설계 모드라는 걸 항상 보이게 */}
       <div className="le-banner">
         <div className="le-banner-state">
@@ -534,6 +537,114 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
         </div>
       ) : null}
 
+      {/* 폰 — 캔버스(끌기·꼭짓점)는 손가락으로 못 쓴다. 층 탭 + 목록 + 속성값 + 바뀐 내용으로 대신한다 */}
+      {phone ? (
+        <>
+          <div className="le-toolbar le-phone-bar">
+            <div className="le-floors" role="tablist" aria-label="층">
+              {draft.floors.map((item) => (
+                <button
+                  key={item.code}
+                  type="button"
+                  role="tab"
+                  aria-selected={item.code === floor}
+                  className={item.code === floor ? "is-on" : ""}
+                  onClick={() => {
+                    setFloor(item.code);
+                    setSelection(null);
+                  }}
+                >
+                  {item.code}
+                </button>
+              ))}
+            </div>
+            <button type="button" className={`le-icon${preview ? " is-on" : ""}`} onClick={() => setPreview((value) => !value)}>
+              <Icon name="cube3d" size={14} />
+              3D 보기
+            </button>
+          </div>
+
+          <p className="le-phone-hint">
+            폰에서는 <b>목록에서 고르고 값으로</b> 고칩니다. 끌어서 옮기기 · 모양 그리기는 PC에서 하세요.
+          </p>
+
+          {changes.length || errorCount ? (
+            <section className="le-phone-changes" aria-label="바뀐 내용">
+              <header>
+                <b>바뀐 내용 {changes.length}항목</b>
+                {errorCount ? <span className="le-phone-err">오류 {errorCount}건</span> : null}
+              </header>
+              <ul>
+                {issues
+                  .filter((issue) => issue.level === "error")
+                  .map((issue, index) => (
+                    <li key={`err-${index}`} className="is-error">
+                      {issue.message}
+                    </li>
+                  ))}
+                {changes.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <p className="le-phone-none">게시본과 같습니다 — 바뀐 내용이 없습니다.</p>
+          )}
+
+          {selection ? (
+            <button type="button" className="btn-secondary le-phone-back" onClick={() => setSelection(null)}>
+              <Icon name="chevL" size={14} />
+              이 층 목록으로
+            </button>
+          ) : null}
+
+          <aside className="le-side le-phone-side">
+            <Inspector
+              draft={draft}
+              floor={floor}
+              selection={selection}
+              readOnly={readOnly}
+              locations={locations}
+              onChange={commit}
+              onSelect={setSelection}
+              onFloorRemoved={() => {
+                setFloor(draft.floors.find((item) => item.code !== floor)?.code ?? "1F");
+                setSelection(null);
+              }}
+              notify={notify}
+            />
+          </aside>
+
+          {preview && previewLayout && previewLayout.floors.length ? (
+            <div className="le-preview le-phone-preview">
+              <div className="le-preview-head">
+                <span>
+                  <Icon name="cube3d" size={13} />
+                  3D 미리보기 · 초안 기준 · {floor}
+                </span>
+                <small>게시 전에는 운영 화면에 보이지 않습니다</small>
+              </div>
+              <div className="le-preview-stage">
+                <Suspense fallback={<div className="le-loading">3D 준비 중…</div>}>
+                  <Warehouse3D
+                    layout={previewLayout}
+                    floor={previewLayout.floors.some((item) => item.code === floor) ? floor : previewLayout.floors[0].code}
+                    onFloorChange={(code) => {
+                      setFloor(code);
+                      setSelection(null);
+                    }}
+                    theme={theme}
+                    selection={previewSelection}
+                    onSelectionChange={setPreviewSelection}
+                    colorMode="type"
+                  />
+                </Suspense>
+              </div>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
       {/* 도구 줄 */}
       <div className="le-toolbar">
         <div className="le-floors" role="tablist" aria-label="층">
@@ -749,6 +860,8 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
           />
         </aside>
       </div>
+        </>
+      )}
 
       {toast ? (
         <div className={`ds-callout ${toast.tone} le-toast`} role="status">

@@ -182,7 +182,7 @@ const FloorInspector = ({ draft, floor, readOnly, onChange, onSelect, onFloorRem
       <div className="le-ins-head">
         <span className="nx-eyebrow">FLOOR</span>
         <h4>{floor} 층</h4>
-        <p>캔버스에서 장소·랙·시설물을 누르면 속성이 여기에 나옵니다. 입고장·출고장·사무실은 [새 장소]에서 유형을 고른 뒤 장소·자유형 도구로 놓습니다.</p>
+        <p>아래 목록(또는 캔버스)에서 장소·랙·시설물을 고르면 속성이 여기에 나옵니다. 입고장·출고장·사무실을 새로 놓는 것은 PC 캔버스의 [새 장소]에서 합니다.</p>
       </div>
 
       <Section title="층 외곽 · 건물 모양" aside={<small className="le-aside">면적 {floorArea.toLocaleString()} m²</small>}>

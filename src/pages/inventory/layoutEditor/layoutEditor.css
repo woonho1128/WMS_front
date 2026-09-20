@@ -211,6 +211,35 @@
 }
 .pc-scale i { display: block; height: 6px; border: 1.5px solid var(--ink-faint); border-top: none; }
 
+/* ---------- 폰 — 캔버스 대신 목록 · 속성값 ---------- */
+.le.is-phone { display: grid; gap: 10px; }
+.le-phone-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.le-phone-hint {
+  margin: 0; padding: 8px 10px; border-radius: var(--r-sm);
+  background: var(--surface-2); font-size: 11.5px; line-height: 1.5; color: var(--ink-muted);
+}
+.le-phone-hint b { color: var(--ink-strong); }
+
+.le-phone-changes {
+  border: 1px solid var(--border); border-radius: var(--r-md, 12px);
+  background: var(--surface); padding: 10px 12px;
+}
+.le-phone-changes header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.le-phone-changes header b { font-size: 12.5px; color: var(--ink-strong); }
+.le-phone-err {
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--c-danger-bg); color: var(--c-danger); font-size: 11.5px; font-weight: 800;
+}
+.le-phone-changes ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+.le-phone-changes li { font-size: 12px; line-height: 1.5; color: var(--ink); }
+.le-phone-changes li.is-error { color: var(--c-danger); font-weight: 700; }
+.le-phone-none { margin: 0; font-size: 12px; color: var(--ink-faint); }
+
+.le-phone-back { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; justify-self: start; }
+/* 옆 패널이 폰에서는 본문 — 폭·높이 제한을 푼다 */
+.le.is-phone .le-side { width: auto; max-width: none; max-height: none; border-left: 0; }
+.le-phone-preview .le-preview-stage { height: min(56vh, 420px); }
+
 /* ---------- 3D 미리보기 ---------- */
 .le-preview { border-radius: var(--r-lg); border: 1px solid var(--border); background: var(--surface); overflow: hidden; }
 .le-preview-head {

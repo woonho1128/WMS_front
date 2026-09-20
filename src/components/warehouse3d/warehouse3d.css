@@ -294,3 +294,26 @@
   .wh3d-overlay .wh3d-search-box { width: 170px; }
   .wh3d-status .wh3d-sync { display: none; }
 }
+
+/* 폰 — 검색줄과 범례가 겹칠 만큼 좁다. 줄을 나누고 라벨도 줄인다 */
+@container (max-width: 420px) {
+  .wh3d-overlay {
+    left: 62px;
+    right: 10px;
+    top: 10px;
+  }
+  .wh3d-overlay .wh3d-search-box { width: 100%; }
+  .wh3d-legend {
+    top: 54px;
+    right: 10px;
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .wh3d-label { padding: 3px 7px; }
+  .wh3d-label-name,
+  .wh3d-label-util { font-size: 11px; }
+  /* 구역 코드는 빼서 라벨끼리 덜 겹치게 — 코드는 눌렀을 때 옆 패널에서 본다 */
+  .wh3d-label-code { display: none; }
+  .wh3d-tools { left: 10px; bottom: 10px; }
+  .wh3d-status { right: 10px; bottom: 10px; }
+}

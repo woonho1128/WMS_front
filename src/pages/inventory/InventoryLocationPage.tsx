@@ -345,6 +345,7 @@ export const InventoryLocationPage = () => {
       ) : null}
 
       {tab === "layout" ? (
+        // 폰에서는 편집기가 캔버스 대신 목록 · 속성값 화면으로 바뀐다 (LayoutEditor 안에서 갈라진다)
         <LayoutEditor
           warehouseId={mapWarehouseId}
           onWarehouseChange={setMapWarehouseId}
