@@ -1,20 +1,22 @@
 import { authHeader } from "../app/store/authStore";
-import { mockRequest } from "./mockApi";
-
-const API_BASE =
-  (import.meta.env as Record<string, string | undefined>).VITE_API_BASE_URL ?? "";
-const USE_MOCK_API =
-  ((import.meta.env as Record<string, string | undefined>).VITE_USE_MOCK_API ?? "").toLowerCase() === "true" ||
-  !API_BASE;
+import { USE_MOCK_API, fetchApi } from "./apiMode";
 
 type ApiResponse<T> = { success: boolean; data: T | null; message: string | null };
 
+/**
+ * 모든 화면이 쓰는 요청 함수.
+ *
+ * 데모 빌드면 목 데이터, 아니면 백엔드. **중간은 없다** — 백엔드가 죽어 있거나
+ * 주소가 안 잡혀 있으면 목으로 넘어가지 않고 오류를 던진다 (apiMode.ts 참고).
+ */
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (USE_MOCK_API) {
+    // 데모 빌드에서만 목 코드를 불러온다 — 실서비스 빌드에서는 이 줄이 통째로 빠진다
+    const { mockRequest } = await import("./mockApi");
     return mockRequest<T>(path, init);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchApi(path, {
     ...init,
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),

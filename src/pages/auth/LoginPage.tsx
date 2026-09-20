@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../app/store/authStore";
 import { useUiStore } from "../../app/store/uiStore";
 import { Icon } from "../../components/ui/Icon";
+import { USE_MOCK_API } from "../../services/apiMode";
 import "./LoginPage.css";
 
 export const LoginPage = () => {
-  const [id, setId] = useState("admin");
-  const [password, setPassword] = useState("1234");
+  // 데모 계정 · 자동 입력은 목 데이터 빌드에서만 (실서비스에서는 비워 둔다)
+  const [id, setId] = useState(USE_MOCK_API ? "admin" : "");
+  const [password, setPassword] = useState(USE_MOCK_API ? "1234" : "");
 
   const login = useAuthStore((state) => state.login);
   const status = useAuthStore((state) => state.status);
@@ -88,15 +90,19 @@ export const LoginPage = () => {
           {loading ? "로그인 중..." : "로그인"}
         </button>
 
-        <div className="login-hint">
-          데모 계정 · 비밀번호 <b>1234</b>
-          <br />
-          <code>admin</code> / <code>logistics</code> / <code>inbound</code> / <code>outbound</code> /{" "}
-          <code>inventory</code> / <code>partner</code>
-        </div>
+        {USE_MOCK_API ? (
+          <div className="login-hint">
+            <b>샘플 데이터 데모</b> — 실제 재고·주문이 아닙니다
+            <br />
+            데모 계정 · 비밀번호 <b>1234</b>
+            <br />
+            <code>admin</code> / <code>logistics</code> / <code>inbound</code> / <code>outbound</code> /{" "}
+            <code>inventory</code> / <code>partner</code>
+          </div>
+        ) : null}
       </form>
 
-      <div className="login-footer">© 2026 DAELIM WMS · 프론트엔드 데모</div>
+      <div className="login-footer">© 2026 DAELIM WMS{USE_MOCK_API ? " · 샘플 데이터 데모" : ""}</div>
     </div>
   );
 };

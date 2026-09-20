@@ -417,9 +417,11 @@ export const FloorBoardPage = () => {
   return (
     <div className={`fb${full ? " is-full" : ""}`} ref={rootRef}>
       <header className="fb-top">
+        {/* 창고 이름은 박아 넣지 않는다 — 공장마다 같은 화면을 띄우므로 틀린 이름이 걸리면 안 된다.
+            백엔드 연동 때 /dashboard/* 응답에 warehouseName 을 받아 여기에 넣는다 (설계 §1-3) */}
         <span className="fb-brand">
           <Icon name="cube3d" size={24} />
-          이천물류센터
+          DAELIM WMS
           <small>{dateText}</small>
         </span>
         <Clock />

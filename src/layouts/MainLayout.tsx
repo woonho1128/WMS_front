@@ -6,6 +6,7 @@ import { useUiStore } from "../app/store/uiStore";
 import { useAuthStore } from "../app/store/authStore";
 import { SPLIT_MIN_QUERY, useTabsStore } from "../app/store/tabsStore";
 import { useMediaQuery } from "../shared/useMediaQuery";
+import { USE_MOCK_API } from "../services/apiMode";
 import { Icon } from "../components/ui/Icon";
 import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
 import { SideMenu } from "../components/layout/SideMenu";
@@ -132,6 +133,13 @@ export const MainLayout = () => {
             <div className="wms-crumb-top">WMS · 본사창고(1F){currentSection ? ` · ${currentSection.label}` : ""}</div>
             <div className="wms-crumb-now">{currentLabel}</div>
           </div>
+
+          {/* 목 데이터로 도는 데모 빌드임을 화면에 못박는다 — 실제 재고와 헷갈리면 안 된다 */}
+          {USE_MOCK_API ? (
+            <span className="wms-demo-chip" title="데모용 샘플 데이터입니다. 실제 재고·주문이 아닙니다.">
+              샘플 데이터
+            </span>
+          ) : null}
 
           <div className="wms-spacer" />
 
