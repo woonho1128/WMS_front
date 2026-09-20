@@ -407,8 +407,14 @@
 .wms-pane-btn:hover { background: var(--surface-3); border-color: var(--border); color: var(--ink-strong); }
 .wms-pane-btn.is-close:hover { background: var(--c-danger-bg); border-color: transparent; color: var(--c-danger-ink); }
 
-/* 화면이 반쪽보다 넓으면 페이지를 밀지 않고 패널 안에서 민다 */
-.wms-pane-body { flex: 1; overflow: auto; padding: 16px 16px 40px; min-width: 0; }
+/* 화면이 반쪽보다 넓으면 페이지를 밀지 않고 패널 안에서 민다.
+   `container: pane` — 페이지 CSS 의 폭 규칙(@media)이 이 칸 폭 기준으로도 걸린다.
+   복사본은 빌드할 때 만든다(vite.config.ts `paneContainerQueries`). */
+.wms-pane-body {
+  flex: 1; overflow: auto; padding: 16px 16px 40px; min-width: 0;
+  container-type: inline-size;
+  container-name: pane;
+}
 .wms-pane-empty { padding: 20px 4px; color: var(--ink-faint); font-size: 13px; }
 
 /* 가운데 손잡이 */
