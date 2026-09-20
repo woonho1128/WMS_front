@@ -41,6 +41,7 @@ export const OutboundStatusPage = () => {
       onReload={reload}
       error={error}
       loading={!data && !error}
+      tools={<LinkButton label="현장 전광판" to="/dashboard/floor-board" />}
     >
       {data ? (
         <>

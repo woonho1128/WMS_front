@@ -82,6 +82,11 @@ const configMap: Record<string, FeatureScreenConfig> = {
     columns: ["오더번호", "납품처", "수량", "ERP 전송", "상태"],
     actions: ["출고확정", "ERP 재전송", "예외처리"]
   },
+  "floor-board": {
+    filters: ["없음 — 자동 갱신"],
+    columns: ["입고 단계별 건수", "출고 단계별 건수", "진행률", "지연·거부", "알림"],
+    actions: ["전체화면", "자동 갱신 30초", "목록 자동 넘김"]
+  },
   "outbound-photo": {
     filters: ["출고일", "출하번호", "거래처", "미촬영만"],
     columns: ["출하번호", "거래처", "배송사·송장", "수량", "상태", "사진"],

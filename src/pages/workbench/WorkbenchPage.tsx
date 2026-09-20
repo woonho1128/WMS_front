@@ -13,6 +13,7 @@ const InboundStatusPage = lazy(() => import("../dashboard/status/InboundStatusPa
 const OutboundStatusPage = lazy(() => import("../dashboard/status/OutboundStatusPage").then((m) => ({ default: m.OutboundStatusPage })));
 const StockStatusPage = lazy(() => import("../dashboard/status/StockStatusPage").then((m) => ({ default: m.StockStatusPage })));
 const WorkAlertsPage = lazy(() => import("../dashboard/status/WorkAlertsPage").then((m) => ({ default: m.WorkAlertsPage })));
+const FloorBoardPage = lazy(() => import("../dashboard/status/FloorBoardPage").then((m) => ({ default: m.FloorBoardPage })));
 const DashboardInbound = lazy(() => import("../dashboard/DashboardInbound").then((m) => ({ default: m.DashboardInbound })));
 const DashboardOutbound = lazy(() => import("../dashboard/DashboardOutbound").then((m) => ({ default: m.DashboardOutbound })));
 const DashboardTransfer = lazy(() => import("../dashboard/DashboardTransfer").then((m) => ({ default: m.DashboardTransfer })));
@@ -61,6 +62,7 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
     "outbound-status": <OutboundStatusPage />,
     "stock-status": <StockStatusPage />,
     "work-alerts": <WorkAlertsPage />,
+    "floor-board": <FloorBoardPage />,
     "inbound-schedule": <DashboardInbound />,
     "inbound-confirm": <InboundConfirmPage />,
     "return-confirm": <ReturnConfirmPage />,

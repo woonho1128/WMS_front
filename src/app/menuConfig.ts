@@ -15,7 +15,7 @@ export type MenuSection = {
 
 export type MenuConfigByRole = Record<string, Array<{ section: string; features?: string[] }>>;
 
-// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 41개 화면 — 반품 예정 OMS2 이관, 출고 사진 신규 2026-09-20)
+// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 42개 화면 — 반품 예정 OMS2 이관, 출고 사진·현장 전광판 신규 2026-09-20)
 export const menuSections: MenuSection[] = [
   {
     slug: "dashboard",
@@ -28,7 +28,8 @@ export const menuSections: MenuSection[] = [
       { slug: "inbound-status", label: "입고 현황", description: "입고예정·입고확정·격납대기 현황을 확인합니다." },
       { slug: "outbound-status", label: "출고 현황", description: "출고대기·피킹중·출고완료 현황을 확인합니다." },
       { slug: "stock-status", label: "재고 현황", description: "총 재고·가용재고·불량재고·장기재고를 확인합니다." },
-      { slug: "work-alerts", label: "작업 알림", description: "보충대상·쇼트발생·인터페이스 오류·반품반려 알림을 관리합니다." }
+      { slug: "work-alerts", label: "작업 알림", description: "보충대상·쇼트발생·인터페이스 오류·반품반려 알림을 관리합니다." },
+      { slug: "floor-board", label: "현장 전광판", description: "입고·출고 현황을 한 화면에 크게 띄웁니다. 창고 벽 TV 용." }
     ]
   },
   {
@@ -168,7 +169,7 @@ export const roleMenuConfig: MenuConfigByRole = {
     { section: "communication" }
   ],
   inbound: [
-    { section: "dashboard", features: ["logistics-status", "inbound-status", "work-alerts"] },
+    { section: "dashboard", features: ["logistics-status", "inbound-status", "work-alerts", "floor-board"] },
     { section: "inbound" },
     { section: "stock", features: ["putaway", "replenishment", "stock-realtime", "barcode-lookup"] },
     { section: "master", features: ["item-master", "location-master"] },
@@ -176,7 +177,7 @@ export const roleMenuConfig: MenuConfigByRole = {
     { section: "communication", features: ["notice"] }
   ],
   outbound: [
-    { section: "dashboard", features: ["logistics-status", "outbound-status", "work-alerts"] },
+    { section: "dashboard", features: ["logistics-status", "outbound-status", "work-alerts", "floor-board"] },
     { section: "outbound" },
     { section: "stock", features: ["transfer", "stock-realtime", "stock-available"] },
     { section: "dispatch" },

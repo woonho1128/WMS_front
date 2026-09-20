@@ -1,0 +1,399 @@
+/* ============================================================
+   대시보드 › 현장 전광판 (FloorBoardPage)
+   ------------------------------------------------------------
+   벽에 걸어 두고 멀리서 보는 화면이라 보통 화면과 크기 규칙이 다르다.
+
+   글자 크기는 **판 크기에 따라** 정한다 — `.fb` 를 size 컨테이너로 두고
+   `cqmin`(짧은 변) 기준 사다리(--fb-xxl … --fb-sm)를 만들어 물려준다.
+   그래서 1920 TV, 4K TV, 노트북 창, 분할 패널에서 모두 비율이 같다.
+   ⚠ 컨테이너는 자기 자신을 질의하지 못하므로 사다리는 `.fb` 가 아니라
+   바로 아래 세 칸에 선언한다.
+
+   색은 sd-tone-* 이 넣어 주는 --tone 계열만 쓴다 (statusDashboard.css).
+   ============================================================ */
+
+.fb {
+  container-type: size;
+  container-name: board;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  /* 화면 높이에 맞춰 한 판으로 — 전광판은 스크롤하지 않는다 */
+  height: calc(100vh - 176px);
+  min-height: 520px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 16px);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* 전광판 모드 — 벽 TV 는 이 상태로 띄워 둔다 (셸 숨김은 wms-shell.css 의 .wms-board-solo) */
+.fb.is-full,
+.fb:fullscreen {
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  padding: clamp(14px, 1.6cqmin, 30px);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg);
+}
+
+/* 절반으로 보기의 패널 안에서는 패널 높이에 딱 맞춘다 (판이 패널을 넘어 스크롤되지 않게) */
+.wms-pane-body .fb { height: 100%; min-height: 360px; }
+
+/* 글자 크기 사다리 (컨테이너 `board` 기준) */
+.fb-top,
+.fb-body,
+.fb-ticker {
+  /* 3~5 m 떨어져서 읽는 화면이라 보통 화면보다 한 단계씩 크다.
+     1080 TV 전체화면 기준 대략: 큰 숫자 90 · 단계 43 · 제목 26 · 목록 20 · 라벨 16px */
+  --fb-xxl: clamp(36px, 8.4cqmin, 140px);
+  --fb-xl: clamp(20px, 4cqmin, 64px);
+  --fb-lg: clamp(16px, 2.4cqmin, 38px);
+  --fb-md: clamp(13px, 1.9cqmin, 30px);
+  --fb-sm: clamp(11px, 1.45cqmin, 22px);
+  --fb-gap: clamp(8px, 1.2cqmin, 22px);
+}
+
+/* ---------- 맨 윗줄 ---------- */
+.fb-top {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-gap);
+  flex-wrap: wrap;
+}
+
+.fb-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fb-lg);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--ink-strong);
+}
+.fb-brand svg { width: 1.1em; height: 1.1em; color: var(--primary); }
+.fb-brand small { font-size: var(--fb-md); font-weight: 700; color: var(--ink-faint); }
+
+.fb-clock {
+  margin-left: auto;
+  font-size: var(--fb-xl);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+.fb-clock small { margin-left: 0.2em; font-size: 0.5em; font-weight: 700; color: var(--ink-faint); }
+
+.fb-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.35em 0.8em;
+  border: 1px solid var(--c-success-line);
+  border-radius: var(--r-pill);
+  background: var(--c-success-bg);
+  color: var(--c-success-ink);
+  font-size: var(--fb-sm);
+  font-weight: 800;
+}
+.fb-live i {
+  width: 0.55em; height: 0.55em; border-radius: 50%;
+  background: currentColor; animation: fb-pulse 2s ease-in-out infinite;
+}
+.fb-live small { font-weight: 700; opacity: 0.85; }
+/* 갱신이 끊기면 숫자를 믿으면 안 된다 — 조용히 두지 않고 붉게 */
+.fb-live.is-error {
+  border-color: var(--c-danger-line);
+  background: var(--c-danger-bg);
+  color: var(--c-danger-ink);
+  animation: fb-blink 1.4s steps(1, end) infinite;
+}
+
+@keyframes fb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes fb-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+.fb-fullbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.4em 0.9em;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: var(--fb-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.fb-fullbtn:hover { background: var(--surface-3); border-color: var(--border-strong); color: var(--ink-strong); }
+/* 전체화면에서는 아무도 만지지 않는다 — 마우스를 올릴 때만 보인다 */
+.fb.is-full .fb-fullbtn { opacity: 0.12; }
+.fb.is-full .fb-fullbtn:hover, .fb.is-full .fb-fullbtn:focus-visible { opacity: 1; }
+
+/* ---------- 본문: 입고 | 출고 ---------- */
+.fb-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--fb-gap);
+  /* 칸은 기본이 min-width/height:auto 라 안의 단계 칩·숫자가 판 밖으로 밀어낸다 */
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 세로형 TV — 위 입고, 아래 출고 */
+@container board (orientation: portrait) {
+  .fb-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+.fb-side {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: var(--fb-gap);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--fb-gap);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 16px);
+  background: var(--surface-2);
+}
+.fb-side.is-in { border-top: 3px solid var(--c-info); }
+.fb-side.is-out { border-top: 3px solid var(--c-success); }
+
+.fb-side-head { display: flex; align-items: center; gap: 10px; }
+.fb-side-ico {
+  display: grid; place-items: center;
+  width: 1.9em; height: 1.9em;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  font-size: var(--fb-lg);
+}
+.fb-side.is-in .fb-side-ico { background: var(--c-info-bg); color: var(--c-info-ink); }
+.fb-side.is-out .fb-side-ico { background: var(--c-success-bg); color: var(--c-success-ink); }
+.fb-side-ico svg { width: 1em; height: 1em; }
+
+.fb-side-titles { display: grid; line-height: 1.15; }
+.fb-side-titles small { font-size: var(--fb-sm); font-weight: 800; letter-spacing: 1.5px; color: var(--ink-faint); }
+.fb-side-titles h3 { margin: 0; font-size: var(--fb-lg); font-weight: 800; color: var(--ink-strong); }
+
+/* 지연 · 거부 — 멀리서도 가장 먼저 보여야 하는 숫자 */
+.fb-flag {
+  margin-left: auto;
+  display: inline-flex; align-items: baseline; gap: 0.4em;
+  padding: 0.3em 0.8em;
+  border-radius: var(--r-pill);
+  background: var(--c-danger-bg);
+  color: var(--c-danger-ink);
+  border: 1px solid var(--c-danger-line);
+  font-size: var(--fb-sm);
+  font-weight: 800;
+}
+.fb-flag b { font-size: var(--fb-lg); line-height: 1; }
+
+/* ---------- 오늘 진행률 ---------- */
+.fb-score { display: grid; grid-template-columns: minmax(0, auto) auto; align-items: baseline; gap: 4px 12px; min-width: 0; }
+.fb-score-main { display: inline-flex; align-items: baseline; gap: 0.35em; }
+.fb-score-main b {
+  font-size: var(--fb-xxl);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -2px;
+  color: var(--ink-strong);
+  font-variant-numeric: tabular-nums;
+}
+.fb-score-main small { font-size: var(--fb-md); font-weight: 700; color: var(--ink-muted); }
+.fb-score-pct {
+  margin-left: auto;
+  font-size: var(--fb-xl);
+  font-weight: 800;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.fb-score .fb-bar { grid-column: 1 / -1; }
+
+.fb-bar {
+  display: block;
+  height: clamp(6px, 0.9cqmin, 16px);
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.fb-bar i { display: block; height: 100%; border-radius: inherit; background: var(--tone, var(--primary)); }
+
+.fb-notes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px var(--fb-gap); margin: 0; padding: 0; list-style: none; min-width: 0; }
+.fb-notes li { font-size: var(--fb-sm); font-weight: 700; color: var(--ink-faint); }
+.fb-notes b { margin-left: 0.4em; font-size: var(--fb-md); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------- 단계 ---------- */
+.fb-stages { display: flex; gap: clamp(4px, 0.6cqmin, 10px); margin: 0; padding: 0; list-style: none; }
+.fb-stage {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 0.5em 0.2em;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: center;
+}
+.fb-stage b {
+  font-size: var(--fb-xl);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.fb-stage span { font-size: var(--fb-sm); font-weight: 700; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.fb-stage.has-items { border-color: var(--tone-line); background: var(--tone-bg); }
+.fb-stage.has-items b { color: var(--tone-ink); }
+.fb-stage.has-items span { color: var(--ink); }
+.fb-stage.is-hot { box-shadow: 0 0 0 2px var(--tone-line) inset; }
+.fb-stage em {
+  position: absolute; top: -0.7em; left: 50%; transform: translateX(-50%);
+  padding: 0.1em 0.5em;
+  border-radius: var(--r-pill);
+  background: var(--c-danger);
+  color: var(--ink-on-accent);
+  font-size: calc(var(--fb-sm) * 0.82);
+  font-weight: 800;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+/* ---------- 목록 (10초마다 다음 장) ---------- */
+.fb-list { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+/* 한 장에 들어갈 줄 수(--fb-rows)로 칸을 나눈다 — 줄이 남는 높이를 나눠 가져 꽉 차 보이고,
+   마지막 장에 두세 줄만 남아도 줄 높이가 달라지지 않는다(전광판에서 줄이 들썩이면 눈에 거슬린다) */
+.fb-list ul {
+  display: grid;
+  grid-template-rows: repeat(var(--fb-rows, 7), minmax(0, 1fr));
+  align-content: stretch;
+  gap: clamp(3px, 0.5cqmin, 9px);
+  margin: 0; padding: 0; list-style: none; min-height: 0;
+}
+
+.fb-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) auto minmax(0, 0.6fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(6px, 0.9cqmin, 16px);
+  padding: clamp(4px, 0.55cqmin, 10px) clamp(6px, 0.8cqmin, 14px);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  animation: fb-in var(--dur-2, 0.22s) var(--ease, ease) both;
+}
+.fb-row.is-late { background: var(--c-danger-bg); }
+
+.fb-row-code { display: grid; min-width: 0; font-size: var(--fb-md); font-weight: 800; color: var(--ink-strong); line-height: 1.2; }
+.fb-row-code,
+.fb-row-code small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fb-row-code small { font-size: var(--fb-sm); font-weight: 600; color: var(--ink-faint); }
+
+.fb-row-stage {
+  padding: 0.2em 0.7em;
+  border-radius: var(--r-pill);
+  background: var(--tone-bg);
+  color: var(--tone-ink);
+  font-size: var(--fb-sm);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.fb-row-num { font-size: var(--fb-md); font-weight: 700; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.fb-row-bar { min-width: 0; }
+.fb-row-mark {
+  padding: 0.15em 0.6em; border-radius: var(--r-pill);
+  border: 1px solid var(--c-teal-line); background: var(--c-teal-bg); color: var(--c-teal-ink);
+  font-size: var(--fb-sm); font-weight: 800; white-space: nowrap;
+}
+.fb-row-late {
+  padding: 0.15em 0.6em; border-radius: var(--r-pill);
+  background: var(--c-danger); color: var(--ink-on-accent);
+  font-size: var(--fb-sm); font-weight: 800; white-space: nowrap;
+}
+
+@keyframes fb-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.fb-pager {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding-top: 6px;
+  font-size: var(--fb-sm); font-weight: 800; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.fb-pager-dots { display: inline-flex; gap: 5px; }
+.fb-pager-dots i { width: 0.5em; height: 0.5em; border-radius: 50%; background: var(--border-strong); }
+.fb-pager-dots i.is-on { background: var(--primary); }
+
+.fb-empty {
+  display: grid; place-items: center; align-content: center; gap: 8px;
+  height: 100%; margin: 0;
+  font-size: var(--fb-md); font-weight: 700; color: var(--ink-faint);
+}
+.fb-empty svg { width: 1.6em; height: 1.6em; color: var(--c-success); }
+
+.fb-loading { display: grid; place-items: center; font-size: var(--fb-lg, 18px); color: var(--ink-faint); }
+
+/* ---------- 알림 띠 ---------- */
+.fb-ticker {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-gap);
+  min-height: 2.6em;
+  padding: 0.5em 0.9em;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: var(--fb-md);
+  color: var(--ink);
+}
+.fb-ticker.is-danger { border-left-color: var(--c-danger); background: var(--c-danger-bg); }
+.fb-ticker.is-warning { border-left-color: var(--c-warning); background: var(--c-warning-bg); }
+.fb-ticker.is-info { border-left-color: var(--c-info); background: var(--c-info-bg); }
+.fb-ticker.is-clear { justify-content: center; color: var(--c-success-ink); font-weight: 700; }
+.fb-ticker.is-clear svg { width: 1.2em; height: 1.2em; margin-right: 0.4em; }
+
+.fb-ticker-counts { display: inline-flex; gap: 8px; flex: 0 0 auto; }
+.fb-ticker-counts b {
+  padding: 0.2em 0.7em; border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink-muted);
+  font-size: var(--fb-sm); font-weight: 800; white-space: nowrap;
+}
+.fb-ticker-counts b.is-danger { background: var(--c-danger); color: var(--ink-on-accent); }
+.fb-ticker-counts b.is-warning { background: var(--c-warning); color: var(--ink-on-accent); }
+
+.fb-ticker-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex; align-items: baseline; gap: 0.5em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  animation: fb-in var(--dur-2, 0.22s) var(--ease, ease) both;
+}
+.fb-ticker-body em {
+  flex: 0 0 auto;
+  font-style: normal; font-weight: 800; font-size: var(--fb-sm);
+  color: var(--ink-faint);
+}
+.fb-ticker-body strong { flex: 0 0 auto; font-weight: 800; color: var(--ink-strong); }
+.fb-ticker-page { flex: 0 0 auto; font-size: var(--fb-sm); font-weight: 800; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+/* 좁은 판(노트북 창·분할 패널)에서는 보조 정보를 줄인다 */
+@container board (max-width: 720px) {
+  .fb-row { grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr) auto; }
+  .fb-row-num { display: none; }
+  .fb-ticker-counts { display: none; }
+}
+
+@container board (max-width: 520px) {
+  .fb-stages { flex-wrap: wrap; }
+  .fb-stage { flex: 1 1 28%; }
+  .fb-clock { margin-left: 0; }
+}

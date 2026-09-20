@@ -433,6 +433,19 @@
 .wms-split-shield { position: fixed; inset: 0; z-index: 40; cursor: col-resize; }
 
 /* ============================================================
+   전광판 모드 (대시보드 › 현장 전광판)
+   ------------------------------------------------------------
+   벽 TV 에 띄워 둘 때 좌측 메뉴 · 헤더 · 탭을 감추고 본문만 남긴다.
+   전체화면 API 가 막힌 브라우저(키오스크 · 내장 뷰)에서도 화면이 꽉 차야 하므로
+   화면을 채우는 일은 CSS 가 한다. 켜고 끄는 것은 FloorBoardPage.
+   ============================================================ */
+.wms-board-solo .wms-side,
+.wms-board-solo .wms-header,
+.wms-board-solo .wms-tabs { display: none; }
+.wms-board-solo .wms-content { padding: 0; }
+.wms-board-solo .wms-app { height: 100vh; overflow: hidden; }
+
+/* ============================================================
    Mobile (off-canvas)
    ============================================================ */
 .wms-backdrop {

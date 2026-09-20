@@ -16,8 +16,8 @@ const pad = (value: number) => String(value).padStart(2, "0");
 export const fmt = (value: number, digits = 0) =>
   value.toLocaleString("ko-KR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
-/** 현황 데이터 — 화면이 보이는 동안 1분마다 다시 읽는다 */
-export const useStatusData = <T,>(path: string) => {
+/** 현황 데이터 — 화면이 보이는 동안 1분마다 다시 읽는다 (전광판은 더 짧게 준다) */
+export const useStatusData = <T,>(path: string, everyMs: number = REFRESH_MS) => {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ts, setTs] = useState("");
@@ -38,9 +38,9 @@ export const useStatusData = <T,>(path: string) => {
     void load();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void load();
-    }, REFRESH_MS);
+    }, everyMs);
     return () => window.clearInterval(timer);
-  }, [load]);
+  }, [load, everyMs]);
 
   return { data, error, ts, reload: load };
 };
@@ -55,6 +55,7 @@ export const StatusShell = ({
   onReload,
   error,
   loading,
+  tools,
   children
 }: {
   eyebrow: string;
@@ -64,6 +65,8 @@ export const StatusShell = ({
   onReload: () => void;
   error: string | null;
   loading: boolean;
+  /** 새로고침 왼쪽에 놓을 버튼 (예: 현장 전광판으로 가기) */
+  tools?: ReactNode;
   children: ReactNode;
 }) => (
   <section className="sd-page">
@@ -76,6 +79,7 @@ export const StatusShell = ({
       <div className="sd-head-tools">
         <span className="nx-live">LIVE</span>
         {ts ? <span className="sd-ts">기준 {ts} · 1분마다 갱신</span> : null}
+        {tools}
         <button type="button" className="nx-iconbtn" onClick={onReload} title="새로고침" aria-label="새로고침">
           <Icon name="refresh" size={15} />
         </button>
