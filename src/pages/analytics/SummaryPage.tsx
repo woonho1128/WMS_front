@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -84,10 +85,10 @@ export const SummaryPage = ({ endpoint, label }: Props) => {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }} className="summary-grid">
         <DashboardCard className="outbound-table-card" title={`기간별 ${label} (${PERIODS.find((p) => p.key === period)?.label})`}>
-          <div className="pc-only">
+          <ResponsiveTable>
             <table className="outbound-table">
               <thead>
-                <tr><th>기간</th><th className="num">건수</th><th className="num">수량</th><th>추이</th></tr>
+                <tr><th className="rt-title">기간</th><th className="num">건수</th><th className="num">수량</th><th>추이</th></tr>
               </thead>
               <tbody>
                 {loading ? (
@@ -108,14 +109,14 @@ export const SummaryPage = ({ endpoint, label }: Props) => {
                 )}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         </DashboardCard>
 
         <DashboardCard className="outbound-table-card" title={`품목별 ${label}`}>
-          <div className="pc-only">
+          <ResponsiveTable>
             <table className="outbound-table">
               <thead>
-                <tr><th>SKU</th><th>품목명</th><th className="num">건수</th><th className="num">수량</th></tr>
+                <tr><th className="rt-title">SKU</th><th>품목명</th><th className="num">건수</th><th className="num">수량</th></tr>
               </thead>
               <tbody>
                 {loading ? (
@@ -134,7 +135,7 @@ export const SummaryPage = ({ endpoint, label }: Props) => {
                 )}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         </DashboardCard>
       </div>
     </section>

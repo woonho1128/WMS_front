@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -109,10 +110,10 @@ export const CarrierMasterPage = () => {
           <p className="outbound-notice">{notice ?? "배송사를 등록·수정·삭제하고, 권역과 포털 계정 권한을 관리합니다."}</p>
         </div>
         {error ? (<div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(8080) 확인</span></div>) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
-              <tr><th>코드</th><th>배송사명</th><th>권역</th><th>담당자</th><th>연락처</th><th>포털계정</th><th>권한</th><th>사용</th><th>작업</th></tr>
+              <tr><th className="rt-title">코드</th><th>배송사명</th><th>권역</th><th>담당자</th><th>연락처</th><th>포털계정</th><th>권한</th><th>사용</th><th className="rt-actions">작업</th></tr>
             </thead>
             <tbody>
               {loading ? (
@@ -136,7 +137,7 @@ export const CarrierMasterPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <Modal

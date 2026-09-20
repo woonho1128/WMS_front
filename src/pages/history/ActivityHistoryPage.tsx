@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { shiftDays } from "../../shared/appDate";
@@ -109,12 +110,12 @@ export const ActivityHistoryPage = ({ endpoint, refLabel }: Props) => {
             <span>불러오기 실패: {error} — 백엔드(8080) 확인</span>
           </div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
                 <th>일시</th>
-                <th>{refLabel}</th>
+                <th className="rt-title">{refLabel}</th>
                 <th>처리구분</th>
                 <th>내용</th>
                 <th>ERP전송</th>
@@ -140,7 +141,7 @@ export const ActivityHistoryPage = ({ endpoint, refLabel }: Props) => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );

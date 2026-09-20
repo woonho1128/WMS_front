@@ -4,6 +4,7 @@ import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { PUTAWAY_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -179,11 +180,11 @@ export const PutawayPage = () => {
             <span>불러오기 실패: {error} — 백엔드(18080) 확인</span>
           </div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
-                <th>LOT</th>
+                <th className="rt-title">LOT</th>
                 <th>SKU</th>
                 <th>품목명</th>
                 <th>창고</th>
@@ -191,7 +192,7 @@ export const PutawayPage = () => {
                 <th>입고일</th>
                 <th className="num">수량</th>
                 <th>상태</th>
-                <th>처리</th>
+                <th className="rt-actions">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -225,7 +226,7 @@ export const PutawayPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <Modal

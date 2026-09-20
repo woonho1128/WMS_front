@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -110,7 +111,7 @@ export const FifoStatusPage = () => {
         {error ? (
           <div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(18080) 확인</span></div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
@@ -119,7 +120,7 @@ export const FifoStatusPage = () => {
                 <th>품목명</th>
                 <th>입고일자</th>
                 <th className="num">경과</th>
-                <th>LOT</th>
+                <th className="rt-title">LOT</th>
                 <th>창고</th>
                 <th>로케이션</th>
                 <th className="num">수량</th>
@@ -154,7 +155,7 @@ export const FifoStatusPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );

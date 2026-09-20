@@ -4,6 +4,7 @@ import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -127,11 +128,11 @@ export const ReplenishmentPage = () => {
             <span>불러오기 실패: {error} — 백엔드(18080) 확인</span>
           </div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
-                <th>SKU</th>
+                <th className="rt-title">SKU</th>
                 <th>품목명</th>
                 <th>피킹 로케이션</th>
                 <th className="num">파레트 구성</th>
@@ -140,7 +141,7 @@ export const ReplenishmentPage = () => {
                 <th className="num">낱개</th>
                 <th className="num">부족(파레트 채움)</th>
                 <th>출발 (FIFO 추천)</th>
-                <th>처리</th>
+                <th className="rt-actions">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -189,7 +190,7 @@ export const ReplenishmentPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <Modal

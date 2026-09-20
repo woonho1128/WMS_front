@@ -10,6 +10,7 @@
    3) legacy    기존 화면 CSS (전부 토큰 참조로 마이그레이션 완료)
    4) theme     컴포넌트 톤 레이어 (공통 클래스의 최종 외형)
    5) shell     앱 셸(사이드바/헤더/탭/콘텐츠)
+   6) responsive 좁은 화면(폰·태블릿) — 기준 폭 정의, 표 → 카드. 마지막에 온다
    ============================================================ */
 
 /* 1) tokens */
@@ -33,3 +34,6 @@
 
 /* 5) app shell */
 @import "./wms-shell.css";
+
+/* 6) responsive (phone · tablet) */
+@import "./responsive.css";

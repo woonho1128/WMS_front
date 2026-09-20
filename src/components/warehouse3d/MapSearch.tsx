@@ -96,8 +96,8 @@ export const MapSearch = ({ warehouseId, onPickLocation, onPickItem, highlightLa
   const locationCount = result?.locations.length ?? 0;
 
   return (
-    <div className="wms-search" ref={boxRef}>
-      <label className="wms-search-box">
+    <div className="wh3d-search" ref={boxRef}>
+      <label className="wh3d-search-box">
         <Icon name="search" size={15} />
         <input
           value={query}
@@ -111,11 +111,11 @@ export const MapSearch = ({ warehouseId, onPickLocation, onPickItem, highlightLa
           aria-label="맵 검색"
           aria-expanded={open && rows.length > 0}
         />
-        {loading ? <span className="wms-search-spin" aria-hidden="true" /> : null}
+        {loading ? <span className="wh3d-search-spin" aria-hidden="true" /> : null}
       </label>
 
       {highlightLabel ? (
-        <span className="wms-search-chip">
+        <span className="wh3d-search-chip">
           <Icon name="flag" size={12} />
           {highlightLabel}
           <button type="button" onClick={onClearHighlight} aria-label="강조 해제">
@@ -125,8 +125,8 @@ export const MapSearch = ({ warehouseId, onPickLocation, onPickItem, highlightLa
       ) : null}
 
       {open && query.trim() && !loading ? (
-        <div className="wms-search-pop" role="listbox">
-          {rows.length === 0 ? <div className="wms-search-empty">"{query.trim()}" 결과가 없습니다</div> : null}
+        <div className="wh3d-search-pop" role="listbox">
+          {rows.length === 0 ? <div className="wh3d-search-empty">"{query.trim()}" 결과가 없습니다</div> : null}
           {rows.map((row, idx) => {
             const isActive = idx === active;
             if (row.kind === "location") {
@@ -137,19 +137,19 @@ export const MapSearch = ({ warehouseId, onPickLocation, onPickItem, highlightLa
                   type="button"
                   role="option"
                   aria-selected={isActive}
-                  className={`wms-search-row${isActive ? " is-active" : ""}`}
+                  className={`wh3d-search-row${isActive ? " is-active" : ""}`}
                   onMouseEnter={() => setActive(idx)}
                   onClick={() => choose(row)}
                 >
-                  {idx === 0 ? <span className="wms-search-group">로케이션</span> : null}
-                  <span className="wms-search-main">
+                  {idx === 0 ? <span className="wh3d-search-group">로케이션</span> : null}
+                  <span className="wh3d-search-main">
                     <b>{location.code}</b>
                     <small>
                       {location.zoneName}
                       {location.floor ? ` · ${location.floor}` : ""} · {LOCATION_TYPE_LABEL[location.locationType]}
                     </small>
                   </span>
-                  {!location.placed ? <span className="wms-search-tag">미배치</span> : null}
+                  {!location.placed ? <span className="wh3d-search-tag">미배치</span> : null}
                 </button>
               );
             }
@@ -160,18 +160,18 @@ export const MapSearch = ({ warehouseId, onPickLocation, onPickItem, highlightLa
                 type="button"
                 role="option"
                 aria-selected={isActive}
-                className={`wms-search-row${isActive ? " is-active" : ""}`}
+                className={`wh3d-search-row${isActive ? " is-active" : ""}`}
                 onMouseEnter={() => setActive(idx)}
                 onClick={() => choose(row)}
               >
-                {idx === locationCount ? <span className="wms-search-group">품목</span> : null}
-                <span className="wms-search-main">
+                {idx === locationCount ? <span className="wh3d-search-group">품목</span> : null}
+                <span className="wh3d-search-main">
                   <b>{item.itemName}</b>
                   <small>
                     {item.itemCode} · {item.onHand.toLocaleString()} {item.unit}
                   </small>
                 </span>
-                <span className="wms-search-tag">{item.locations.length}곳</span>
+                <span className="wh3d-search-tag">{item.locations.length}곳</span>
               </button>
             );
           })}

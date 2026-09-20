@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { QrBox } from "../../components/ui/QrBox";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -110,13 +111,13 @@ export const BarcodeLookupPage = () => {
               </p>
             </div>
             {result.stocks.length > 0 && (
-              <div className="pc-only">
+              <ResponsiveTable>
                 <table className="outbound-table">
                   <thead>
                     <tr>
                       <th>창고</th>
                       <th>구역</th>
-                      <th>로케이션</th>
+                      <th className="rt-title">로케이션</th>
                       <th>SKU</th>
                       <th>품목명</th>
                       <th>LOT</th>
@@ -149,17 +150,17 @@ export const BarcodeLookupPage = () => {
                     })}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveTable>
             )}
           </DashboardCard>
 
           <DashboardCard className="outbound-table-card" title={`이동 이력 (${result.history.length}건)`}>
-            <div className="pc-only">
+            <ResponsiveTable>
               <table className="outbound-table">
                 <thead>
                   <tr>
                     <th>일시</th>
-                    <th>이동번호</th>
+                    <th className="rt-title">이동번호</th>
                     <th>유형</th>
                     <th>LOT</th>
                     <th>출발</th>
@@ -189,7 +190,7 @@ export const BarcodeLookupPage = () => {
                   )}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
           </DashboardCard>
         </>
       ) : (

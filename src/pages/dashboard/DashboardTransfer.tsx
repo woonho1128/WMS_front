@@ -3,6 +3,7 @@ import { DashboardCard } from "./components/DashboardCard";
 import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { TRANSFER_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import { TransferMapView } from "../stock/TransferMapView";
@@ -199,10 +200,10 @@ export const DashboardTransfer = () => {
           <div className="transfer-filters">
             <input placeholder="로케이션/품목/LOT 검색" value={stockQuery} onChange={(e) => setStockQuery(e.target.value)} />
           </div>
-          <div className="table-wrap" style={{ overflowX: "auto" }}>
+          <ResponsiveTable className="table-wrap">
             <table className="data-table" style={{ width: "100%", minWidth: 520 }}>
               <thead>
-                <tr><th>로케이션</th><th>품목</th><th>LOT</th><th className="num">가용</th><th /></tr>
+                <tr><th className="rt-title">로케이션</th><th>품목</th><th>LOT</th><th className="num">가용</th><th className="rt-actions" /></tr>
               </thead>
               <tbody>
                 {filteredStocks.map((s) => (
@@ -217,7 +218,7 @@ export const DashboardTransfer = () => {
                 {filteredStocks.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", padding: 24, color: "var(--ink-faint)" }}>이동 가능한 가용 재고 없음</td></tr>}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         </DashboardCard>
 
         <DashboardCard className="transfer-form-card" title="이동 처리">
@@ -268,10 +269,10 @@ export const DashboardTransfer = () => {
       </div>
 
       <DashboardCard className="transfer-history-card" title={`이동 이력 (${transfers.length})`}>
-        <div className="table-wrap" style={{ overflowX: "auto" }}>
+        <ResponsiveTable className="table-wrap">
           <table className="data-table" style={{ width: "100%", minWidth: 820 }}>
             <thead>
-              <tr><th>이동번호</th><th>품목</th><th>이동 경로</th><th className="num">수량</th><th>구분</th><th>상태</th><th>처리시각</th></tr>
+              <tr><th className="rt-title">이동번호</th><th>품목</th><th>이동 경로</th><th className="num">수량</th><th>구분</th><th>상태</th><th>처리시각</th></tr>
             </thead>
             <tbody>
               {transfers.map((t) => (
@@ -292,7 +293,7 @@ export const DashboardTransfer = () => {
               {transfers.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "var(--ink-faint)" }}>이동 이력 없음</td></tr>}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
       </>
       )}

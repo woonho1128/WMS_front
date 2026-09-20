@@ -4,6 +4,8 @@
   --muted: var(--ink-muted);
   --blue: var(--primary);
   display: grid;
+  /* minmax(0,1fr) — 기본값(auto)이면 칸이 표 최소 폭에 맞춰 부풀어 좁은 화면을 넘긴다 */
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 

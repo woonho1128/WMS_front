@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -93,10 +94,10 @@ export const NoticePage = () => {
           <p className="outbound-notice">{notice ?? "제목을 클릭하면 상세 내용을 볼 수 있습니다."}</p>
         </div>
         {error ? (<div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(18080) 확인</span></div>) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
-              <tr><th style={{ width: 90 }}>분류</th><th>제목</th><th style={{ width: 110 }}>작성자</th><th style={{ width: 140 }}>등록일</th></tr>
+              <tr><th style={{ width: 90 }}>분류</th><th className="rt-title">제목</th><th style={{ width: 110 }}>작성자</th><th style={{ width: 140 }}>등록일</th></tr>
             </thead>
             <tbody>
               {loading ? (
@@ -115,7 +116,7 @@ export const NoticePage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <Modal

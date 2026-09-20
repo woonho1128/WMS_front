@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -133,7 +134,7 @@ export const AvailableStockPage = () => {
             <span>불러오기 실패: {error} — 백엔드(8080) 확인</span>
           </div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
@@ -143,7 +144,7 @@ export const AvailableStockPage = () => {
                 <th>유형</th>
                 <th>SKU</th>
                 <th>품목명</th>
-                <th>LOT</th>
+                <th className="rt-title">LOT</th>
                 <th>입고일</th>
                 <th className="num">가용수량</th>
               </tr>
@@ -173,7 +174,7 @@ export const AvailableStockPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );

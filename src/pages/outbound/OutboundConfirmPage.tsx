@@ -5,6 +5,7 @@ import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { OUTBOUND_STEPS, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost, apiPut } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -169,18 +170,18 @@ export const OutboundConfirmPage = () => {
             {notice ?? "송장번호 입력 후 출고확정하세요. 재고부족 등 예외는 거부 처리(OMS 회신)합니다."}
           </p>
         </div>
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
-                <th>출하번호</th>
+                <th className="rt-title">출하번호</th>
                 <th>출고예정일</th>
                 <th>납품처</th>
                 <th className="num">수량</th>
                 <th>운송정보</th>
                 <th>송장번호</th>
                 <th>상태</th>
-                <th>처리</th>
+                <th className="rt-actions">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -248,7 +249,7 @@ export const OutboundConfirmPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <Modal

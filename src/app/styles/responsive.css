@@ -1,0 +1,264 @@
+/* ============================================================
+   좁은 화면 규칙 (폰 · 태블릿)
+   ------------------------------------------------------------
+   기준 폭은 세 가지만 쓴다. 새 화면도 이 값만 쓸 것.
+     --bp-phone   640px   폰 (한 손) — 한 줄 배치, 버튼 꽉 채우기
+     --bp-narrow  980px   표를 카드로 바꾸는 선 (태블릿 세로 · 분할 화면 포함)
+     --bp-laptop  1280px  좁은 노트북 — 3단 → 2단
+
+   표는 감추지 않는다. 좁아지면 ResponsiveTable 껍데기가 카드 목록으로 바꾼다
+   (components/ui/ResponsiveTable). 예전 `.pc-only { display:none }` 방식은
+   대체 화면이 없어 목록이 통째로 사라졌다 — 2026-09-20 제거.
+   ============================================================ */
+
+:root {
+  --bp-phone: 640px;
+  --bp-narrow: 980px;
+  --bp-laptop: 1280px;
+}
+
+/* 넓은 화면에서는 그대로 표 — 칸이 모자라면 가로로 민다 */
+.rt-wrap {
+  overflow-x: auto;
+  /* 그리드·플렉스 칸 안에서도 줄어들 수 있게 (기본 min-width:auto 가 페이지를 밀어낸다) */
+  min-width: 0;
+}
+
+/* ---------- 표 → 카드 목록 ---------- */
+@media (max-width: 980px) {
+  /* 칸(그리드·플렉스 자식)은 기본이 min-width:auto 라 안의 표·긴 글자가 화면 밖으로 밀어낸다 */
+  .wms-content [class*="grid"] > *,
+  .wms-content [class*="-main"] > * {
+    min-width: 0;
+  }
+
+  .rt-wrap {
+    overflow: visible;
+  }
+
+  /* 여러 버튼이 한 줄에 다 안 들어가면 다음 줄로 */
+  .outbound-row-actions,
+  .outbound-expand-actions,
+  .outbound-list-actions {
+    flex-wrap: wrap;
+  }
+
+  .rt-wrap table {
+    display: block;
+    width: 100%;
+    /* 표에 인라인으로 걸린 min-width(가로 스크롤용)를 풀어야 카드가 화면 폭에 맞는다 */
+    min-width: 0 !important;
+    border-collapse: separate;
+  }
+
+  .rt-wrap thead {
+    display: none;
+  }
+
+  .rt-wrap tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .rt-wrap tbody tr {
+    display: block;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-md, 12px);
+    background: var(--surface);
+  }
+
+  .rt-wrap tbody tr.is-done,
+  .rt-wrap tbody tr.is-selected {
+    background: var(--surface-2);
+  }
+
+  /* "제목 : 값" 한 줄 — 제목은 열 머리에서 가져온다 */
+  .rt-wrap table tbody td {
+    display: grid;
+    grid-template-columns: minmax(72px, 34%) 1fr;
+    align-items: baseline;
+    /* 배지 · 태그가 남은 폭을 다 먹지 않게 */
+    justify-items: start;
+    gap: 10px;
+    padding: 5px 0;
+    border: 0;
+    text-align: left;
+    font-size: 13px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .rt-wrap table tbody td::before {
+    content: attr(data-label);
+    color: var(--ink-faint);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  /* 라벨이 없는 열(체크박스 등)은 값만 */
+  .rt-wrap table tbody td[data-label=""] {
+    display: block;
+  }
+
+  .rt-wrap table tbody td[data-label=""]::before {
+    display: none;
+  }
+
+  /* 첫 칸은 카드에서 눈에 먼저 들어오게 */
+  .rt-wrap table tbody tr > td:first-child {
+    font-weight: 800;
+    color: var(--ink-strong);
+  }
+
+  /* 카드 제목 줄 — th 에 rt-title 을 준 열 */
+  .rt-wrap table tbody td.rt-title {
+    display: block;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ink-strong);
+  }
+
+  .rt-wrap table tbody td.rt-title::before {
+    display: none;
+  }
+
+  /* 버튼 줄 — th 에 rt-actions 를 준 열. 카드 맨 아래에서 가로로 꽉 */
+  .rt-wrap table tbody td.rt-actions {
+    display: block;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .rt-wrap table tbody td.rt-actions::before {
+    display: none;
+  }
+
+  .rt-wrap table tbody td.rt-actions > * {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rt-wrap table tbody td.rt-actions button,
+  .rt-wrap table tbody td.rt-actions a,
+  .rt-wrap table tbody td.rt-actions select {
+    flex: 1 1 120px;
+    min-height: 40px;
+  }
+
+  /* 폰에서는 숨기는 열 (제목 줄에 이미 담긴 값 등) */
+  .rt-wrap table tbody td.rt-hide {
+    display: none;
+  }
+
+  /* 로딩 · "없습니다" 처럼 한 줄을 다 쓰는 칸 */
+  .rt-wrap table tbody td.rt-full {
+    display: block;
+    padding: 18px 0;
+    text-align: center;
+    color: var(--ink-faint);
+  }
+
+  .rt-wrap table tbody td.rt-full::before {
+    display: none;
+  }
+
+  /* 카드 안에서는 값이 길어도 줄바꿈 — 표용 nowrap 해제 */
+  .rt-wrap table tbody td .num,
+  .rt-wrap table tbody td.num {
+    text-align: left;
+  }
+}
+
+/* ---------- 폰 ---------- */
+@media (max-width: 640px) {
+  /* 입력칸·셀렉트가 화면을 넘지 않게.
+     grid 로 짠 라벨은 칸이 기본 auto(=내용 최대 폭)라 긴 선택지가 있으면 폭이 부푼다 */
+  .wms-content label {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .wms-content select,
+  .wms-content textarea,
+  .wms-content input:not([type="checkbox"]):not([type="radio"]) {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* 목록 위 안내문 + 버튼 줄은 한 줄에 다 안 들어간다 */
+  .outbound-list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* 탭 모양 버튼은 글자가 쪼개지지 않게 — 대신 줄이 모자라면 다음 줄로 */
+  .lp-tab,
+  .inb-view,
+  .nx-seg button {
+    white-space: nowrap;
+  }
+
+  .lp-tabs,
+  .inb-views,
+  .nx-seg {
+    flex-wrap: wrap;
+  }
+
+  /* 한 줄짜리 도구 모음은 폰에서 다음 줄로 넘긴다 (3D 지도 도구 · 조회기간) */
+  .wh3d-tools,
+  .inb-period {
+    flex-wrap: wrap;
+  }
+
+  .inb-period input[type="date"] {
+    flex: 1 1 128px;
+    min-width: 0;
+  }
+
+  /* 손가락으로 누를 수 있는 최소 크기 (아이콘 버튼 포함) */
+  .wms-tab-close,
+  .wms-tabs-notice-x,
+  .wms-tabs-overflow-x,
+  .nx-iconbtn,
+  .le-icon-btn {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .wms-tabs-more,
+  .wms-tabs-closeall,
+  .wms-tabs-notice-btn {
+    min-height: 32px;
+  }
+
+  /* 자동으로 닫힌 탭 알림 — 폰에서는 본문 위를 덮지 않게 화면 아래 토스트로 */
+  .wms-tabs-notice {
+    position: fixed;
+    top: auto;
+    right: 10px;
+    bottom: 12px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+
+  .sd-link,
+  .ct-link,
+  .btn-secondary,
+  .btn-primary,
+  .ds-btn {
+    min-height: 32px;
+  }
+
+  /* 표 안 작은 버튼도 누를 수 있게 */
+  .rt-wrap table tbody td button {
+    min-height: 36px;
+  }
+}

@@ -5,6 +5,7 @@ import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { OUTBOUND_STEPS, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터/펼침 스타일 재사용
@@ -252,17 +253,17 @@ export const PickingPage = () => {
             {notice ?? "출고대기 건은 피킹 시작으로, 피킹중 건은 라인별 품목 QR 확인 또는 스킵 후 피킹 완료하세요. (스킵 상품은 보류/미출고로 별도 처리)"}
           </p>
         </div>
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
-                <th>출하번호</th>
+                <th className="rt-title">출하번호</th>
                 <th>출고예정일</th>
                 <th>납품처</th>
                 <th>출고형태</th>
                 <th className="num">수량</th>
                 <th>상태</th>
-                <th>처리</th>
+                <th className="rt-actions">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -330,12 +331,12 @@ export const PickingPage = () => {
                                 <table className="outbound-detail-table">
                                   <thead>
                                     <tr>
-                                      <th>피킹 로케이션</th>
+                                      <th className="rt-title">피킹 로케이션</th>
                                       <th>SKU</th>
                                       <th>상품명</th>
                                       <th className="num">지시수량</th>
                                       <th className="num">가용재고</th>
-                                      <th>품목 QR 확인 / 스킵</th>
+                                      <th className="rt-actions">품목 QR 확인 / 스킵</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -394,7 +395,7 @@ export const PickingPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <Modal

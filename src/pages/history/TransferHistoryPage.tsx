@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { shiftDays } from "../../shared/appDate";
@@ -116,12 +117,12 @@ export const TransferHistoryPage = () => {
             <span>불러오기 실패: {error} — 백엔드(8080) 확인</span>
           </div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
                 <th>일시</th>
-                <th>이동번호</th>
+                <th className="rt-title">이동번호</th>
                 <th>유형</th>
                 <th>품목</th>
                 <th>LOT</th>
@@ -155,7 +156,7 @@ export const TransferHistoryPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );

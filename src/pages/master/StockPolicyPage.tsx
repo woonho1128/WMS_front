@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPut } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -69,10 +70,10 @@ export const StockPolicyPage = () => {
           <p className="outbound-notice">{notice ?? "정책 토글을 변경하면 가용재고 계산식과 합계가 즉시 반영됩니다."}</p>
         </div>
         {error ? (<div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(8080) 확인</span></div>) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
-              <tr><th>정책</th><th>설명</th><th style={{ width: 120 }}>적용</th></tr>
+              <tr><th className="rt-title">정책</th><th>설명</th><th className="rt-actions" style={{ width: 120 }}>적용</th></tr>
             </thead>
             <tbody>
               {loading ? (
@@ -97,7 +98,7 @@ export const StockPolicyPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <DashboardCard className="outbound-table-card" title="가용재고 계산식 (미리보기)">

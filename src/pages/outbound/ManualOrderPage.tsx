@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -152,15 +153,15 @@ export const ManualOrderPage = () => {
             <button type="button" className="btn-primary" onClick={submit} disabled={busy || lines.length === 0}>주문 생성</button>
           </div>
         </div>
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
                 <th>구분</th>
-                <th>SKU</th>
+                <th className="rt-title">SKU</th>
                 <th>상품명</th>
                 <th className="num">수량</th>
-                <th>작업</th>
+                <th className="rt-actions">작업</th>
               </tr>
             </thead>
             <tbody>
@@ -208,15 +209,15 @@ export const ManualOrderPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
 
       <DashboardCard className="outbound-table-card" title={`생성된 비운영 주문 (${orders.length}건)`}>
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
-                <th>주문번호</th>
+                <th className="rt-title">주문번호</th>
                 <th>고객명</th>
                 <th>등록일</th>
                 <th className="num">라인수</th>
@@ -245,7 +246,7 @@ export const ManualOrderPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );

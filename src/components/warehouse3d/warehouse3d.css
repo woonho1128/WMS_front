@@ -285,12 +285,12 @@
     max-width: 236px; border-radius: var(--r-md);
   }
   .wh3d-legend .wh3d-mode { flex-basis: 100%; }
-  .wh3d-overlay .wms-search-box { width: 230px; }
+  .wh3d-overlay .wh3d-search-box { width: 230px; }
   .wh3d-hint { display: none; }
 }
 @container (max-width: 640px) {
   .wh3d-legend span { display: none; }
   .wh3d-legend { max-width: none; padding: 5px; }
-  .wh3d-overlay .wms-search-box { width: 170px; }
+  .wh3d-overlay .wh3d-search-box { width: 170px; }
   .wh3d-status .wh3d-sync { display: none; }
 }

@@ -3,7 +3,8 @@
    색은 전부 의미 토큰. 다크/라이트 모두에서 동작한다.
    ============================================================ */
 
-.inb-page { display: grid; gap: 14px; }
+/* minmax(0,1fr) — 기본값(auto)이면 칸 안의 표·버튼 최소 폭에 맞춰 부풀어 좁은 화면을 넘긴다 */
+.inb-page { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
 
 /* ---------- 상단 툴바 ---------- */
 .inb-toolbar {
@@ -364,4 +365,10 @@
   .inb-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .inb-board { grid-template-columns: minmax(0, 1fr); }
   .inb-search { min-width: 0; }
+}
+@media (max-width: 640px) {
+  /* 단계 카드 2열이 폰 폭에 들어가도록 — 글자는 줄바꿈 허용 */
+  .inb-stage { padding: 10px; }
+  .inb-stage-head { white-space: normal; }
+  .inb-toolbar { padding: 10px; }
 }

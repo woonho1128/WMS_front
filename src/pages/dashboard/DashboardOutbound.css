@@ -433,10 +433,8 @@
     grid-template-columns: 1fr;
   }
 
-  .pc-only {
-    display: none !important;
-  }
-
+  /* 예전에는 여기서 .pc-only 표를 통째로 감췄다 — 대체 목록이 없어 화면이 비어 버려서
+     2026-09-20 제거하고 ResponsiveTable(표 → 카드)로 바꿨다. styles/responsive.css */
   .mobile-only {
     display: block;
   }

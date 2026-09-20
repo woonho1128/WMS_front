@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -72,10 +73,10 @@ export const DeliveryNotePage = () => {
 
       <DashboardCard className="outbound-table-card" title={`배송 내역 (${rows.length}건)`}>
         {error ? (<div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(8080) 확인</span></div>) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
-              <tr><th>출하번호</th><th>납품처</th><th>배송주소</th><th>배송사</th><th>차량</th><th>송장번호</th><th className="num">출고수량</th><th>출고예정일</th><th>배차일</th></tr>
+              <tr><th className="rt-title">출하번호</th><th>납품처</th><th>배송주소</th><th>배송사</th><th>차량</th><th>송장번호</th><th className="num">출고수량</th><th>출고예정일</th><th>배차일</th></tr>
             </thead>
             <tbody>
               {loading ? (
@@ -99,7 +100,7 @@ export const DeliveryNotePage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );

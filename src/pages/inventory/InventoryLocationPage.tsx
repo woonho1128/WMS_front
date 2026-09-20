@@ -3,6 +3,7 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { zoneHoldsRacks, type LayoutRack, type LayoutSummaryRow } from "../../components/warehouse3d/types";
@@ -416,12 +417,12 @@ export const InventoryLocationPage = () => {
         {error ? (
           <div className="ds-callout danger" style={{ marginBottom: 12 }}><span>불러오기 실패: {error} — 백엔드(8080) 확인</span></div>
         ) : null}
-        <div className="pc-only">
+        <ResponsiveTable>
           <table className="outbound-table">
             <thead>
               <tr>
                 <th><input type="checkbox" checked={allVisibleChecked} onChange={toggleAll} aria-label="전체 선택" /></th>
-                <th>로케이션코드</th>
+                <th className="rt-title">로케이션코드</th>
                 <th>창고</th>
                 <th>Zone</th>
                 <th>유형</th>
@@ -431,7 +432,7 @@ export const InventoryLocationPage = () => {
                 <th className="num">최대 무게</th>
                 <th className="num">재고건수</th>
                 <th>사용여부</th>
-                <th style={{ textAlign: "right" }}>작업</th>
+                <th className="rt-actions" style={{ textAlign: "right" }}>작업</th>
               </tr>
             </thead>
             <tbody>
@@ -477,7 +478,7 @@ export const InventoryLocationPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
         {filtered.length > PAGE_SIZE ? (
           <div className="lp-pager">
             <span>

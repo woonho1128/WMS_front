@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import "./InventoryItemPage.css";
 
@@ -74,11 +75,11 @@ export const InventoryItemPage = () => {
           </div>
         ) : null}
 
-        <div className="item-table-wrap">
+        <ResponsiveTable className="item-table-wrap">
           <table className="item-table">
             <thead>
               <tr>
-                <th>품목 코드</th>
+                <th className="rt-title">품목 코드</th>
                 <th>품목명</th>
                 <th>품목 그룹</th>
                 <th>단위</th>
@@ -127,7 +128,7 @@ export const InventoryItemPage = () => {
               )}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </DashboardCard>
     </section>
   );
