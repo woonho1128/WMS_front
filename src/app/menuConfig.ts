@@ -218,3 +218,24 @@ export const getMenuSectionsForRole = (role: string) => {
     .filter((section): section is MenuSection => Boolean(section))
     .filter((section) => section.features.length > 0);
 };
+
+/** 경로 하나가 어떤 화면인가 — 메뉴에 있는지, 이 역할이 볼 수 있는지까지 본다 */
+export type ScreenTarget =
+  | { status: "ok"; sectionSlug: string; featureSlug: string; label: string }
+  | { status: "unknown" | "denied" };
+
+/**
+ * 라우터 밖에서도 화면을 그려야 할 때(분할 보기의 오른쪽 패널) 경로를 화면으로 푼다.
+ * 라우터가 그리는 FeaturePage 와 같은 판정을 쓴다 — 없는 메뉴는 unknown, 권한 밖이면 denied.
+ */
+export const resolveScreenPath = (path: string, role: string): ScreenTarget => {
+  const [sectionSlug, featureSlug] = path.split("/").filter(Boolean);
+  const source = findSection(sectionSlug);
+  const sourceFeature = source?.features.find((feature) => feature.slug === featureSlug);
+  if (!source || !sourceFeature) return { status: "unknown" };
+
+  const allowed = getMenuSectionsForRole(role).find((section) => section.slug === source.slug);
+  if (!allowed?.features.some((feature) => feature.slug === sourceFeature.slug)) return { status: "denied" };
+
+  return { status: "ok", sectionSlug: source.slug, featureSlug: sourceFeature.slug, label: sourceFeature.label };
+};

@@ -4,10 +4,12 @@ import { findSection, getMenuSectionsForRole } from "../app/menuConfig";
 import { roleLabels, type UserRole } from "../app/roles";
 import { useUiStore } from "../app/store/uiStore";
 import { useAuthStore } from "../app/store/authStore";
-import { useTabsStore } from "../app/store/tabsStore";
+import { SPLIT_MIN_QUERY, useTabsStore } from "../app/store/tabsStore";
+import { useMediaQuery } from "../shared/useMediaQuery";
 import { Icon } from "../components/ui/Icon";
 import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
 import { SideMenu } from "../components/layout/SideMenu";
+import { SplitView } from "../components/layout/SplitView";
 
 const roleOptions = Object.entries(roleLabels) as Array<[UserRole, string]>;
 const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 1024px)").matches;
@@ -22,6 +24,8 @@ export const MainLayout = () => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const openTab = useTabsStore((state) => state.openTab);
+  const splitPath = useTabsStore((state) => state.splitPath);
+  const wideEnough = useMediaQuery(SPLIT_MIN_QUERY);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
@@ -68,7 +72,15 @@ export const MainLayout = () => {
     else setCollapsed(false);
   }, [setCollapsed]);
 
-  const appClass = `wms-app${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}`;
+  /**
+   * 절반으로 보기 — 오른쪽 패널에 띄울 경로.
+   * 화면이 좁으면(폰·태블릿·좁은 노트북) 반쪽이 너무 작아 둘 다 못 읽으므로 분할을 접고,
+   * 왼쪽과 같은 화면이면 나눌 이유가 없다. 상태는 지우지 않으므로 창을 넓히면 다시 나뉜다.
+   */
+  const split = wideEnough && splitPath && splitPath !== location.pathname ? splitPath : null;
+
+  // 분할 중에는 셸 높이를 화면에 맞춘다 — 문서가 아니라 패널이 각자 스크롤해야 한다
+  const appClass = `wms-app${collapsed ? " collapsed" : ""}${mobileOpen ? " mobile-open" : ""}${split ? " is-split" : ""}`;
 
   return (
     <div className={appClass}>
@@ -167,8 +179,14 @@ export const MainLayout = () => {
 
         <WorkspaceTabs activePath={location.pathname} />
 
-        <main className="wms-content">
-          <Outlet />
+        <main className={`wms-content${split ? " is-split" : ""}`}>
+          {split ? (
+            <SplitView mainLabel={currentLabel} splitPath={split}>
+              <Outlet />
+            </SplitView>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
 

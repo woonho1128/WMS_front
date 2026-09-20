@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { findSection } from "../../app/menuConfig";
 import {
   HOME_PATH,
+  SPLIT_MIN_QUERY,
   TAB_LIMIT,
   closeCount,
   evictionCandidate,
@@ -11,6 +12,7 @@ import {
   type CloseKind,
   type OpenTab
 } from "../../app/store/tabsStore";
+import { useMediaQuery } from "../../shared/useMediaQuery";
 import { Icon } from "../ui/Icon";
 import { TabContextMenu } from "./TabContextMenu";
 import { TabOverflowMenu } from "./TabOverflowMenu";
@@ -62,6 +64,10 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
   const openTab = useTabsStore((state) => state.openTab);
   const togglePin = useTabsStore((state) => state.togglePin);
   const dismissEvicted = useTabsStore((state) => state.dismissEvicted);
+  const splitPath = useTabsStore((state) => state.splitPath);
+  const openSplit = useTabsStore((state) => state.openSplit);
+  const closeSplit = useTabsStore((state) => state.closeSplit);
+  const canSplit = useMediaQuery(SPLIT_MIN_QUERY);
   const navigate = useNavigate();
   const [menu, setMenu] = useState<MenuState>(null);
   const [track, setTrack] = useState<HTMLDivElement | null>(null);
@@ -146,6 +152,12 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
   const closableCount = closeCount(tabs, "all", activePath);
   const closeAllDisabled = closableCount === 0 || (tabs.length === 1 && tabs[0].path === HOME_PATH);
 
+  // 탭 바의 [나란히 보기] 가 고를 상대 — 보고 있는 탭을 뺀, 가장 최근에 본 탭
+  const splitPartner = tabs.reduce<OpenTab | null>((latest, tab) => {
+    if (tab.path === activePath) return latest;
+    return !latest || (tab.lastActiveAt ?? 0) > (latest.lastActiveAt ?? 0) ? tab : latest;
+  }, null);
+
   const full = tabs.length >= TAB_LIMIT;
   const nextVictim = full ? evictionCandidate(tabs, activePath) : null;
   const countTitle = full
@@ -157,20 +169,22 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
       <div className="wms-tabs-scroll" role="tablist" ref={setTrack}>
         {visible.map((tab) => {
           const active = tab.path === activePath;
+          const inSplit = tab.path === splitPath;
           return (
             <div
               key={tab.path}
               role="tab"
               aria-selected={active}
-              className={`wms-tab${active ? " active" : ""}${tab.pinned ? " is-pinned" : ""}${menu?.tab.path === tab.path ? " is-menu" : ""}`}
+              className={`wms-tab${active ? " active" : ""}${tab.pinned ? " is-pinned" : ""}${inSplit ? " is-split" : ""}${menu?.tab.path === tab.path ? " is-menu" : ""}`}
               onClick={() => navigate(tab.path)}
               onAuxClick={(event) => {
                 if (event.button === 1) handleClose(event, tab.path); // 가운데 클릭으로 닫기 (고정 탭은 그대로)
               }}
               onContextMenu={(event) => openMenu(event, tab)}
-              title={`${tab.label}${tab.pinned ? " · 고정됨" : ""} · 우클릭: 탭 메뉴`}
+              title={`${tab.label}${tab.pinned ? " · 고정됨" : ""}${inSplit ? " · 오른쪽 패널에 나란히 열림" : ""} · 우클릭: 탭 메뉴`}
             >
               {tab.pinned ? <Icon name="pinTab" size={13} className="wms-tab-pin" /> : null}
+              {inSplit ? <Icon name="split" size={13} className="wms-tab-splitmark" /> : null}
               <span className="wms-tab-label">{tab.label}</span>
               {tab.pinned ? null : (
                 <button
@@ -205,6 +219,24 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
         <span className={`wms-tabs-count${full ? " is-full" : ""}`} title={countTitle}>
           {tabs.length}/{TAB_LIMIT}
         </span>
+        {canSplit ? (
+          <button
+            type="button"
+            className={`wms-tabs-split${splitPath ? " is-on" : ""}`}
+            onClick={() => (splitPath ? closeSplit() : splitPartner && openSplit(splitPartner.path))}
+            disabled={!splitPath && !splitPartner}
+            title={
+              splitPath
+                ? "오른쪽 패널을 닫고 한 화면으로"
+                : splitPartner
+                  ? `‘${splitPartner.label}’ 을(를) 오른쪽에 나란히 — 다른 탭은 우클릭`
+                  : "나란히 볼 탭이 없습니다"
+            }
+          >
+            <Icon name={splitPath ? "splitOff" : "split"} size={14} />
+            {splitPath ? "분할 해제" : "나란히 보기"}
+          </button>
+        ) : null}
         <button
           type="button"
           className="wms-tabs-closeall"
@@ -247,9 +279,20 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
           y={menu.y}
           tab={menu.tab}
           tabs={tabs}
+          activePath={activePath}
+          splitPath={splitPath}
+          canSplit={canSplit}
           onAction={(kind) => runClose(kind, menu.tab.path)}
           onTogglePin={() => {
             togglePin(menu.tab.path);
+            setMenu(null);
+          }}
+          onSplit={() => {
+            openSplit(menu.tab.path);
+            setMenu(null);
+          }}
+          onUnsplit={() => {
+            closeSplit();
             setMenu(null);
           }}
           onDismiss={dismissMenu}

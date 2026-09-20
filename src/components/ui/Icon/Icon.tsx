@@ -67,6 +67,9 @@ export const ICON_PATHS: Record<string, string> = {
   closeLeft: "M4 4v16M20 12H9M13 8l-4 4 4 4",
   closeRight: "M20 4v16M4 12h11M11 8l4 4-4 4",
   closeAll: "M3 5h18v14H3zM9 9l6 6M15 9l-6 6",
+  /* 분할 보기(절반으로 보기) */
+  split: "M3 5h18v14H3zM12 5v14",
+  splitOff: "M3 5h18v14H3zM5 19 19 5",
   /* 탭 고정 (압정) */
   pinTab: "M15 4.5l-4 4-4 1.5-1.5 1.5 7 7 1.5-1.5 1.5-4 4-4M9 15l-4.5 4.5M14.5 4l5.5 5.5",
   pinOff: "M3 3l18 18M15 4.5l-3.25 3.25M9.18 9.18 7 10l-1.5 1.5 7 7 1.5-1.5.82-2.19M16.25 11.69 19.5 8.5M9 15l-4.5 4.5M14.5 4l5.5 5.5"

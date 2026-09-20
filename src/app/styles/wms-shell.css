@@ -368,6 +368,65 @@
 .wms-content { flex: 1; overflow-y: auto; padding: 22px 24px 56px; min-width: 0; }
 
 /* ============================================================
+   절반으로 보기 (탭 하나를 오른쪽 패널에 나란히)
+   ------------------------------------------------------------
+   패널마다 따로 스크롤한다 — 본문 스크롤을 패널이 가져가므로 .wms-content 는 안 민다.
+   1280px 미만에서는 MainLayout 이 분할을 접는다 (tabsStore SPLIT_MIN_QUERY).
+   ============================================================ */
+/* 셸 기본은 min-height:100vh 라 문서가 스크롤한다. 분할 중에는 화면 높이에 맞춰
+   패널이 각자 스크롤하게 한다 — 그래야 가운데 손잡이가 화면 안에 남는다 */
+.wms-app.is-split { height: 100vh; overflow: hidden; }
+.wms-app.is-split .wms-main { min-height: 0; }
+
+.wms-content.is-split { display: flex; overflow: hidden; padding: 0; min-height: 0; }
+
+.wms-split { flex: 1; display: flex; min-width: 0; }
+.wms-split.is-drag { cursor: col-resize; }
+
+.wms-pane { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+.wms-pane-main { flex: 0 0 var(--split-left, 50%); }
+.wms-pane-side { flex: 1 1 0; }
+
+.wms-pane-head {
+  flex: 0 0 34px; display: flex; align-items: center; gap: 8px;
+  padding: 0 8px 0 16px; border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.wms-pane-name {
+  font-size: 12.5px; font-weight: 800; color: var(--ink-strong);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wms-pane-head small { font-size: 11px; font-weight: 600; color: var(--ink-faint); white-space: nowrap; }
+.wms-pane-acts { margin-left: auto; display: flex; gap: 4px; }
+.wms-pane-btn {
+  width: 26px; height: 26px; flex: 0 0 26px; display: grid; place-items: center; padding: 0;
+  border: 1px solid transparent; border-radius: var(--r-xs);
+  background: transparent; color: var(--ink-faint); cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.wms-pane-btn:hover { background: var(--surface-3); border-color: var(--border); color: var(--ink-strong); }
+.wms-pane-btn.is-close:hover { background: var(--c-danger-bg); border-color: transparent; color: var(--c-danger-ink); }
+
+/* 화면이 반쪽보다 넓으면 페이지를 밀지 않고 패널 안에서 민다 */
+.wms-pane-body { flex: 1; overflow: auto; padding: 16px 16px 40px; min-width: 0; }
+.wms-pane-empty { padding: 20px 4px; color: var(--ink-faint); font-size: 13px; }
+
+/* 가운데 손잡이 */
+.wms-split-bar {
+  flex: 0 0 9px; position: relative; cursor: col-resize; touch-action: none;
+  background: var(--surface-2); border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+}
+.wms-split-bar::after {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 3px; height: 30px;
+  transform: translate(-50%, -50%); border-radius: var(--r-pill); background: var(--border-strong);
+}
+.wms-split-bar:hover, .wms-split-bar:focus-visible { background: var(--surface-3); outline: none; }
+.wms-split-bar:hover::after, .wms-split-bar:focus-visible::after { background: var(--primary); }
+
+/* 끄는 동안 글자 선택·다른 요소 hover 를 막는다 */
+.wms-split-shield { position: fixed; inset: 0; z-index: 40; cursor: col-resize; }
+
+/* ============================================================
    Mobile (off-canvas)
    ============================================================ */
 .wms-backdrop {

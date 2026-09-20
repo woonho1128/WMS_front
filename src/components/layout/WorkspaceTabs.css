@@ -93,6 +93,28 @@
 }
 .wms-tabs-closeall:disabled { opacity: 0.45; cursor: default; }
 
+/* 절반으로 보기 — 탭 우클릭 메뉴와 같은 기능을 눈에 보이게 */
+.wms-tabs-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.wms-tabs-split:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-strong); color: var(--ink-strong); }
+.wms-tabs-split:disabled { opacity: 0.45; cursor: default; }
+.wms-tabs-split.is-on { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-ink); }
+
 /* min-width 는 WorkspaceTabs.tsx 의 MIN_TAB 과 같게 — 공간이 모자라면 여기까지 줄어든다 */
 .wms-tab {
   position: relative;
@@ -157,6 +179,10 @@
 /* 고정 탭 — 압정 아이콘, 닫기 버튼 없음 */
 .wms-tab.is-pinned { padding-right: 12px; }
 .wms-tab-pin { flex: 0 0 auto; color: var(--primary-ink); }
+
+/* 오른쪽 패널에 나란히 열려 있는 탭 */
+.wms-tab.is-split { border-color: var(--border-strong); }
+.wms-tab-splitmark { flex: 0 0 auto; color: var(--primary-ink); }
 
 /* 촘촘 모드(탭이 좁아졌을 때) — 안 보는 탭의 닫기 버튼은 마우스를 올릴 때 이름 위에 겹쳐 띄운다 */
 .wms-tabs.is-compact .wms-tab { padding: 0 10px; }
