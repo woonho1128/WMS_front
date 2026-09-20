@@ -37,8 +37,14 @@ const paneContainerQueries = (): PostcssPlugin => ({
 });
 paneContainerQueries.postcss = true;
 
-export default defineConfig({
-  base: "/WMS_front/",
+export default defineConfig(({ mode }) => ({
+  /**
+   * 자원 경로의 기준.
+   * - 데모(GitHub Pages)는 `.../WMS_front/` 아래에 올라가므로 그 경로를 붙여야 한다.
+   * - 사내 배포(`--mode api`)는 도메인 뿌리(`/`)에서 서비스한다 —
+   *   여기에 `/WMS_front/` 가 붙으면 js·css 를 못 찾아 흰 화면이 된다.
+   */
+  base: mode === "api" ? "/" : "/WMS_front/",
   plugins: [react()],
   css: {
     postcss: {
@@ -48,4 +54,4 @@ export default defineConfig({
   server: {
     port: 5173
   }
-});
+}));
