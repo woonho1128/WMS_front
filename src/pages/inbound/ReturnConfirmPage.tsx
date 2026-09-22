@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { apiGet, apiPost } from "../../services/http";
 import "./ReturnConfirmPage.css";
 
@@ -200,11 +201,11 @@ export const ReturnConfirmPage = () => {
             </div>
           </div>
 
-          <div className="rtn-table-wrap">
+          <ResponsiveTable className="rtn-table-wrap" cardsBelow="fit">
             <table className="data-table rtn-table">
               <thead>
                 <tr>
-                  <th>반품번호</th>
+                  <th className="rt-title">반품번호</th>
                   <th>거래처 · 품목</th>
                   <th className="num">수량</th>
                   <th>반품사유</th>
@@ -236,7 +237,10 @@ export const ReturnConfirmPage = () => {
                         </div>
                       </td>
                       <td className="num">
-                        {num(r.qty)} <small>{r.unit}</small>
+                        {/* 수량과 단위를 한 덩어리로 — 폰 카드에서 단위가 다음 줄로 떨어지지 않게 */}
+                        <span>
+                          {num(r.qty)} <small>{r.unit}</small>
+                        </span>
                       </td>
                       <td>{r.reason ?? "-"}</td>
                       <td>
@@ -262,7 +266,7 @@ export const ReturnConfirmPage = () => {
                 ) : null}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         </section>
 
         {/* ---------- 상세 / 처리 ---------- */}

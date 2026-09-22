@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
@@ -341,7 +342,7 @@ export const DashboardOutbound = () => {
           </div>
         ) : null}
 
-        <div className="out-table-wrap">
+        <ResponsiveTable className="out-table-wrap" cardsBelow="fit">
           <table className="data-table out-table">
             <thead>
               <tr>
@@ -356,14 +357,14 @@ export const DashboardOutbound = () => {
                     {allChecked ? <Icon name="check" size={12} /> : null}
                   </button>
                 </th>
-                <th>출고번호</th>
+                <th className="rt-title">출고번호</th>
                 <th>납품처</th>
                 <th>권역</th>
                 <th>요청일</th>
                 <th className="num">수량</th>
                 <th>진행</th>
                 <th>상태</th>
-                <th className="out-act-col">처리</th>
+                <th className="out-act-col rt-actions">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -448,7 +449,7 @@ export const DashboardOutbound = () => {
               ) : null}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
 
         <div className="out-pager">
           <span>

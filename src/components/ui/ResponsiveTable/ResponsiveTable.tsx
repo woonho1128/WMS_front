@@ -26,26 +26,42 @@ type Props = {
   /** 껍데기 div 에 더 붙일 클래스 */
   className?: string;
   /**
-   * 이 폭(px) 이하면 카드로 바꾼다. 기본 980.
-   * 화면 폭을 다 쓰는 표는 기본값이면 되고, **좁은 패널 안에 있는 표**는 낮춰 준다 —
-   * 대시보드 현황처럼 PC 에서도 패널이 780px 쯤이면 기본값으론 PC 에서도 카드가 돼 버린다.
+   * 언제 카드로 바꾸나.
+   * - 숫자(기본 980): 칸 폭이 이 값 이하면 카드. 화면 폭을 다 쓰는 목록 표.
+   * - `"fit"`: **표가 칸에 안 들어갈 때만** 카드. 패널 안에 있는 표 — 대시보드 현황 · 출고 요청서 ·
+   *   배차처럼 PC 에서도 패널 폭이 제각각이라 숫자 하나로는 PC 에서 카드가 되거나 폰에서 잘린다.
    */
-  cardsBelow?: number;
+  cardsBelow?: number | "fit";
 };
 
 export const ResponsiveTable = ({ children, className, cardsBelow = CARD_MAX }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
 
+  const apply = () => {
+    const root = ref.current;
+    if (!root) return;
+    if (cardsBelow === "fit") {
+      // 표로 놓아 보고 칸에 들어가는지 잰다. 같은 콜백 안에서 다시 정하므로 화면에 깜빡이지 않는다
+      const table = root.querySelector("table");
+      root.classList.remove("rt-cards");
+      const fits = !table || table.scrollWidth <= root.clientWidth + 1;
+      root.classList.toggle("rt-cards", !fits);
+      return;
+    }
+    root.classList.toggle("rt-cards", root.clientWidth <= cardsBelow);
+  };
+  const applyRef = useRef(apply);
+  applyRef.current = apply;
+
   // 이 껍데기가 놓인 칸의 폭을 보고 표 ↔ 카드를 정한다 (창 크기·패널 비율이 바뀌면 다시)
   useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
-    const apply = () => root.classList.toggle("rt-cards", root.clientWidth <= cardsBelow);
-    apply();
-    const observer = new ResizeObserver(apply);
+    applyRef.current();
+    const observer = new ResizeObserver(() => applyRef.current());
     observer.observe(root);
     return () => observer.disconnect();
-  }, [cardsBelow]);
+  }, []);
 
   // 렌더될 때마다 다시 심는다 — 목록이 바뀌면 새 행에도 라벨이 붙어야 한다
   useLayoutEffect(() => {
@@ -71,6 +87,8 @@ export const ResponsiveTable = ({ children, className, cardsBelow = CARD_MAX }: 
         });
       });
     });
+    // "fit" 은 칸 폭이 그대로여도 내용(더 긴 거래처명 · 줄 추가)이 바뀌면 들어가는지가 달라진다
+    if (cardsBelow === "fit") applyRef.current();
   });
 
   return (

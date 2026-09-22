@@ -13,10 +13,10 @@ import "./statusDashboard.css";
 const REFRESH_MS = 60_000;
 
 /**
- * 현황 표를 카드로 바꾸는 폭. 표가 화면 2/3 짜리 패널 안에 있어 PC(1440)에서도 780px 쯤이라
- * 기본값(980)을 쓰면 PC 에서도 카드가 된다. 6~7열이 들어가는 최소 폭(= --bp-phone)으로 낮춘다.
+ * 현황 표를 카드로 바꾸는 기준 — 표가 칸에 안 들어갈 때만.
+ * 표가 화면 2/3 짜리 패널 안에 있어 PC(1440)에서도 720px 쯤이라 기본값(980)을 쓰면 PC 에서도 카드가 된다.
  */
-export const STATUS_TABLE_CARDS = 640;
+export const STATUS_TABLE_CARDS = "fit" as const;
 const pad = (value: number) => String(value).padStart(2, "0");
 
 export const fmt = (value: number, digits = 0) =>

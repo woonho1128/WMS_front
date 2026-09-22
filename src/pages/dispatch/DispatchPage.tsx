@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { todayStr } from "../../shared/appDate";
@@ -177,7 +178,7 @@ export const DispatchPage = ({ region, title }: Props) => {
             </div>
           </div>
 
-          <div className="dsp-table-wrap">
+          <ResponsiveTable className="dsp-table-wrap" cardsBelow="fit">
             <table className="data-table dsp-table">
               <thead>
                 <tr>
@@ -192,7 +193,7 @@ export const DispatchPage = ({ region, title }: Props) => {
                       {allChecked ? <Icon name="check" size={12} /> : null}
                     </button>
                   </th>
-                  <th>출하번호</th>
+                  <th className="rt-title">출하번호</th>
                   <th>납품처</th>
                   <th>착지</th>
                   <th>납기</th>
@@ -234,7 +235,7 @@ export const DispatchPage = ({ region, title }: Props) => {
                 ) : null}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
           <p className="dsp-foot-note">납기가 오늘이거나 지난 건은 붉게 표시됩니다 · 당일 마감</p>
         </section>
 
@@ -370,11 +371,11 @@ export const DispatchPage = ({ region, title }: Props) => {
             배차서 출력
           </button>
         </div>
-        <div className="dsp-table-wrap">
+        <ResponsiveTable className="dsp-table-wrap" cardsBelow="fit">
           <table className="data-table dsp-table">
             <thead>
               <tr>
-                <th>배차번호</th>
+                <th className="rt-title">배차번호</th>
                 <th>출고번호</th>
                 <th>납품처</th>
                 <th>배송사</th>
@@ -400,10 +401,13 @@ export const DispatchPage = ({ region, title }: Props) => {
                     <td className="num">{num(d.totalWeightKg)}</td>
                     <td className="num">{d.palletCount}</td>
                     <td className="dsp-rate">
-                      <span className="nx-bar">
-                        <i className={`tone-${gaugeTone(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      {/* 막대와 % 를 한 줄로 — 폰 카드에서 둘이 위아래로 흩어지지 않게 */}
+                      <span className="dsp-rate-in">
+                        <span className="nx-bar">
+                          <i className={`tone-${gaugeTone(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                        </span>
+                        <b className={`tone-${gaugeTone(pct)}`}>{pct}%</b>
                       </span>
-                      <b className={`tone-${gaugeTone(pct)}`}>{pct}%</b>
                     </td>
                   </tr>
                 );
@@ -417,7 +421,7 @@ export const DispatchPage = ({ region, title }: Props) => {
               ) : null}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </section>
     </section>
   );

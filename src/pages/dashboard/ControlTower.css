@@ -126,6 +126,8 @@
 .ct-tasks, .ct-stock, .ct-notice { padding: 0; overflow: hidden; }
 
 .ct-table-wrap { max-height: 292px; overflow-y: auto; }
+/* 폰에서 카드가 되면 높이 제한 · 안쪽 스크롤 없이 펼친다 (스크롤 안의 스크롤 방지) */
+.ct-table-wrap.rt-cards { max-height: none; padding: 12px; }
 .ct-table { width: 100%; border-collapse: collapse; }
 .ct-table thead th { position: sticky; top: 0; z-index: 1; }
 .ct-table tbody tr { cursor: pointer; }

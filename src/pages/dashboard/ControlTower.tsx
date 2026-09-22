@@ -6,6 +6,7 @@ import { useUiStore } from "../../app/store/uiStore";
 import { useAuthStore } from "../../app/store/authStore";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { MapSearch } from "../../components/warehouse3d/MapSearch";
 import { MapSidePanel } from "../../components/warehouse3d/MapSidePanel";
 import { SlotContextMenu } from "../../components/warehouse3d/SlotContextMenu";
@@ -582,11 +583,11 @@ export const ControlTowerPage = () => {
             </div>
           </div>
 
-          <div className="ct-table-wrap">
+          <ResponsiveTable className="ct-table-wrap" cardsBelow="fit">
             <table className="data-table ct-table">
               <thead>
                 <tr>
-                  <th>작업번호</th>
+                  <th className="rt-title">작업번호</th>
                   <th>구분</th>
                   <th>상태</th>
                   <th>거래처</th>
@@ -619,7 +620,7 @@ export const ControlTowerPage = () => {
                 ) : null}
               </tbody>
             </table>
-          </div>
+          </ResponsiveTable>
         </section>
 
         <section className="card ct-stock">

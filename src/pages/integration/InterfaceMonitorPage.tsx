@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Icon } from "../../components/ui/Icon";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { INTERFACE_STATUS, type InterfaceState } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import "./InterfaceMonitorPage.css";
@@ -144,12 +145,12 @@ export const InterfaceMonitorPage = () => {
 
       <p className="ifmon-notice">{notice}</p>
 
-      <div className="table-wrap ifmon-table-wrap">
+      <ResponsiveTable className="table-wrap ifmon-table-wrap" cardsBelow="fit">
         <table className="data-table ifmon-table">
           <thead>
             <tr>
               <th className="ifmon-check-col"></th>
-              <th>인터페이스 ID</th>
+              <th className="rt-title">인터페이스 ID</th>
               <th>유형</th>
               <th>방향</th>
               <th>참조번호</th>
@@ -157,7 +158,7 @@ export const InterfaceMonitorPage = () => {
               <th>시각</th>
               <th className="num">재시도</th>
               <th>메시지</th>
-              <th className="action-col">처리</th>
+              <th className="action-col rt-actions">처리</th>
             </tr>
           </thead>
           <tbody>
@@ -199,7 +200,7 @@ export const InterfaceMonitorPage = () => {
             )}
           </tbody>
         </table>
-      </div>
+      </ResponsiveTable>
     </section>
   );
 };

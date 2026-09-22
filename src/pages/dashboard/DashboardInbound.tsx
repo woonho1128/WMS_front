@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
+import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { apiGet, apiPost, apiPut } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { addDays, shiftDays, todayStr, weekdayKo } from "../../shared/appDate";
@@ -591,11 +592,11 @@ export const DashboardInbound = () => {
               </div>
             </div>
 
-            <div className="inb-table-wrap">
+            <ResponsiveTable className="inb-table-wrap" cardsBelow="fit">
               <table className="data-table inb-table">
                 <thead>
                   <tr>
-                    <th>입고번호</th>
+                    <th className="rt-title">입고번호</th>
                     <th>공급처</th>
                     <th>구분</th>
                     <th>예정일</th>
@@ -656,7 +657,7 @@ export const DashboardInbound = () => {
                   ) : null}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveTable>
 
             <div className="inb-pager">
               <span>
