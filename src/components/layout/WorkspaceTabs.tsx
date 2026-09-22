@@ -27,6 +27,12 @@ type MenuState = { x: number; y: number; tab: OpenTab } | null;
 
 /** 탭 최소 폭·간격 — WorkspaceTabs.css 의 .wms-tab min-width, .wms-tabs-scroll gap 과 같게 둔다 */
 const MIN_TAB = 84;
+/**
+ * 보고 있는 탭의 최소 폭 (.wms-tab.active min-width 와 같게).
+ * 폰처럼 좁으면 모든 탭이 84px 로 줄어, × 까지 있는 보고 있는 탭만 "격…" 한 글자로 잘렸다(2026-09-22).
+ * 지금 보는 화면 이름이 제일 잘 보여야 하므로 이 탭만 조금 넓게 둔다.
+ */
+const ACTIVE_MIN_TAB = 116;
 const TAB_GAP = 4;
 /** "+N" 버튼 폭 (.wms-tabs-more) */
 const MORE_WIDTH = 46;
@@ -43,7 +49,8 @@ const homeLabel = () => {
 /** 탭 바 폭에 최소 폭으로 몇 개까지 들어가나 — 전부 들어가면 전부, 아니면 "+N" 버튼 자리를 빼고 */
 const fitCount = (width: number, count: number) => {
   if (!width) return count;
-  const span = (n: number) => n * MIN_TAB + Math.max(0, n - 1) * TAB_GAP;
+  // 보고 있는 탭은 늘 보이는 쪽에 있으므로 한 칸은 ACTIVE_MIN_TAB 로 센다
+  const span = (n: number) => n * MIN_TAB + (n > 0 ? ACTIVE_MIN_TAB - MIN_TAB : 0) + Math.max(0, n - 1) * TAB_GAP;
   if (span(count) <= width) return count;
   let n = count - 1;
   while (n > 1 && span(n) + TAB_GAP + MORE_WIDTH > width) n -= 1;

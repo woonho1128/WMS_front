@@ -143,6 +143,9 @@
   background: var(--surface);
   border-color: var(--border);
   color: var(--ink-strong);
+  /* WorkspaceTabs.tsx ACTIVE_MIN_TAB 과 같게 — 좁아도 지금 보는 화면 이름은 읽히게.
+     (줄어드는 건 그대로 둔다 — 붐빌 때 이 탭만 제 폭을 고집하면 탭 바가 넘친다) */
+  min-width: 116px;
 }
 /* 상단 액센트 */
 .wms-tab.active::before {

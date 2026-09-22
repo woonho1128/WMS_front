@@ -33,3 +33,33 @@
   min-width: 0;
   box-sizing: border-box;
 }
+
+/* 폰: 로케이션 고르는 칸을 한 줄 통째로 — 한 줄에 셋을 넣으면 셀렉트가 99px 라
+   "로케이션 선…" 으로 잘리고 라벨이 세 줄로 꺾였다 (2026-09-22). 수량 · 삭제는 다음 줄 */
+@media (max-width: 640px) {
+  .pa-assign-line {
+    flex-wrap: wrap;
+  }
+
+  .pa-assign-loc {
+    flex: 1 1 100%;
+  }
+
+  /* 수량은 남는 폭, 삭제는 제 폭 — 둘이 한 줄 (basis 0 이라야 입력칸 기본 폭에 밀려 줄이 꺾이지 않는다) */
+  .pa-assign-qty {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .pa-assign-del {
+    flex: 0 0 auto;
+    min-height: 42px;
+  }
+
+  /* 장갑 낀 손가락으로도 누를 수 있게 크게. 16px 미만이면 iOS 가 입력할 때 화면을 확대해 버린다 */
+  .pa-assign select,
+  .pa-assign input {
+    min-height: 42px;
+    font-size: 16px;
+  }
+}

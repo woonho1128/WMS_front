@@ -336,10 +336,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
   border: 1px solid var(--border);
   border-radius: var(--r-xl); box-shadow: var(--sh-modal);
   width: 460px; max-width: 100%; overflow: hidden;
+  /* 화면보다 길어지면 본문만 스크롤 — 머리글·버튼(확정/취소)은 늘 보이게.
+     예전엔 최대 높이가 없어 폰에서 배정 줄이 늘면 [격납 확정]이 화면 밖으로 잘렸다 (2026-09-22) */
+  max-height: 100%;
+  display: flex; flex-direction: column;
   animation: ds-pop 0.2s var(--ease-pop);
 }
 @keyframes ds-pop { from { transform: translateY(12px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
-.ds-modal-head { padding: 22px 24px 0; display: flex; gap: 14px; align-items: flex-start; }
+.ds-modal-head { padding: 22px 24px 0; display: flex; gap: 14px; align-items: flex-start; flex-shrink: 0; }
 .ds-modal-ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; flex: 0 0 46px; }
 .ds-modal-htext { flex: 1; min-width: 0; }
 .ds-modal-title { font-size: 18px; font-weight: 800; color: var(--ink-strong); letter-spacing: -0.3px; }
@@ -349,8 +353,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
   color: var(--ink-muted); display: grid; place-items: center; cursor: pointer;
 }
 .ds-modal-x:hover { background: var(--surface-4); color: var(--ink); }
-.ds-modal-body { padding: 18px 24px 4px; }
-.ds-modal-foot { padding: 18px 24px 22px; display: flex; gap: 10px; justify-content: flex-end; }
+.ds-modal-body { padding: 18px 24px 4px; overflow-y: auto; min-height: 0; }
+.ds-modal-foot { padding: 18px 24px 22px; display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
 
 /* ---- modal form helpers ---- */
 .ds-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }

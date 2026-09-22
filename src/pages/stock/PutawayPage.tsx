@@ -147,7 +147,7 @@ export const PutawayPage = () => {
         note="격납대기 재고를 피킹/보충/직출 로케이션으로 적치 — 하나 또는 여러 로케이션으로 수량 분할 가능 (QR 확인 후 확정)"
       />
 
-      <section className="outbound-summary-grid" aria-label="격납 요약">
+      <section className="outbound-summary-grid is-3" aria-label="격납 요약">
         <article className="app-surface outbound-summary-card"><span>격납대기</span><strong>{summary.count}건</strong></article>
         <article className="app-surface outbound-summary-card"><span>대기 수량</span><strong>{summary.totalQty.toLocaleString()}</strong></article>
         <article className="app-surface outbound-summary-card"><span>대상 창고</span><strong>{summary.warehouses}곳</strong></article>
@@ -191,7 +191,8 @@ export const PutawayPage = () => {
                 <th>현재 로케이션</th>
                 <th>입고일</th>
                 <th className="num">수량</th>
-                <th>상태</th>
+                {/* 이 목록은 전부 격납대기라 폰 카드에서는 뺀다 (카드 한 장이 줄 하나만큼 짧아진다) */}
+                <th className="rt-hide">상태</th>
                 <th className="rt-actions">처리</th>
               </tr>
             </thead>
