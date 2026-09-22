@@ -2,27 +2,15 @@
    목(mock) — 출고 사진 (증빙)
    설계: DOCS/WMS_출고사진_설계.md
    · 그날 출고 대상(예정일 = 그날) 목록 + 사진 장수·구분별 장수
-   · 사진 업로드는 장별로 성공/실패를 돌려준다 (실서버 multipart 와 같은 계약)
+   · 사진 업로드는 장별로 성공/실패를 돌려준다 (서버 OutboundPhotoService 와 같은 계약 — JSON 한 장씩, dataUrl)
    · 삭제는 소프트 삭제 — 사유를 남기고 목록에서만 빠진다
    ⚠ 목이라 사진은 메모리에만 있다. 새로고침하면 시드 상태로 돌아간다.
+     (사내 빌드는 서버가 디스크에 저장하고, 권한 · 위치정보 제거 · 서명 주소도 서버가 한다)
    ============================================================ */
 
+import { KIND_LABEL, PHOTO_KINDS, PHOTO_MAX_BYTES, PHOTO_MAX_PER_REQUEST, type PhotoKind } from "../domain/outboundPhoto";
+
 type AnyRecord = Record<string, any>;
-
-export type PhotoKind = "LOAD" | "PACK" | "LABEL" | "ETC";
-
-export const PHOTO_KINDS: Array<{ value: PhotoKind; label: string }> = [
-  { value: "LOAD", label: "상차" },
-  { value: "PACK", label: "포장" },
-  { value: "LABEL", label: "송장" },
-  { value: "ETC", label: "기타" }
-];
-
-export const KIND_LABEL: Record<string, string> = Object.fromEntries(PHOTO_KINDS.map((k) => [k.value, k.label]));
-
-/** 장당 한도 15MB · 한 번에 10장 (설계 §3) */
-export const PHOTO_MAX_BYTES = 15 * 1024 * 1024;
-export const PHOTO_MAX_PER_REQUEST = 10;
 
 type Photo = {
   id: number;
@@ -262,6 +250,11 @@ export function createOutboundPhotoMock(ctx: OutboundPhotoMockCtx) {
   const photoPath = (clean: string) => clean.match(/^\/outbounds\/(\d+)\/photos(?:\/(\d+))?$/);
 
   return {
+    /** 출고 건의 사진 장수 — /outbounds 목록의 photoCount (출고 확정 "사진 없음" 경고) */
+    count: (outboundId: number) => {
+      seed();
+      return livePhotos(outboundId).length;
+    },
     /** GET — 처리하지 않는 경로면 undefined */
     get: (clean: string, params: URLSearchParams): unknown => {
       if (clean === "/outbounds/photo-targets") {

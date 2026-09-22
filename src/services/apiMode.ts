@@ -44,6 +44,12 @@ export const assertApiConfig = () => {
 if (!USE_MOCK_API && !API_BASE) console.error(`[WMS] ${CONFIG_ERROR}`);
 
 /**
+ * 서버가 준 API 기준 경로(예: 출고 사진 `/photo-files/12?…`)를 <img src> 에 쓸 주소로.
+ * data: · blob: · http(s) 주소(목 사진 등)는 그대로 둔다.
+ */
+export const apiUrl = (path: string) => (/^(data:|blob:|https?:)/i.test(path) ? path : `${API_BASE}${path}`);
+
+/**
  * fetch 자체가 실패한 경우(서버가 안 떠 있음 · 주소 오타 · CORS)를 읽을 수 있는 말로 바꾼다.
  * 브라우저 기본 메시지는 "Failed to fetch" 하나뿐이라 현장에서 원인을 못 찾는다.
  * — 여기서도 목 데이터로 대신하지 않는다. 오류는 오류로 보여준다.

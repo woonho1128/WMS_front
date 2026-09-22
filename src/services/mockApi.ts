@@ -622,7 +622,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds.map((o) => {
     const { totalWeightKg, weightMissing } = orderTotals(o.id);
-    return { ...o, totalWeightKg, weightMissing };
+    // 사진 장수 — 출고 확정 때 "사진 없음" 경고 (서버 OutboundMapper.findAll 과 같은 칸)
+    return { ...o, totalWeightKg, weightMissing, photoCount: outboundPhotoMock.count(o.id) };
   })) as T;
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/stocks") return copy(stocks) as T;

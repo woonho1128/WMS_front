@@ -5,17 +5,19 @@ import { Modal } from "../../components/ui/Modal";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useAuthStore } from "../../app/store/authStore";
 import { apiDelete, apiGet, apiPost, apiPut } from "../../services/http";
+import { apiUrl } from "../../services/apiMode";
 import { addDays, todayStr, weekdayKo } from "../../shared/appDate";
-import { KIND_LABEL, PHOTO_KINDS, PHOTO_MAX_PER_REQUEST, type PhotoKind } from "../../services/mockOutboundPhoto";
+import { KIND_LABEL, PHOTO_KINDS, PHOTO_MAX_PER_REQUEST, type PhotoKind } from "../../domain/outboundPhoto";
 import "./OutboundPhotoPage.css";
 
 /* ============================================================
    출고 사진 — 그날 출고 건에 상차·포장·송장 사진을 남긴다 (증빙)
-   설계: DOCS/WMS_출고사진_설계.md
+   설계: DOCS/WMS_출고사진_설계.md · 2026-09-22 현업 회의 8번 "출고 검수(사진 → 서버)"
    · 폰 기준: 목록 → 오더 → [사진 찍기] 연속 촬영 / [앨범에서] 여러 장
    · iOS 는 capture 와 multiple 을 같이 주면 한 장만 되므로 입력을 둘로 나눈다
    · 올리기 전 긴 변 1600px · JPEG 0.72 로 줄인다 (장당 200~400KB)
-   ⚠ 1단계(목) — 사진은 브라우저 메모리에만 저장된다. 새로고침하면 시드 상태로 돌아간다.
+   · 사내 빌드: 서버가 디스크에 저장(위치정보 제거 · 썸네일), 사진은 서명 주소(30분)로 내려온다.
+     데모 빌드: 목이라 브라우저 메모리에만 — 새로고침하면 시드 상태로 돌아간다.
    ============================================================ */
 
 const MAX_EDGE = 1600;
@@ -44,7 +46,10 @@ type Photo = {
   outboundId: number;
   seq: number;
   kind: PhotoKind;
+  /** 원본(줄인 사진) — 서버면 API 기준 서명 경로, 목이면 data: 주소. 화면에 쓸 때 apiUrl() */
   url: string;
+  /** 목록 그리드용 썸네일 (서버만 — 없으면 url) */
+  thumbUrl?: string | null;
   bytes: number;
   width: number;
   height: number;
@@ -498,7 +503,7 @@ export const OutboundPhotoPage = () => {
                         }}
                         title={`${photo.takenAt} ${photo.takenBy}`}
                       >
-                        <img src={photo.url} alt={`${group.label} 사진 ${photo.seq}`} loading="lazy" />
+                        <img src={apiUrl(photo.thumbUrl ?? photo.url)} alt={`${group.label} 사진 ${photo.seq}`} loading="lazy" />
                         <span className="op-thumb-meta">
                           {photo.takenAt.slice(11)} · {photo.takenBy}
                         </span>
@@ -545,7 +550,7 @@ export const OutboundPhotoPage = () => {
       >
         {viewer ? (
           <div className="op-viewer">
-            <img src={viewer.url} alt="출고 사진" />
+            <img src={apiUrl(viewer.url)} alt="출고 사진" />
             <div className="op-kinds">
               <span className="op-kinds-label">구분</span>
               {PHOTO_KINDS.map((item) => (

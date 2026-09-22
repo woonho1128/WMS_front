@@ -23,7 +23,13 @@ type OutboundRow = {
   invoiceNo: string | null;
   status: OutboundScreenStatus;
   rejectReason: string | null;
+  /** 출고 사진 장수 — 0 이면 확정할 때 경고만 (설계: 현장 작업을 막지 않는다) */
+  photoCount: number;
 };
+
+/** 사진 칸 — 없으면 붉게(나중에 채우게), 있으면 장수 */
+const PhotoCell = ({ count }: { count: number }) =>
+  count > 0 ? <span className="cell-mut">{count}장</span> : <StatusBadge tone="danger">없음</StatusBadge>;
 
 export const OutboundConfirmPage = () => {
   const navigate = useNavigate();
@@ -180,15 +186,16 @@ export const OutboundConfirmPage = () => {
                 <th className="num">수량</th>
                 <th>운송정보</th>
                 <th>송장번호</th>
+                <th>사진</th>
                 <th>상태</th>
                 <th className="rt-actions">처리</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>
                   {tab === "wait" ? "확정 대기 건이 없습니다. 피킹 작업을 먼저 완료하세요." : "데이터가 없습니다."}
                 </td></tr>
               ) : (
@@ -215,6 +222,7 @@ export const OutboundConfirmPage = () => {
                           <span className="cell-mut">{row.invoiceNo ?? "-"}</span>
                         )}
                       </td>
+                      <td>{row.status === "거부" ? <span className="cell-mut">-</span> : <PhotoCell count={row.photoCount ?? 0} />}</td>
                       <td>
                         <StatusBadge tone={OUTBOUND_STATUS_TONE[row.status]}>{row.status}</StatusBadge>
                         {row.status === "거부" && row.rejectReason ? (
@@ -271,6 +279,26 @@ export const OutboundConfirmPage = () => {
           <Icon name="check" size={18} />
           <span>출고확정 시 <b>중계서버로 출고결과(ERP I/F)가 자동전송</b>됩니다. 부분출고 불가 — 전량 확정됩니다.</span>
         </div>
+        {/* 사진이 없어도 확정은 된다 — 경고만 (설계 §5 · 2026-09-20 확정, 현장 작업을 막지 않는다) */}
+        {confirmTarget && (confirmTarget.photoCount ?? 0) === 0 ? (
+          <div className="ds-callout warning" style={{ marginTop: 10 }}>
+            <Icon name="camera" size={18} />
+            <span>
+              <b>출고 사진이 없습니다.</b> 확정은 그대로 됩니다 — 상차 · 송장 사진은 확정 뒤에도{" "}
+              <button
+                type="button"
+                className="outbound-link-btn"
+                onClick={() => {
+                  setConfirmTarget(null);
+                  navigate("/outbound/outbound-photo");
+                }}
+              >
+                출고관리 › 출고 사진
+              </button>
+              에서 올릴 수 있습니다.
+            </span>
+          </div>
+        ) : null}
       </Modal>
 
       <Modal
