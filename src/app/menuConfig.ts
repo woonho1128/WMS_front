@@ -201,6 +201,19 @@ export const roleMenuConfig: MenuConfigByRole = {
   ]
 };
 
+/**
+ * 즐겨찾기가 비어 있을 때 "추천으로 채우기" — 역할마다 실제로 자주 여는 화면.
+ * (설계 DOCS/WMS_메뉴방식_즐겨찾기_설계.md §2 · 역할이 못 보는 화면은 채울 때 걸러진다)
+ */
+export const RECOMMENDED_FAVORITES: Record<string, string[]> = {
+  inbound: ["/inbound/inbound-schedule", "/inbound/inbound-confirm", "/stock/putaway", "/stock/stock-realtime", "/stock/barcode-lookup"],
+  outbound: ["/outbound/outbound-order", "/outbound/picking", "/outbound/outbound-confirm", "/outbound/outbound-photo", "/dispatch/dispatch-metro"],
+  inventory: ["/stock/stock-realtime", "/stock/replenishment", "/stock/stocktaking", "/stock/erp-compare", "/stock/fifo-status"],
+  logistics: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/dashboard/floor-board"],
+  admin: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/dashboard/floor-board"],
+  partner: ["/dashboard/outbound-status", "/outbound/delivery-note", "/dispatch/dispatch-regional"]
+};
+
 export const getMenuSectionsForRole = (role: string) => {
   const roleMenu = roleMenuConfig[role] ?? roleMenuConfig.admin;
   const sectionMap = new Map(menuSections.map((section) => [section.slug, section]));

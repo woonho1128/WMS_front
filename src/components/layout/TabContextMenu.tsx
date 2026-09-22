@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { FAVORITES_LIMIT } from "../../app/store/navPrefsStore";
 import { PIN_LIMIT, closeCount, type CloseKind, type OpenTab } from "../../app/store/tabsStore";
 import { Icon } from "../ui/Icon";
 import { usePopupMenu } from "./usePopupMenu";
@@ -15,8 +16,12 @@ type Props = {
   splitPath: string | null;
   /** 분할 보기를 켤 수 있는 폭인가 */
   canSplit: boolean;
+  /** 이 탭의 화면이 내 즐겨찾기인가 · 즐겨찾기가 가득 찼나 */
+  favorite: boolean;
+  favoritesFull: boolean;
   onAction: (kind: CloseKind) => void;
   onTogglePin: () => void;
+  onToggleFavorite: () => void;
   onSplit: () => void;
   onUnsplit: () => void;
   onDismiss: () => void;
@@ -33,7 +38,7 @@ const ITEMS: Array<Item | "sep"> = [
   { kind: "all", label: "모든 탭 닫기", icon: "closeAll", danger: true }
 ];
 
-/** 작업 탭 우클릭 메뉴 — 고정/해제 + 나란히 보기 + 닫기 5종. 고정 탭은 어떤 닫기에도 포함되지 않는다 */
+/** 작업 탭 우클릭 메뉴 — 고정/해제 + 즐겨찾기 + 나란히 보기 + 닫기 5종. 고정 탭은 어떤 닫기에도 포함되지 않는다 */
 export const TabContextMenu = ({
   x,
   y,
@@ -42,8 +47,11 @@ export const TabContextMenu = ({
   activePath,
   splitPath,
   canSplit,
+  favorite,
+  favoritesFull,
   onAction,
   onTogglePin,
+  onToggleFavorite,
   onSplit,
   onUnsplit,
   onDismiss
@@ -82,6 +90,16 @@ export const TabContextMenu = ({
         <span className="wms-ctxmenu-count">
           {pinnedCount}/{PIN_LIMIT}
         </span>
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="wms-ctxmenu-item"
+        disabled={!favorite && favoritesFull}
+        onClick={onToggleFavorite}
+      >
+        <Icon name="star" size={15} className={favorite ? "is-fav" : undefined} />
+        <span>{favorite ? "즐겨찾기에서 빼기" : favoritesFull ? `즐겨찾기 — 최대 ${FAVORITES_LIMIT}개` : "즐겨찾기에 추가"}</span>
       </button>
       <button
         type="button"

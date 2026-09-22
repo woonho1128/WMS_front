@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import type { MenuFeature, MenuSection } from "../../app/menuConfig";
 import { matchText, type MatchRange } from "../../app/menuSearch";
+import { FAVORITES_KEY, FAVORITES_LIMIT, type NavMode } from "../../app/store/navPrefsStore";
 import { Icon } from "../ui/Icon";
 
 type Props = {
@@ -12,7 +13,25 @@ type Props = {
   isMobile: () => boolean;
   /** 접힌 사이드바/모바일 드로어를 펼쳐 달라는 요청 (검색 진입 시) */
   onRequestOpen: () => void;
+  /**
+   * 메뉴 방식 (설계 DOCS/WMS_메뉴방식_즐겨찾기_설계.md)
+   * - list: 카테고리 → 하위 화면 트리 + 맨 위 ★ 즐겨찾기 묶음
+   * - tabs: 카테고리만 (★ + 섹션). 화면은 위 탭 줄(CategoryTabBar)에서 고른다
+   */
+  mode: NavMode;
+  /** 탭형에서 고른 칸 — 섹션 slug 또는 ★ */
+  activeCategory: string | null;
+  onPickCategory: (key: string) => void;
+  /** 내 즐겨찾기 경로 (순서대로) */
+  favorites: string[];
+  onToggleFavorite: (path: string) => void;
+  /** 목록형 ★ 묶음 편집 — path 를 target 자리로 */
+  onReorderFavorite: (path: string, target: string) => void;
+  /** 비어 있을 때 "추천으로 채우기" (이 역할에 추천이 없으면 undefined) */
+  onFillRecommended?: () => void;
 };
+
+type FavoriteItem = { path: string; label: string; sectionLabel: string };
 
 type FeatureRow = { feature: MenuFeature; range: MatchRange | null };
 type SectionRow = { section: MenuSection; range: MatchRange | null; features: FeatureRow[] };
@@ -45,14 +64,31 @@ const DescSnippet = ({ text, range }: { text: string; range: MatchRange }) => {
 const pathOf = (section: MenuSection, feature: MenuFeature) => `/${section.slug}/${feature.slug}`;
 
 /**
- * 좌측 메뉴 트리 + 클라이언트 사이드 메뉴 검색.
+ * 좌측 메뉴 + 클라이언트 사이드 메뉴 검색.
  *
- * 결과는 두 단계로 보여준다.
+ * 메뉴 방식(mode)에 따라 모양이 다르다 — 검색 결과는 두 방식 모두 같다.
+ *  - 목록형: 맨 위 ★ 즐겨찾기 묶음 + 카테고리 → 하위 화면 트리. 화면 이름에 올리면 ☆
+ *  - 탭형:   ★ + 카테고리만. 화면은 위 탭 줄(CategoryTabBar)에서 고른다
+ *
+ * 검색 결과는 두 단계로 보여준다.
  *  1) 이름 일치  — 메뉴 트리 모양 그대로 (섹션명이 맞으면 하위 화면 전체)
  *  2) 설명 일치  — 이름엔 없지만 화면 설명에 키워드가 있는 화면 (QR, ERP, BOM …)
  * 키보드 커서는 1) 부터 시작하므로 Enter 는 항상 이름이 맞는 화면을 먼저 연다.
  */
-export const SideMenu = ({ sections, activeSection, collapsed, isMobile, onRequestOpen }: Props) => {
+export const SideMenu = ({
+  sections,
+  activeSection,
+  collapsed,
+  isMobile,
+  onRequestOpen,
+  mode,
+  activeCategory,
+  onPickCategory,
+  favorites,
+  onToggleFavorite,
+  onReorderFavorite,
+  onFillRecommended
+}: Props) => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
@@ -60,6 +96,32 @@ export const SideMenu = ({ sections, activeSection, collapsed, isMobile, onReque
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const [expanded, setExpanded] = useState<string>(activeSection ?? "dashboard");
+
+  // 즐겨찾기를 이름까지 풀어 둔다 — 이 역할이 못 보는 화면은 빠진다(지우지는 않음)
+  const favoriteItems = useMemo(
+    () =>
+      favorites
+        .map((path) => {
+          const [sectionSlug, featureSlug] = path.split("/").filter(Boolean);
+          const section = sections.find((item) => item.slug === sectionSlug);
+          const feature = section?.features.find((item) => item.slug === featureSlug);
+          return section && feature ? { path, label: feature.label, sectionLabel: section.label } : null;
+        })
+        .filter((item): item is FavoriteItem => item !== null),
+    [favorites, sections]
+  );
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
+  const favoritesFull = favorites.length >= FAVORITES_LIMIT;
+
+  /** 목록형 ★ 묶음 — 사용자가 누르기 전에는 "있으면 펼침, 없으면 접힘" */
+  const [favOpenPref, setFavOpen] = useState<boolean | null>(null);
+  const favOpen = favOpenPref ?? favoriteItems.length > 0;
+  const [favEditing, setFavEditing] = useState(false);
+  const dragFrom = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!favoriteItems.length) setFavEditing(false);
+  }, [favoriteItems.length]);
   /** 검색창 포커스 요청 — 접힌 사이드바가 펼쳐져 입력창이 실제로 보인 뒤에 처리한다 */
   const pendingFocus = useRef(false);
 
@@ -196,6 +258,62 @@ export const SideMenu = ({ sections, activeSection, collapsed, isMobile, onReque
   const hoverItem = (path: string) =>
     searching ? () => setCursor(hitIndex.get(path) ?? 0) : undefined;
 
+  const handleFavHeadClick = () => {
+    // 접힌 사이드바: 첫 즐겨찾기로 바로 간다 (없으면 펼쳐서 안내를 보여 준다)
+    if (collapsed && !isMobile()) {
+      const first = favoriteItems[0];
+      if (first) navigate(first.path);
+      else {
+        setFavOpen(true);
+        onRequestOpen();
+      }
+      return;
+    }
+    setFavOpen(!favOpen);
+  };
+
+  /** 화면 이름 옆 ☆ — 링크 안이 아니라 옆에 둔다(누르면 화면이 열리지 않게) */
+  const starButton = (path: string, label: string) => {
+    const on = favoriteSet.has(path);
+    const blocked = !on && favoritesFull;
+    return (
+      <button
+        type="button"
+        className={`wms-substar${on ? " is-on" : ""}`}
+        aria-pressed={on}
+        aria-label={on ? `${label} 즐겨찾기에서 빼기` : `${label} 즐겨찾기에 추가`}
+        title={on ? "즐겨찾기에서 빼기" : blocked ? `즐겨찾기는 ${FAVORITES_LIMIT}개까지 — 하나를 빼고 추가하세요` : "즐겨찾기에 추가"}
+        disabled={blocked}
+        onClick={() => onToggleFavorite(path)}
+      >
+        <Icon name="star" size={13} />
+      </button>
+    );
+  };
+
+  /* 목록형 ★ 묶음 — 끌어서 순서 바꾸기 (폰처럼 끌기가 안 되면 편집의 ▲ ▼) */
+  const favDragProps = (path: string) =>
+    favEditing
+      ? {}
+      : {
+          draggable: true,
+          onDragStart: (event: DragEvent) => {
+            dragFrom.current = path;
+            event.dataTransfer.effectAllowed = "move";
+          },
+          onDragOver: (event: DragEvent) => {
+            if (dragFrom.current !== null) event.preventDefault();
+          },
+          onDrop: (event: DragEvent) => {
+            event.preventDefault();
+            if (dragFrom.current !== null) onReorderFavorite(dragFrom.current, path);
+            dragFrom.current = null;
+          },
+          onDragEnd: () => {
+            dragFrom.current = null;
+          }
+        };
+
   const treeRows: SectionRow[] = searching
     ? nameRows
     : sections.map((section) => ({
@@ -258,52 +376,189 @@ export const SideMenu = ({ sections, activeSection, collapsed, isMobile, onReque
         ) : null}
       </div>
 
-      <nav className={`wms-nav${searching ? " is-searching" : ""}`} id="wms-side-nav">
-        {treeRows.map(({ section, range, features }) => {
-          const isActiveSection = activeSection === section.slug;
-          const open = searching || expanded === section.slug || isActiveSection;
-          return (
-            <div key={section.slug} className={`wms-navgroup${open ? " open" : ""}`}>
-              <button
-                type="button"
-                className={`wms-navitem${isActiveSection ? " active" : ""}`}
-                onClick={() => handleSectionClick(section.slug, section.features[0]?.slug)}
-                title={section.label}
-              >
+      <nav className={`wms-nav${searching ? " is-searching" : ""}${mode === "tabs" ? " is-tabs" : ""}`} id="wms-side-nav">
+        {/* ---------- 탭형: ★ + 카테고리만 ---------- */}
+        {mode === "tabs" && !searching ? (
+          <>
+            <button
+              type="button"
+              className={`wms-navitem is-fav${activeCategory === FAVORITES_KEY ? " active" : ""}`}
+              onClick={() => onPickCategory(FAVORITES_KEY)}
+              aria-current={activeCategory === FAVORITES_KEY ? "true" : undefined}
+              title={`즐겨찾기 ${favoriteItems.length}/${FAVORITES_LIMIT}`}
+            >
+              <span className="wms-ni-ico">
+                <Icon name="star" size={20} />
+              </span>
+              <span className="wms-ni-label">즐겨찾기</span>
+              <span className="wms-ni-count">{favoriteItems.length}</span>
+            </button>
+            <div className="wms-navdiv" aria-hidden="true" />
+            {sections.map((section) => {
+              const active = activeCategory === section.slug;
+              return (
+                <button
+                  key={section.slug}
+                  type="button"
+                  className={`wms-navitem${active ? " active" : ""}`}
+                  onClick={() => onPickCategory(section.slug)}
+                  aria-current={active ? "true" : undefined}
+                  title={`${section.label} · 화면 ${section.features.length}개`}
+                >
+                  <span className="wms-ni-ico">
+                    <Icon path={section.iconPath} filled size={20} />
+                  </span>
+                  <span className="wms-ni-label">{section.label}</span>
+                  <span className="wms-ni-count">{section.features.length}</span>
+                </button>
+              );
+            })}
+          </>
+        ) : null}
+
+        {/* ---------- 목록형: ★ 즐겨찾기 묶음 ---------- */}
+        {mode === "list" && !searching ? (
+          <div className={`wms-navgroup is-fav${favOpen ? " open" : ""}${favEditing ? " is-editing" : ""}`}>
+            <div className="wms-favhead">
+              <button type="button" className="wms-navitem" onClick={handleFavHeadClick} aria-expanded={favOpen} title="즐겨찾기">
                 <span className="wms-ni-ico">
-                  <Icon path={section.iconPath} filled size={20} />
+                  <Icon name="star" size={20} />
                 </span>
-                <span className="wms-ni-label">
-                  <Highlight text={section.label} range={range} />
+                <span className="wms-ni-label">즐겨찾기</span>
+                <span className="wms-ni-count">
+                  {favoriteItems.length}/{FAVORITES_LIMIT}
                 </span>
                 <span className="wms-ni-caret">
                   <Icon name="chevR" size={15} />
                 </span>
               </button>
-              {open ? (
-                <div className="wms-subtree">
-                  {features.map(({ feature, range: featureRange }) => {
-                    const path = pathOf(section, feature);
-                    return (
-                      <NavLink
-                        key={feature.slug}
-                        to={path}
-                        ref={bindItem(path)}
-                        className={itemClass(path)}
-                        onMouseEnter={hoverItem(path)}
-                        title={feature.description}
-                      >
-                        <span className="wms-sublink-label">
-                          <Highlight text={feature.label} range={featureRange} />
-                        </span>
-                      </NavLink>
-                    );
-                  })}
-                </div>
+              {favOpen && favoriteItems.length ? (
+                <button
+                  type="button"
+                  className={`wms-favedit${favEditing ? " is-on" : ""}`}
+                  onClick={() => setFavEditing((on) => !on)}
+                  aria-pressed={favEditing}
+                  aria-label={favEditing ? "즐겨찾기 편집 끝내기" : "즐겨찾기 편집 — 순서 바꾸기 · 빼기"}
+                  title={favEditing ? "편집 끝내기" : "순서 바꾸기 · 빼기"}
+                >
+                  <Icon name={favEditing ? "check" : "edit"} size={13} />
+                </button>
               ) : null}
             </div>
-          );
-        })}
+            {favOpen ? (
+              <div className="wms-subtree">
+                {favoriteItems.map((item, index) => (
+                  <div key={item.path} className="wms-subrow" {...favDragProps(item.path)}>
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) => `wms-sublink${isActive ? " active" : ""}`}
+                      title={`${item.sectionLabel} › ${item.label}`}
+                      draggable={false}
+                    >
+                      <span className="wms-sublink-label">
+                        {item.label}
+                        <span className="wms-sublink-hint">{item.sectionLabel}</span>
+                      </span>
+                    </NavLink>
+                    {favEditing ? (
+                      <span className="wms-subrow-edit">
+                        <button
+                          type="button"
+                          aria-label={`${item.label} 위로`}
+                          disabled={index === 0}
+                          onClick={() => onReorderFavorite(item.path, favoriteItems[index - 1].path)}
+                        >
+                          <Icon name="arrowUp" size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`${item.label} 아래로`}
+                          disabled={index === favoriteItems.length - 1}
+                          onClick={() => onReorderFavorite(item.path, favoriteItems[index + 1].path)}
+                        >
+                          <Icon name="arrowDown" size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          className="is-remove"
+                          aria-label={`${item.label} 즐겨찾기에서 빼기`}
+                          onClick={() => onToggleFavorite(item.path)}
+                        >
+                          <Icon name="x" size={12} />
+                        </button>
+                      </span>
+                    ) : (
+                      starButton(item.path, item.label)
+                    )}
+                  </div>
+                ))}
+                {!favoriteItems.length ? (
+                  <div className="wms-favempty">
+                    <span>
+                      화면 이름 옆 <Icon name="star" size={11} /> 를 누르면 여기에 모입니다 (최대 {FAVORITES_LIMIT}개)
+                    </span>
+                    {onFillRecommended ? (
+                      <button type="button" className="wms-favfill" onClick={onFillRecommended}>
+                        추천으로 채우기
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* ---------- 목록형 트리 · 검색 결과(두 방식 공통) ---------- */}
+        {mode === "list" || searching
+          ? treeRows.map(({ section, range, features }) => {
+              const isActiveSection = activeSection === section.slug;
+              const open = searching || expanded === section.slug || isActiveSection;
+              return (
+                <div key={section.slug} className={`wms-navgroup${open ? " open" : ""}`}>
+                  <button
+                    type="button"
+                    className={`wms-navitem${isActiveSection ? " active" : ""}`}
+                    onClick={() => handleSectionClick(section.slug, section.features[0]?.slug)}
+                    title={section.label}
+                  >
+                    <span className="wms-ni-ico">
+                      <Icon path={section.iconPath} filled size={20} />
+                    </span>
+                    <span className="wms-ni-label">
+                      <Highlight text={section.label} range={range} />
+                    </span>
+                    <span className="wms-ni-caret">
+                      <Icon name="chevR" size={15} />
+                    </span>
+                  </button>
+                  {open ? (
+                    <div className="wms-subtree">
+                      {features.map(({ feature, range: featureRange }) => {
+                        const path = pathOf(section, feature);
+                        return (
+                          <div key={feature.slug} className="wms-subrow">
+                            <NavLink
+                              to={path}
+                              ref={bindItem(path)}
+                              className={itemClass(path)}
+                              onMouseEnter={hoverItem(path)}
+                              title={feature.description}
+                            >
+                              <span className="wms-sublink-label">
+                                <Highlight text={feature.label} range={featureRange} />
+                              </span>
+                            </NavLink>
+                            {starButton(path, feature.label)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
+          : null}
 
         {descHits.length ? (
           <div className="wms-deschits">

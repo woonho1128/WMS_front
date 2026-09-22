@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { findSection } from "../../app/menuConfig";
+import { FAVORITES_LIMIT, useNavPrefsStore } from "../../app/store/navPrefsStore";
 import {
   HOME_PATH,
   SPLIT_MIN_QUERY,
@@ -74,6 +75,8 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
   const splitPath = useTabsStore((state) => state.splitPath);
   const openSplit = useTabsStore((state) => state.openSplit);
   const closeSplit = useTabsStore((state) => state.closeSplit);
+  const favorites = useNavPrefsStore((state) => state.favorites);
+  const toggleFavorite = useNavPrefsStore((state) => state.toggleFavorite);
   const canSplit = useMediaQuery(SPLIT_MIN_QUERY);
   const navigate = useNavigate();
   const [menu, setMenu] = useState<MenuState>(null);
@@ -290,8 +293,14 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
           splitPath={splitPath}
           canSplit={canSplit}
           onAction={(kind) => runClose(kind, menu.tab.path)}
+          favorite={favorites.includes(menu.tab.path)}
+          favoritesFull={favorites.length >= FAVORITES_LIMIT}
           onTogglePin={() => {
             togglePin(menu.tab.path);
+            setMenu(null);
+          }}
+          onToggleFavorite={() => {
+            toggleFavorite(menu.tab.path);
             setMenu(null);
           }}
           onSplit={() => {

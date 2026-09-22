@@ -68,6 +68,10 @@ export const ICON_PATHS: Record<string, string> = {
   closeLeft: "M4 4v16M20 12H9M13 8l-4 4 4 4",
   closeRight: "M20 4v16M4 12h11M11 8l4 4-4 4",
   closeAll: "M3 5h18v14H3zM9 9l6 6M15 9l-6 6",
+  /* 메뉴 방식 · 즐겨찾기 */
+  star: "M12 3.2l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z",
+  listMode: "M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01",
+  tabsMode: "M3 9h18v11H3zM3 9V5h7v4M10 5h6v4",
   /* 분할 보기(절반으로 보기) */
   split: "M3 5h18v14H3zM12 5v14",
   splitOff: "M3 5h18v14H3zM5 19 19 5",

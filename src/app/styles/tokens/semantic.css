@@ -79,6 +79,8 @@
   --side-active:  var(--primary);
   --side-active-soft: rgba(47, 107, 255, 0.22);
   --side-line:    rgba(255, 255, 255, 0.07);
+  /* 즐겨찾기 별 — 사이드바는 두 테마 모두 어두우므로 밝은 호박색 고정 */
+  --side-star:    var(--p-amber-400);
 
   /* ---------- Elevation ---------- */
   --sh-card:  0 1px 2px rgba(0, 0, 0, 0.40), 0 10px 28px -20px rgba(0, 0, 0, 0.95);
@@ -164,6 +166,7 @@
   --side-active:  var(--primary);
   --side-active-soft: rgba(37, 99, 235, 0.30);
   --side-line:    rgba(255, 255, 255, 0.07);
+  --side-star:    var(--p-amber-400);
 
   --sh-card:  0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
   --sh-pop:   0 12px 32px -8px rgba(16, 24, 40, 0.18), 0 4px 10px -4px rgba(16, 24, 40, 0.10);

@@ -6,6 +6,7 @@ import { SectionPage } from "../../pages/menu/SectionPage";
 import { FeaturePage } from "../../pages/menu/FeaturePage";
 import { LoginPage } from "../../pages/auth/LoginPage";
 import { useAuthStore } from "../store/authStore";
+import { HomeRedirect } from "./HomeRedirect";
 
 const RequireAuth = ({ children }: { children: ReactNode }) => {
   const user = useAuthStore((state) => state.user);
@@ -26,7 +27,7 @@ export const AppRouter = () => {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="/dashboard/logistics-status" replace />} />
+        <Route index element={<HomeRedirect />} />
         <Route path="/:sectionSlug" element={<SectionPage />} />
         <Route path="/:sectionSlug/:featureSlug" element={<FeaturePage />} />
       </Route>

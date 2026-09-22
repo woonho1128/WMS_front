@@ -170,8 +170,11 @@ export const useTabsStore = create<TabsState>()(
       closeTabs: (kind, path) =>
         set((state) => {
           const tabs = tabsAfterClose(state.tabs, kind, path);
-          // 오른쪽 패널의 탭이 닫히면 분할도 끝난다
-          return { tabs, splitPath: tabs.some((item) => item.path === state.splitPath) ? state.splitPath : null };
+          // 오른쪽 패널의 탭을 닫으면 분할도 끝난다
+          // (탭형에서 연 패널처럼 애초에 탭이 없던 화면은 탭을 닫아도 그대로)
+          const closedSplit =
+            state.tabs.some((item) => item.path === state.splitPath) && !tabs.some((item) => item.path === state.splitPath);
+          return { tabs, splitPath: closedSplit ? null : state.splitPath };
         }),
       togglePin: (path) => {
         const { tabs } = get();
@@ -200,8 +203,9 @@ export const useTabsStore = create<TabsState>()(
         return {
           ...current,
           tabs,
-          // 남지 않은 탭은 패널에도 띄울 수 없다
-          splitPath: tabs.some((tab) => tab.path === saved.splitPath) ? saved.splitPath ?? null : null,
+          // 메뉴에서 빠진 화면은 패널에도 띄우지 않는다. 탭이 있는지는 보지 않는다 —
+          // 탭형(DOCS/WMS_메뉴방식_즐겨찾기_설계.md)은 작업 탭 없이 나란히 본다
+          splitPath: saved.splitPath && isMenuPath(saved.splitPath) ? saved.splitPath : null,
           splitRatio: clampSplitRatio(saved.splitRatio ?? SPLIT_DEFAULT_RATIO)
         };
       }

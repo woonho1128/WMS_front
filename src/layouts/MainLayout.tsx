@@ -1,18 +1,26 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { findSection, getMenuSectionsForRole } from "../app/menuConfig";
+import { RECOMMENDED_FAVORITES, findSection, getMenuSectionsForRole, resolveScreenPath } from "../app/menuConfig";
 import { roleLabels, type UserRole } from "../app/roles";
 import { useUiStore } from "../app/store/uiStore";
 import { useAuthStore } from "../app/store/authStore";
-import { SPLIT_MIN_QUERY, useTabsStore } from "../app/store/tabsStore";
+import { FAVORITES_KEY, sectionOfPath, useNavPrefsStore, type NavMode } from "../app/store/navPrefsStore";
+import { SPLIT_MIN_QUERY, isMenuPath, useTabsStore } from "../app/store/tabsStore";
 import { useMediaQuery } from "../shared/useMediaQuery";
 import { Icon } from "../components/ui/Icon";
 import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
+import { CategoryTabBar } from "../components/layout/CategoryTabBar";
 import { SideMenu } from "../components/layout/SideMenu";
 import { SplitView } from "../components/layout/SplitView";
 
 const roleOptions = Object.entries(roleLabels) as Array<[UserRole, string]>;
 const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 1024px)").matches;
+
+/** 헤더의 메뉴 방식 토글 (DOCS/WMS_메뉴방식_즐겨찾기_설계.md §1-2) */
+const NAV_MODES: Array<{ mode: NavMode; label: string; icon: string; hint: string }> = [
+  { mode: "list", label: "목록형", icon: "listMode", hint: "좌측에 화면 목록, 위에 연 화면 탭" },
+  { mode: "tabs", label: "탭형", icon: "tabsMode", hint: "좌측에 카테고리만, 위에 그 카테고리의 화면 탭" }
+];
 
 export const MainLayout = () => {
   const collapsed = useUiStore((state) => state.sidebarCollapsed);
@@ -25,11 +33,23 @@ export const MainLayout = () => {
   const logout = useAuthStore((state) => state.logout);
   const openTab = useTabsStore((state) => state.openTab);
   const splitPath = useTabsStore((state) => state.splitPath);
+  const openSplit = useTabsStore((state) => state.openSplit);
   const wideEnough = useMediaQuery(SPLIT_MIN_QUERY);
+  const navMode = useNavPrefsStore((state) => state.navMode);
+  const favorites = useNavPrefsStore((state) => state.favorites);
+  const activeCategory = useNavPrefsStore((state) => state.activeCategory);
+  const lastScreenBySection = useNavPrefsStore((state) => state.lastScreenBySection);
+  const setNavMode = useNavPrefsStore((state) => state.setNavMode);
+  const toggleFavorite = useNavPrefsStore((state) => state.toggleFavorite);
+  const reorderFavorite = useNavPrefsStore((state) => state.reorderFavorite);
+  const fillFavorites = useNavPrefsStore((state) => state.fillFavorites);
+  const setActiveCategory = useNavPrefsStore((state) => state.setActiveCategory);
+  const recordVisit = useNavPrefsStore((state) => state.recordVisit);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  // 화면 배치(메뉴 방식 · 즐겨찾기)는 로그인한 사람 것으로 navPrefsStore 가 이미 맞춰 두었다
 
   const userName = user?.name ?? "사용자";
   const handleLogout = async () => {
@@ -48,9 +68,23 @@ export const MainLayout = () => {
     setMobileOpen(false);
   }, [sectionSlug, featureSlug]);
 
-  // 화면 이동 시 본문 상단 탭으로 등록(이미 있으면 유지). 좌측 메뉴 클릭 = 탭 열기.
+  // 화면을 열 때마다: 카테고리별 마지막 화면 · 최근 본 화면 · 탭형의 고른 칸
+  const prevPath = useRef<string | null>(null);
   useEffect(() => {
-    if (!sectionSlug) return;
+    const path = location.pathname;
+    const previous = prevPath.current;
+    prevPath.current = path;
+    recordVisit(path);
+    // 탭형: 오른쪽 패널의 화면을 위 탭에서 고르면 좌우를 맞바꾼다 (목록형은 openTab 이 한다)
+    if (navMode === "tabs" && splitPath === path && previous && previous !== path && isMenuPath(previous)) openSplit(previous);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // 목록형: 화면 이동 시 본문 상단 탭으로 등록(이미 있으면 유지). 좌측 메뉴 클릭 = 탭 열기.
+  // 탭형에서는 등록하지 않는다 — 작업 탭은 그대로 두었다가 목록형으로 돌아오면 이어 쓴다
+  // (카테고리 탭을 오가는 것만으로 작업 탭이 밀려나지 않게). 돌아오는 순간 지금 화면은 탭이 된다.
+  useEffect(() => {
+    if (navMode !== "list" || !sectionSlug) return;
     const source = findSection(sectionSlug);
     if (!source) return;
     const sourceFeature = featureSlug
@@ -59,7 +93,45 @@ export const MainLayout = () => {
     if (featureSlug && !sourceFeature) return; // 메뉴에 없는 화면(제거된 메뉴·잘못 친 주소)은 탭을 만들지 않는다
     openTab({ path: location.pathname, label: sourceFeature?.label ?? source.label });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  }, [location.pathname, navMode]);
+
+  /** 이 역할이 지금 볼 수 있는 화면인가 */
+  const canOpen = (path: string | undefined): path is string =>
+    Boolean(path) && resolveScreenPath(path as string, currentRole).status === "ok";
+
+  /**
+   * 탭형 좌측에서 칸(★ 또는 카테고리)을 골랐을 때.
+   * 카테고리 → 그 카테고리에서 마지막으로 보던 화면(처음이면 첫 화면).
+   * ★ → 지금 화면이 즐겨찾기면 그대로, 아니면 ★ 에서 마지막으로 보던 화면(없으면 첫 즐겨찾기).
+   */
+  const pickCategory = (key: string) => {
+    setMobileOpen(false);
+    setActiveCategory(key);
+    const here = location.pathname;
+    if (key === FAVORITES_KEY) {
+      const mine = favorites.filter(canOpen);
+      if (!mine.length) return; // 위 탭 줄에 안내와 "추천으로 채우기"가 뜬다
+      if (mine.includes(here)) {
+        recordVisit(here); // ★ 의 마지막 화면으로 기억
+        return;
+      }
+      const last = lastScreenBySection[FAVORITES_KEY];
+      navigate(last && mine.includes(last) ? last : mine[0]);
+      return;
+    }
+    const section = allowedMenuSections.find((item) => item.slug === key);
+    const first = section?.features[0];
+    if (!first) return;
+    const last = lastScreenBySection[key];
+    const target = canOpen(last) && sectionOfPath(last) === key ? last : `/${key}/${first.slug}`;
+    if (target !== here) navigate(target);
+  };
+
+  /** 역할별 추천 즐겨찾기 — 비어 있을 때 한 번에 채우기 (이 역할이 못 여는 화면은 뺀다) */
+  const recommended = useMemo(
+    () => (RECOMMENDED_FAVORITES[currentRole] ?? []).filter((path) => resolveScreenPath(path, currentRole).status === "ok"),
+    [currentRole]
+  );
 
   const toggleSidebar = () => {
     if (isMobile()) setMobileOpen((open) => !open);
@@ -101,6 +173,13 @@ export const MainLayout = () => {
           collapsed={collapsed}
           isMobile={isMobile}
           onRequestOpen={openSidebar}
+          mode={navMode}
+          activeCategory={activeCategory ?? sectionSlug ?? null}
+          onPickCategory={pickCategory}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+          onReorderFavorite={reorderFavorite}
+          onFillRecommended={recommended.length ? () => fillFavorites(recommended) : undefined}
         />
 
         <div className="wms-sysstat">
@@ -131,6 +210,22 @@ export const MainLayout = () => {
           <div className="wms-crumb">
             <div className="wms-crumb-top">WMS · 본사창고(1F){currentSection ? ` · ${currentSection.label}` : ""}</div>
             <div className="wms-crumb-now">{currentLabel}</div>
+          </div>
+
+          <div className="wms-navmode" role="group" aria-label="메뉴 방식">
+            {NAV_MODES.map((item) => (
+              <button
+                key={item.mode}
+                type="button"
+                className={navMode === item.mode ? "is-on" : undefined}
+                aria-pressed={navMode === item.mode}
+                onClick={() => setNavMode(item.mode)}
+                title={`${item.label} — ${item.hint}`}
+              >
+                <Icon name={item.icon} size={15} />
+                <span>{item.label}</span>
+              </button>
+            ))}
           </div>
 
           <div className="wms-spacer" />
@@ -177,7 +272,7 @@ export const MainLayout = () => {
           </button>
         </header>
 
-        <WorkspaceTabs activePath={location.pathname} />
+        {navMode === "tabs" ? <CategoryTabBar activePath={location.pathname} /> : <WorkspaceTabs activePath={location.pathname} />}
 
         <main className={`wms-content${split ? " is-split" : ""}`}>
           {split ? (

@@ -1,5 +1,5 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { resolveScreenPath } from "../../app/menuConfig";
 import {
   SPLIT_DEFAULT_RATIO,
@@ -34,9 +34,11 @@ const STEP = 0.02;
  */
 export const SplitView = ({ children, mainLabel, splitPath }: Props) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const role = useUiStore((state) => state.currentRole);
   const ratio = useTabsStore((state) => state.splitRatio);
   const setSplitRatio = useTabsStore((state) => state.setSplitRatio);
+  const openSplit = useTabsStore((state) => state.openSplit);
   const closeSplit = useTabsStore((state) => state.closeSplit);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -108,7 +110,11 @@ export const SplitView = ({ children, mainLabel, splitPath }: Props) => {
               className="wms-pane-btn"
               title="좌우 바꾸기"
               aria-label="좌우 바꾸기"
-              onClick={() => navigate(splitPath)}
+              onClick={() => {
+                // 왼쪽 화면을 오른쪽으로 보내고 오른쪽 화면으로 간다 — 작업 탭이 없는 탭형에서도 같은 동작
+                openSplit(location.pathname);
+                navigate(splitPath);
+              }}
             >
               <Icon name="swap" size={15} />
             </button>

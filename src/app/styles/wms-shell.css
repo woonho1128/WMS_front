@@ -235,6 +235,96 @@
   box-shadow: 0 0 8px 0 var(--primary);
 }
 
+/* ---------- 메뉴 방식 · 즐겨찾기 (DOCS/WMS_메뉴방식_즐겨찾기_설계.md) ---------- */
+/* 카테고리 옆 숫자 — 탭형은 화면 수, 목록형 ★ 는 n/12 */
+.wms-navitem .wms-ni-count {
+  flex: 0 0 auto; min-width: 16px; text-align: right;
+  font-size: 11px; font-weight: 700; color: var(--side-section);
+  font-variant-numeric: tabular-nums;
+}
+.wms-navitem.active .wms-ni-count { color: rgba(255, 255, 255, 0.78); }
+.wms-navitem.is-fav:not(.active) .wms-ni-ico,
+.wms-favhead .wms-ni-ico { color: var(--side-star); }
+.wms-navdiv { height: 1px; margin: 6px 10px 8px; background: var(--side-line); }
+
+/* 목록형 ★ 묶음 — 트리와 줄로 나눈다 */
+.wms-navgroup.is-fav { margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--side-line); }
+.wms-favhead { display: flex; align-items: center; gap: 4px; }
+.wms-favhead > .wms-navitem { flex: 1; min-width: 0; width: auto; }
+.wms-favedit {
+  flex: 0 0 28px; width: 28px; height: 28px; margin-bottom: 2px;
+  display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--side-line); border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.04); color: var(--side-muted); cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.wms-favedit:hover { background: var(--side-hover); color: var(--ink-on-dark); }
+.wms-favedit.is-on { background: var(--side-active-soft); border-color: var(--side-active); color: var(--ink-on-dark); }
+
+/* 화면 한 줄 = 링크 + 옆의 ☆ (링크 안에 두면 별을 눌러도 화면이 열린다) */
+.wms-subrow { position: relative; }
+.wms-subrow > .wms-sublink { padding-right: 34px; }
+.wms-sublink-hint { margin-left: 6px; font-size: 10.5px; font-weight: 600; color: var(--side-section); }
+.wms-substar {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
+  border: none; border-radius: var(--r-sm); background: transparent;
+  color: var(--side-muted); cursor: pointer;
+  opacity: 0; transition: opacity var(--dur-1), color var(--dur-1), background var(--dur-1);
+}
+.wms-subrow:hover .wms-substar,
+.wms-substar:focus-visible { opacity: 1; }
+.wms-substar:hover { background: rgba(255, 255, 255, 0.08); color: var(--side-star); }
+/* 즐겨찾기인 화면은 트리에서 늘 별이 보인다 — 무엇을 모아 뒀는지 한눈에 */
+.wms-substar.is-on { opacity: 1; color: var(--side-star); }
+.wms-substar.is-on svg path { fill: currentColor; }
+.wms-substar:disabled { cursor: not-allowed; }
+.wms-subrow:hover .wms-substar:disabled { opacity: 0.3; }
+.wms-substar:disabled:hover { background: transparent; color: var(--side-muted); }
+/* ★ 묶음 안은 전부 즐겨찾기라 별(=빼기)은 올렸을 때만 */
+.wms-navgroup.is-fav .wms-substar.is-on { opacity: 0; }
+.wms-navgroup.is-fav .wms-subrow:hover .wms-substar.is-on,
+.wms-navgroup.is-fav .wms-substar.is-on:focus-visible { opacity: 1; }
+
+/* ★ 묶음 편집 — 끌기가 안 되는 기기(폰)에서도 순서를 바꿀 수 있게 ▲ ▼ ✕ */
+.wms-navgroup.is-editing .wms-subrow > .wms-sublink { padding-right: 82px; }
+.wms-subrow-edit {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  display: flex; gap: 3px;
+}
+.wms-subrow-edit button {
+  width: 23px; height: 23px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--side-line); border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05); color: var(--side-text); cursor: pointer;
+}
+.wms-subrow-edit button:hover:not(:disabled) { background: var(--side-hover); color: var(--ink-on-dark); }
+.wms-subrow-edit button:disabled { opacity: 0.3; cursor: default; }
+.wms-subrow-edit .is-remove:hover:not(:disabled) { background: var(--c-danger); border-color: var(--c-danger); color: var(--ink-on-accent); }
+
+.wms-favempty {
+  display: grid; gap: 8px; justify-items: start;
+  padding: 6px 10px 10px 18px;
+  font-size: 11.5px; line-height: 1.55; color: var(--side-muted);
+}
+.wms-favempty svg { vertical-align: -1px; color: var(--side-star); }
+.wms-favfill {
+  height: 27px; padding: 0 11px; border-radius: var(--r-sm);
+  border: 1px solid var(--side-active); background: var(--side-active-soft);
+  color: var(--ink-on-dark); font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+  transition: background var(--dur-1);
+}
+.wms-favfill:hover { background: var(--primary); }
+
+.wms-app.collapsed .wms-navitem .wms-ni-count,
+.wms-app.collapsed .wms-favedit { display: none; }
+
+/* 마우스가 없는 기기 — 올릴 수 없으니 별이 흐리게 늘 보인다 */
+@media (hover: none) {
+  .wms-substar { opacity: 0.45; }
+  .wms-substar.is-on,
+  .wms-navgroup.is-fav .wms-substar.is-on { opacity: 1; }
+}
+
 /* ---------- system status ---------- */
 .wms-sysstat {
   margin: 8px 12px 0;
@@ -310,7 +400,7 @@
 .wms-hbtn svg { width: 18px; height: 18px; }
 
 .wms-crumb { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; flex: 0 1 auto; }
-/* 좁으면 말줄임 — 안 그러면 경로 글자가 옆 `샘플 데이터` 배지 밑으로 파고든다 (폰에서 70px) */
+/* 좁으면 말줄임 — 안 그러면 경로 글자가 옆 메뉴 방식 버튼 밑으로 파고든다 */
 .wms-crumb-top {
   font-size: 11px; color: var(--ink-faint); font-weight: 700; white-space: nowrap;
   letter-spacing: 0.2px; overflow: hidden; text-overflow: ellipsis;
@@ -320,6 +410,22 @@
   letter-spacing: -0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .wms-spacer { flex: 1; }
+
+/* 메뉴 방식 전환 [☰ 목록형 | ▭ 탭형] — 지금 방식이 버튼에 보이게 두 칸 토글 */
+.wms-navmode {
+  flex: 0 0 auto; display: inline-flex; gap: 2px; padding: 3px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2);
+}
+.wms-navmode button {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 10px; border: none; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-faint);
+  font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.wms-navmode button:hover { color: var(--ink-strong); }
+.wms-navmode button.is-on { background: var(--primary-bg); color: var(--primary-ink); }
+.wms-navmode button svg { flex: 0 0 auto; }
 
 .wms-search {
   display: flex; align-items: center; gap: 9px;
@@ -480,6 +586,9 @@
   .wms-app.collapsed .wms-brand-text,
   .wms-app.collapsed .wms-user-text,
   .wms-app.collapsed .wms-menusearch-meta { display: revert; }
+  /* revert 는 브라우저 기본값으로 돌아가므로(버튼 → inline-block) 새로 넣은 것은 값을 적는다 */
+  .wms-app.collapsed .wms-navitem .wms-ni-count { display: inline; }
+  .wms-app.collapsed .wms-favedit { display: grid; }
   /* 모바일 드로어는 항상 펼친 형태 — 접힘 전용 돋보기 버튼 대신 검색창 */
   .wms-app.collapsed .wms-menusearch { padding: 12px 12px 2px; }
   .wms-app.collapsed .wms-menusearch-box { display: flex; }
@@ -493,4 +602,7 @@
   .wms-content { padding: 16px 14px 48px; }
   .wms-header { padding: 0 14px; gap: 10px; }
   .wms-crumb-now { font-size: 15px; }
+  /* 메뉴 방식 버튼은 아이콘만 */
+  .wms-navmode button { padding: 0 7px; }
+  .wms-navmode button span { display: none; }
 }

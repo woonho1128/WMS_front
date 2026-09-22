@@ -183,6 +183,154 @@
 .wms-tab.is-pinned { padding-right: 12px; }
 .wms-tab-pin { flex: 0 0 auto; color: var(--primary-ink); }
 
+/* ============================================================
+   탭형 메뉴의 위 탭 줄 (CategoryTabBar)
+   모양은 작업 탭과 같게 두고, 성질만 다르다 — 닫기 · 한도가 없고, 넘치면 줄이지 않고 가로로 민다
+   ============================================================ */
+.wms-cattabs-head {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px 5px 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.wms-cattabs-head.is-fav { color: var(--c-warning-ink); }
+.wms-cattabs-head.is-fav svg path { fill: currentColor; }
+.wms-cattabs-head small { font-weight: 700; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+.wms-cattabs-scroll {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  /* 보고 있는 탭을 당겨 올 때 offsetLeft 의 기준 */
+  position: relative;
+}
+.wms-cattabs-scroll::-webkit-scrollbar { display: none; }
+/* 줄이지 않고 미므로 작업 탭의 최소 폭(84 · 보고 있는 탭 116)은 필요 없다 — 짧은 이름은 짧게 */
+.wms-cattabs-scroll .wms-tab,
+.wms-cattabs-scroll .wms-tab.active { flex: 0 0 auto; min-width: 64px; }
+/* ★ 의 탭 — 별이 없으므로 좌우 여백을 같게 */
+.wms-cattabs-scroll .wms-tab.is-plain { padding-right: 14px; justify-content: center; }
+/* 더 밀 수 있는 쪽 가장자리를 흐리게 — 스크롤바를 감췄으므로 "더 있다"는 이걸로 보인다 */
+.wms-cattabs-scroll.has-left {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px);
+  mask-image: linear-gradient(90deg, transparent 0, #000 32px);
+}
+.wms-cattabs-scroll.has-right {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent 100%);
+}
+.wms-cattabs-scroll.has-left.has-right {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
+}
+
+/* 즐겨찾기 별 — 켜진 것 · 보고 있는 탭 · 마우스를 올린 탭에서만 보인다 (손가락은 보고 있는 탭에서) */
+.wms-tab-star {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-1), background var(--dur-1), color var(--dur-1);
+}
+.wms-tab:hover .wms-tab-star,
+.wms-tab.active .wms-tab-star,
+.wms-tab-star.is-on,
+.wms-tab-star:focus-visible { opacity: 1; }
+.wms-tab-star:hover:not(:disabled) { background: var(--surface-3); color: var(--c-warning-ink); }
+.wms-tab-star.is-on { color: var(--c-warning); }
+.wms-tab-star.is-on svg path { fill: currentColor; }
+.wms-tab-star:disabled { cursor: not-allowed; color: var(--ink-faint); }
+
+/* 즐겨찾기 편집 — 순서(◀ ▶) · 빼기(✕) */
+.wms-tabs.is-editing .wms-cattabs-scroll .wms-tab { border-style: dashed; border-color: var(--border-strong); cursor: default; }
+.wms-cattab-edit { display: inline-flex; gap: 2px; }
+.wms-cattab-edit button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.wms-cattab-edit button:hover:not(:disabled) { color: var(--ink-strong); border-color: var(--border-strong); }
+.wms-cattab-edit button.is-remove:hover { background: var(--c-danger-bg); color: var(--c-danger-ink); border-color: var(--c-danger-line); }
+.wms-cattab-edit button:disabled { opacity: 0.35; cursor: default; }
+
+.wms-cattabs-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 6px;
+  font-size: 12px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.wms-cattabs-empty svg { vertical-align: -2px; }
+
+/* 탭 줄 오른쪽 작은 버튼 (편집 · 최근) — 나란히 보기 버튼과 같은 모양 */
+.wms-tabs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.wms-tabs-btn:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-strong); color: var(--ink-strong); }
+.wms-tabs-btn:disabled { opacity: 0.45; cursor: default; }
+.wms-tabs-btn.is-on { background: var(--primary-bg); border-color: var(--primary); color: var(--primary-ink); }
+.wms-tabs-btn.is-primary { background: var(--primary); border-color: var(--primary); color: var(--ink-on-accent); }
+.wms-tabs-btn.is-primary:hover:not(:disabled) { background: var(--primary); color: var(--ink-on-accent); filter: brightness(1.08); }
+
+.wms-recent .wms-recent-sec { font-size: 11px; font-weight: 700; color: var(--ink-faint); }
+.wms-ctxmenu-item svg.is-fav { color: var(--c-warning); }
+.wms-ctxmenu-item svg.is-fav path { fill: currentColor; }
+
+/* 1366 노트북에서 탭 자리를 넓힌다 — 오른쪽 버튼은 아이콘만(이름은 title) */
+@media (max-width: 1599px) {
+  .wms-tabs.is-category .wms-tabs-btn-label { display: none; }
+  .wms-tabs.is-category .wms-tabs-btn,
+  .wms-tabs.is-category .wms-tabs-split { padding: 0 7px; }
+}
+
+@media (max-width: 640px) {
+  /* 폰은 탭 줄이 귀하다 — 카테고리 이름은 헤더 경로가 이미 말해 준다 */
+  .wms-cattabs-head { display: none; }
+  .wms-cattabs-empty { white-space: normal; }
+}
+
 /* 오른쪽 패널에 나란히 열려 있는 탭 */
 .wms-tab.is-split { border-color: var(--border-strong); }
 .wms-tab-splitmark { flex: 0 0 auto; color: var(--primary-ink); }
