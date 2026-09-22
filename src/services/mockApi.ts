@@ -806,12 +806,30 @@ function handleMutation(clean: string, body: AnyRecord) {
       });
       perLocation.forEach((qty, locationId) => warehouseMock.assertLoad(locationId, src.itemCode, qty));
       let moved = 0;
+      const placed = rawAssigns.filter((a) => (Number(a.qty) || 0) > 0 && locations.some((l) => l.id === Number(a.toLocationId)));
       rawAssigns.forEach((a) => {
         const loc = locations.find((l) => l.id === Number(a.toLocationId));
         const qty = Number(a.qty) || 0;
         if (!loc || qty <= 0) return;
         const wh = warehouses.find((w) => w.name === loc.warehouseName);
         moved += qty;
+        // 이동 이력에 '격납' 줄 — 서버 StockService.completePutaway 와 같은 번호(PT…) · 사유 문구 (예전 목은 안 남겼다)
+        const part = placed.indexOf(a) + 1;
+        warehouseMock.logTransfer({
+          prefix: "PT",
+          itemCode: src.itemCode,
+          itemName: src.itemName,
+          fromWarehouse: src.warehouseName,
+          toWarehouse: loc.warehouseName,
+          fromLocation: src.locationCode,
+          toLocation: loc.code,
+          qty,
+          type: "격납",
+          lotNo: src.lotNo,
+          erpLinked: false,
+          reason: placed.length > 1 ? `격납 완료(분할 ${part}/${placed.length}, 가용 전환)` : "격납 완료(가용 전환)",
+          createdBy: body.operator ? String(body.operator) : "system"
+        });
         stocks.push({
           stockId: ++stockSeq,
           itemCode: src.itemCode,

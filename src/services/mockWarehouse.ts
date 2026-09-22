@@ -1342,5 +1342,6 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
 
   seed();
 
-  return { get, mutate, assertLoad };
+  // logTransfer — 격납(mockApi)도 서버처럼 이동 이력에 '격납' 줄을 남긴다
+  return { get, mutate, assertLoad, logTransfer };
 }
