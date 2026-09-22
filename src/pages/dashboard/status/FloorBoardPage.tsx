@@ -295,7 +295,6 @@ const AlertTicker = ({ alerts }: { alerts: AlertItem[] }) => {
 export const FloorBoardPage = () => {
   const inbound = useStatusData<InboundDashboard>("/dashboard/inbound", REFRESH_MS);
   const outbound = useStatusData<OutboundDashboard>("/dashboard/outbound", REFRESH_MS);
-  const rootRef = useRef<HTMLDivElement>(null);
   const [full, setFull] = useState(false);
   useWakeLock();
 
@@ -333,7 +332,11 @@ export const FloorBoardPage = () => {
         if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
         return false;
       }
-      void rootRef.current?.requestFullscreen?.().catch(() => undefined);
+      // ⚠ 판(.fb)이 아니라 **페이지 전체**를 전체화면으로 연다.
+      // 요소를 전체화면으로 올리면 브라우저 기본 규칙(UA `height: 100% !important`)이 그 요소 높이를
+      // 화면에 못박아 CSS 로 못 푼다 — 폰 폭에서는 입고·출고가 그 높이에 짓눌려 겹쳤다(2026-09-22).
+      // 페이지를 올리면 판 크기는 우리 CSS(.fb.is-full) 그대로라 TV 는 한 화면, 폰은 스크롤이 된다.
+      void document.documentElement.requestFullscreen?.().catch(() => undefined);
       return true;
     });
   }, []);
@@ -423,7 +426,7 @@ export const FloorBoardPage = () => {
   const error = inbound.error ?? outbound.error;
 
   return (
-    <div className={`fb${full ? " is-full" : ""}`} ref={rootRef}>
+    <div className={`fb${full ? " is-full" : ""}`}>
       <header className="fb-top">
         {/* 창고 이름은 박아 넣지 않는다 — 공장마다 같은 화면을 띄우므로 틀린 이름이 걸리면 안 된다.
             백엔드 연동 때 /dashboard/* 응답에 warehouseName 을 받아 여기에 넣는다 (설계 §1-3) */}
