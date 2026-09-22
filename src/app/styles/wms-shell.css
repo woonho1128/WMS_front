@@ -319,18 +319,6 @@
   font-size: 17px; font-weight: 800; color: var(--ink-strong);
   letter-spacing: -0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* 샘플 데이터(데모) 표시 — 목 빌드에서만 붙는다. 실제 재고로 오해하면 안 되는 화면이라 눈에 띄게 */
-.wms-demo-chip {
-  flex: 0 0 auto;
-  padding: 4px 10px;
-  border: 1px solid var(--c-warning-line);
-  border-radius: var(--r-pill);
-  background: var(--c-warning-bg);
-  color: var(--c-warning-ink);
-  font-size: 11.5px; font-weight: 800; letter-spacing: -0.2px; white-space: nowrap;
-  cursor: help;
-}
-
 .wms-spacer { flex: 1; }
 
 .wms-search {
