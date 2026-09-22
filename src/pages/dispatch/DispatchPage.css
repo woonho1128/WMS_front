@@ -31,6 +31,13 @@
 .dsp-row.is-sel { background: var(--primary-bg); box-shadow: inset 3px 0 0 var(--primary); }
 .dsp-no { font-weight: 700; font-size: 12.5px; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
 .dsp-sub { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+/* 합계 모름 — 제원 미등록 품목이 섞였다. 0 으로 치지 않는다 */
+.dsp-unknown {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px;
+  border: 1px dashed var(--c-warning-line); color: var(--c-warning-ink);
+  font-size: 11px; font-weight: 700; cursor: help; white-space: nowrap;
+}
+.dsp-gauge-pct.dsp-unknown { justify-self: end; height: 18px; font-size: 10.5px; }
 .dsp-due { font-variant-numeric: tabular-nums; color: var(--ink-muted); }
 .dsp-due.is-urgent { color: var(--c-danger-ink); font-weight: 800; }
 .dsp-foot-note { margin: 0; padding: 10px 14px; border-top: 1px solid var(--border-soft); font-size: 11.5px; color: var(--ink-faint); }

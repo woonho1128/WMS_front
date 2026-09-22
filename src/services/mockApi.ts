@@ -63,13 +63,61 @@ let locations = [
 ];
 
 const items = [
-  // unitWeightKg = 단위당 무게 — 랙 칸 허용 하중 검사에 쓴다
-  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25, category: "음향기기", consign: false, active: true },
-  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08, category: "케이블", consign: false, active: true },
-  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45, category: "배터리", consign: false, active: true },
-  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2, category: "주방용품", consign: true, active: true },
-  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03, category: "부자재", consign: false, active: true }
+  // 물류 제원 — unitWeightKg 단위 중량(랙 허용 하중 · 배차 총중량), unitVolumeCm3 단위 부피(배차), unitsPerPallet 파레트 입수.
+  // 비어 있으면(null) 미등록 — 배차 · 출고 요청서의 합계가 '모름'이 된다 (0 으로 치지 않는다)
+  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25 as number | null, unitVolumeCm3: 1500 as number | null, category: "음향기기", consign: false, active: true },
+  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08 as number | null, unitVolumeCm3: 500 as number | null, category: "케이블", consign: false, active: true },
+  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45 as number | null, unitVolumeCm3: 1200 as number | null, category: "배터리", consign: false, active: true },
+  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2 as number | null, unitVolumeCm3: 2500 as number | null, category: "주방용품", consign: true, active: true },
+  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03 as number | null, unitVolumeCm3: 100 as number | null, category: "부자재", consign: false, active: true }
 ];
+
+/** 품목 목록 행 — 서버 ItemResponse 와 같은 모양 (제원은 null = 미등록) */
+const itemRow = (it: AnyRecord) => {
+  const positive = (value: unknown) => (Number(value) > 0 ? Number(value) : null);
+  return {
+    id: it.id,
+    code: it.itemCode,
+    name: it.itemName,
+    category: it.category,
+    unit: it.unit,
+    safetyStock: it.safetyStock,
+    consign: it.consign,
+    active: it.active,
+    unitWeightKg: positive(it.unitWeightKg),
+    unitVolumeCm3: positive(it.unitVolumeCm3),
+    unitsPerPallet: positive(it.unitsPerPallet)
+  };
+};
+
+/**
+ * 주문 제원 합계 — 서버 DispatchMapper aggCols · OutboundMapper findAll 과 같은 규칙.
+ * 제원 미등록 품목이 하나라도 있으면 그 합계는 null(모름). *Missing = 미등록 품목 수.
+ */
+function orderTotals(outboundId: number) {
+  const lines = outboundLines[outboundId] ?? [];
+  const specOf = (code: string) => items.find((it) => it.itemCode === code) as AnyRecord | undefined;
+  const missing = (key: string) => new Set(lines.filter((ln) => !(Number(specOf(ln.itemCode)?.[key]) > 0)).map((ln) => ln.itemCode)).size;
+  const sum = (f: (ln: AnyRecord, spec: AnyRecord) => number) => lines.reduce((acc, ln) => acc + f(ln, specOf(ln.itemCode) ?? {}), 0);
+  const weightMissing = missing("unitWeightKg");
+  const volumeMissing = missing("unitVolumeCm3");
+  const palletMissing = missing("unitsPerPallet");
+  const known = (missingCount: number) => lines.length > 0 && missingCount === 0;
+  return {
+    totalWeightKg: known(weightMissing) ? Math.round(sum((ln, s) => Number(ln.orderQty) * Number(s.unitWeightKg)) * 10) / 10 : null,
+    totalVolumeM3: known(volumeMissing) ? Math.round((sum((ln, s) => Number(ln.orderQty) * Number(s.unitVolumeCm3)) / 1e6) * 1000) / 1000 : null,
+    palletCount: known(palletMissing) ? sum((ln, s) => Math.ceil(Number(ln.orderQty) / Number(s.unitsPerPallet))) : null,
+    weightMissing,
+    volumeMissing,
+    palletMissing
+  };
+}
+
+/** 서버 DispatchService.recommendVehicle 과 같은 기준 — 모르면 추천하지 않는다 */
+const recommendVehicle = (weightKg: number | null, pallets: number | null) =>
+  weightKg == null || pallets == null
+    ? null
+    : weightKg <= 1000 && pallets <= 2 ? "1톤" : weightKg <= 2500 && pallets <= 5 ? "2.5톤" : weightKg <= 5000 && pallets <= 10 ? "5톤" : "11톤";
 
 let stocks = [
   { stockId: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", zoneName: "창원 A존", locationCode: "PC-A-01", locationType: "PICKING", lotNo: "LOT260407-0006", stockStatus: "AVAILABLE", receivedDate: "2026-04-07", onHand: 260, allocated: 45, available: 215, safetyStock: 120, unit: "EA" },
@@ -338,19 +386,21 @@ function asWarehouseLocations(warehouseId: number) {
 function dispatchTargets(region: string) {
   return outbounds
     .filter((o) => (o.status === "피킹완료" || o.status === "출고완료") && regionOf(o.shipAddress) === region && !dispatched.some((d) => d.outboundNo === o.outboundNo))
-    .map((o, idx) => ({
-      outboundId: o.id,
-      outboundNo: o.outboundNo,
-      customerName: o.customerName,
-      shipAddress: o.shipAddress,
-      region,
-      status: o.status,
-      scheduledDate: o.scheduledDate,
-      totalWeightKg: 180 + idx * 75,
-      totalVolumeM3: 1.8 + idx * 0.7,
-      palletCount: 1 + idx,
-      recommendedVehicle: idx > 1 ? "2.5톤" : "1톤"
-    }));
+    .map((o) => {
+      // 예전에는 건마다 지어낸 중량(180 + 75kg …)을 줬다 — 이제 라인 × 품목 제원으로 계산한다
+      const totals = orderTotals(o.id);
+      return {
+        outboundId: o.id,
+        outboundNo: o.outboundNo,
+        customerName: o.customerName,
+        shipAddress: o.shipAddress,
+        region,
+        status: o.status,
+        scheduledDate: o.scheduledDate,
+        ...totals,
+        recommendedVehicle: recommendVehicle(totals.totalWeightKg, totals.palletCount)
+      };
+    });
 }
 
 /** 하루치 도크 스케줄 — 예약 블록(입고 상태·진행률·지연)과 예약 없는 그날 입고 예정 */
@@ -551,8 +601,9 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     if (handled !== undefined) return copy(handled) as T;
     const photoHandled = outboundPhotoMock.mutate(method, clean, body, url.searchParams);
     if (photoHandled !== undefined) return copy(photoHandled) as T;
-    handleMutation(clean, body);
-    return copy({ ok: true }) as T;
+    // 서버처럼 결과를 돌려주는 처리(예: 품목 제원 저장)는 그 값을, 나머지는 { ok: true }
+    const result = handleMutation(clean, body);
+    return copy(result ?? { ok: true }) as T;
   }
 
   const warehouseData = warehouseMock.get(clean, url.searchParams);
@@ -569,7 +620,10 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/inbounds") return copy(inbounds) as T;
   if (clean === "/inbounds/dock-schedule") return copy(dockScheduleOf(url.searchParams.get("date") ?? today)) as T;
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
-  if (clean === "/outbounds") return copy(outbounds) as T;
+  if (clean === "/outbounds") return copy(outbounds.map((o) => {
+    const { totalWeightKg, weightMissing } = orderTotals(o.id);
+    return { ...o, totalWeightKg, weightMissing };
+  })) as T;
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/stocks") return copy(stocks) as T;
   if (clean === "/stocks/putaway") return copy(stocks.filter((s) => s.stockStatus === "PUTAWAY_WAIT").map(({ allocated, available, safetyStock, ...s }) => ({ ...s, qty: s.onHand }))) as T;
@@ -580,7 +634,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/stocks/trace") return copy(stockTrace(url.searchParams.get("q") ?? "")) as T;
   if (clean === "/warehouses") return copy(warehouses) as T;
   if (clean.match(/^\/warehouses\/\d+\/locations$/)) return copy(asWarehouseLocations(Number(clean.split("/")[2]))) as T;
-  if (clean === "/items") return copy(items.map((it) => ({ id: it.id, code: it.itemCode, name: it.itemName, category: it.category, unit: it.unit, safetyStock: it.safetyStock, consign: it.consign, active: it.active }))) as T;
+  if (clean === "/items") return copy(items.map(itemRow)) as T;
   if (clean === "/carriers") return copy(carriers) as T;
   if (clean === "/dispatch/targets") return copy(dispatchTargets(url.searchParams.get("region") ?? "수도권")) as T;
   if (clean === "/dispatch") return copy(dispatched.filter((d) => !url.searchParams.get("region") || d.region === url.searchParams.get("region"))) as T;
@@ -699,7 +753,32 @@ function handleMutation(clean: string, body: AnyRecord) {
   } else if (clean === "/dispatch/assign") {
     const row = outbounds.find((r) => r.id === body.outboundId);
     const carrier = carriers.find((c) => c.id === body.carrierId);
-    if (row) dispatched.unshift({ id: Date.now(), dispatchNo: `DP-${Date.now()}`, outboundNo: row.outboundNo, customerName: row.customerName, shipAddress: row.shipAddress, region: regionOf(row.shipAddress), carrierName: carrier?.name ?? null, vehicleType: body.vehicleType ?? null, totalWeightKg: 260, totalVolumeM3: 2.1, palletCount: 2, dispatchDate: today });
+    if (row) {
+      // 합계는 서버처럼 라인 × 제원 — 미등록 품목이 있으면 모름(null)으로 남긴다
+      const totals = orderTotals(row.id);
+      const vehicle = body.vehicleType || recommendVehicle(totals.totalWeightKg, totals.palletCount);
+      if (!vehicle) throw new Error(`제원(중량·파레트 입수) 미등록 품목이 있어 차량을 추천할 수 없습니다 — 차량을 직접 고르세요. (${row.outboundNo})`);
+      dispatched.unshift({ id: Date.now(), dispatchNo: `DP-${Date.now()}`, outboundNo: row.outboundNo, customerName: row.customerName, shipAddress: row.shipAddress, region: regionOf(row.shipAddress), carrierName: carrier?.name ?? null, vehicleType: vehicle, totalWeightKg: totals.totalWeightKg, totalVolumeM3: totals.totalVolumeM3, palletCount: totals.palletCount, dispatchDate: today });
+    }
+  } else if (clean.match(/^\/items\/\d+\/specs$/)) {
+    // 물류 제원 — 서버 ItemService.updateSpecs 와 같은 검증 (비우면 미등록)
+    const item = items.find((it) => it.id === Number(clean.split("/")[2])) as AnyRecord | undefined;
+    if (!item) throw new Error("품목을 찾을 수 없습니다.");
+    const kg = body.unitWeightKg == null || body.unitWeightKg === "" ? null : Number(body.unitWeightKg);
+    if (kg != null && (!(kg > 0) || kg > 10000)) throw new Error("단위 중량은 0 보다 크고 10000 kg 이하여야 합니다. 모르면 비워 두세요.");
+    if (kg != null && Math.round(kg * 1000) < 1) throw new Error("단위 중량은 0.001 kg(1g) 이상이어야 합니다.");
+    const whole = (value: unknown, max: number, label: string) => {
+      if (value == null || value === "") return null;
+      const n = Number(value);
+      if (!Number.isInteger(n) || n <= 0 || n > max) throw new Error(`${label}은(는) 1 이상 ${max} 이하여야 합니다. 모르면 비워 두세요.`);
+      return n;
+    };
+    const volume = whole(body.unitVolumeCm3, 10_000_000, "단위 부피(cm³)");
+    const upp = whole(body.unitsPerPallet, 100_000, "파레트당 수량");
+    item.unitWeightKg = kg == null ? null : Math.round(kg * 1000) / 1000;
+    item.unitVolumeCm3 = volume;
+    item.unitsPerPallet = upp;
+    return itemRow(item);
   } else if (clean === "/notices") {
     notices.unshift({ id: Date.now(), category: body.category, title: body.title, content: body.content, author: "관리자", pinned: Boolean(body.pinned), createdAt: new Date().toISOString() });
   } else if (clean === "/carriers") {

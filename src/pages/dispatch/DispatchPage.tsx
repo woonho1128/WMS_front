@@ -11,6 +11,10 @@ import "./DispatchPage.css";
    기준: DOCS/front 운영화면 재설계 HTML
    ============================================================ */
 
+/**
+ * 합계(중량 · 부피 · 파레트 수)는 제원 미등록 품목이 섞이면 null = 모름.
+ * 예전에는 서버가 0 으로 더해 가벼운 값이 나오고 그 값으로 차량을 추천했다 (2026-09-22 현업 회의 3번 · 폴백 금지).
+ */
 type Target = {
   outboundId: number;
   outboundNo: string;
@@ -19,10 +23,15 @@ type Target = {
   region: string;
   status: string;
   scheduledDate: string | null;
-  totalWeightKg: number;
-  totalVolumeM3: number;
-  palletCount: number;
-  recommendedVehicle: string;
+  totalWeightKg: number | null;
+  totalVolumeM3: number | null;
+  palletCount: number | null;
+  /** 그 제원이 미등록인 품목 수 */
+  weightMissing: number;
+  volumeMissing: number;
+  palletMissing: number;
+  /** 중량 · 파레트 수를 모르면 null (추천하지 않는다) */
+  recommendedVehicle: string | null;
 };
 
 type Dispatched = {
@@ -34,11 +43,25 @@ type Dispatched = {
   region: string;
   carrierName: string | null;
   vehicleType: string | null;
-  totalWeightKg: number;
-  totalVolumeM3: number;
-  palletCount: number;
+  totalWeightKg: number | null;
+  totalVolumeM3: number | null;
+  palletCount: number | null;
   dispatchDate: string | null;
 };
+
+/** 모르는 합계 — 미등록 품목 수를 툴팁으로 */
+const Unknown = ({ missing, what }: { missing?: number; what: string }) => (
+  <span
+    className="dsp-unknown"
+    title={missing ? `${what} 미등록 품목 ${missing}개 — 기준정보 › 품목 마스터에서 입력하면 계산됩니다` : `${what}을(를) 모릅니다`}
+  >
+    모름
+  </span>
+);
+
+/** 목록의 합계는 다 알 때만 더한다 — 하나라도 모르면 null */
+const sumKnown = (values: Array<number | null>) =>
+  values.every((value) => value != null) ? values.reduce<number>((acc, value) => acc + (value ?? 0), 0) : null;
 
 type Carrier = { id: number; name: string; region: string; active: boolean };
 
@@ -53,6 +76,8 @@ const VEHICLES = [
 type Props = { region: "수도권" | "지방권"; title: string };
 
 const num = (n: number) => n.toLocaleString("ko-KR");
+/** 부피 m³ — 택배 한두 상자(0.05m³)가 "0.0" 으로 보이지 않게 1 미만은 소수 둘째 자리까지 */
+const m3 = (v: number) => (v < 1 ? v.toFixed(2) : v.toFixed(1));
 const cityOf = (address: string | null) => (address ?? "").split(" ")[1] ?? "-";
 const gaugeTone = (pct: number) => (pct > 100 ? "danger" : pct >= 85 ? "warning" : "success");
 
@@ -99,20 +124,23 @@ export const DispatchPage = ({ region, title }: Props) => {
   /* ---------- 선택 물량 = 1회 운행 ---------- */
   const trip = useMemo(() => {
     const list = targets.filter((t) => picked.includes(t.outboundId));
-    const weight = list.reduce((a, t) => a + t.totalWeightKg, 0);
-    const volume = list.reduce((a, t) => a + t.totalVolumeM3, 0);
-    const pallet = list.reduce((a, t) => a + t.palletCount, 0);
+    // 하나라도 모르면 그 합계는 모른다 — 아는 것만 더하면 실제보다 가볍게 나와 작은 차를 고르게 된다
+    const weight = list.length ? sumKnown(list.map((t) => t.totalWeightKg)) : 0;
+    const volume = list.length ? sumKnown(list.map((t) => t.totalVolumeM3)) : 0;
+    const pallet = list.length ? sumKnown(list.map((t) => t.palletCount)) : 0;
     const spec = VEHICLES.find((v) => v.name === vehicle) ?? VEHICLES[2];
-    const wPct = spec.weight ? (weight / spec.weight) * 100 : 0;
-    const vPct = spec.volume ? (volume / spec.volume) * 100 : 0;
+    const wPct = weight == null ? null : spec.weight ? (weight / spec.weight) * 100 : 0;
+    const vPct = volume == null ? null : spec.volume ? (volume / spec.volume) * 100 : 0;
     const stops = Array.from(new Set(list.map((t) => cityOf(t.shipAddress))));
-    const fit = VEHICLES.find((v) => weight <= v.weight && volume <= v.volume);
+    const fit = weight != null && volume != null ? VEHICLES.find((v) => weight <= v.weight && volume <= v.volume) : undefined;
+    const unknownCount = list.filter((t) => t.totalWeightKg == null || t.totalVolumeM3 == null).length;
     return {
       list, weight, volume, pallet, spec,
       wPct, vPct,
-      over: wPct > 100 || vPct > 100,
+      over: (wPct ?? 0) > 100 || (vPct ?? 0) > 100,
       stops,
-      fit: fit?.name ?? null
+      fit: fit?.name ?? null,
+      unknownCount
     };
   }, [targets, picked, vehicle]);
 
@@ -143,7 +171,8 @@ export const DispatchPage = ({ region, title }: Props) => {
       ["배차번호", "출고번호", "납품처", "배송사", "차량", "중량(kg)", "부피(m3)", "파렛트", "배차일"],
       dispatched.map((d) => [
         d.dispatchNo, d.outboundNo, d.customerName, d.carrierName, d.vehicleType,
-        d.totalWeightKg, d.totalVolumeM3, d.palletCount, d.dispatchDate
+        // 모르면 '모름' — 빈칸이면 엑셀에서 0 으로 더해진다
+        d.totalWeightKg ?? "모름", d.totalVolumeM3 ?? "모름", d.palletCount ?? "모름", d.dispatchDate
       ])
     );
 
@@ -220,9 +249,9 @@ export const DispatchPage = ({ region, title }: Props) => {
                       <td>{t.customerName}</td>
                       <td>{cityOf(t.shipAddress)}</td>
                       <td className={`dsp-due${urgent ? " is-urgent" : ""}`}>{(t.scheduledDate ?? "").slice(5)}</td>
-                      <td className="num">{num(t.totalWeightKg)}</td>
-                      <td className="num">{t.totalVolumeM3.toFixed(1)}</td>
-                      <td className="num">{t.palletCount}</td>
+                      <td className="num">{t.totalWeightKg != null ? num(t.totalWeightKg) : <Unknown missing={t.weightMissing} what="단위 중량" />}</td>
+                      <td className="num">{t.totalVolumeM3 != null ? m3(t.totalVolumeM3) : <Unknown missing={t.volumeMissing} what="단위 부피" />}</td>
+                      <td className="num">{t.palletCount != null ? t.palletCount : <Unknown missing={t.palletMissing} what="파레트 입수" />}</td>
                     </tr>
                   );
                 })}
@@ -264,24 +293,41 @@ export const DispatchPage = ({ region, title }: Props) => {
           </div>
 
           <div className="dsp-gauges">
-            <div className="dsp-gauge">
-              <span className="dsp-gauge-label">중량</span>
-              <span className="nx-bar dsp-gauge-bar">
-                <i className={`tone-${gaugeTone(trip.wPct)}`} style={{ width: `${Math.min(trip.wPct, 100)}%` }} />
-              </span>
-              <span className={`dsp-gauge-pct tone-${gaugeTone(trip.wPct)}`}>{Math.round(trip.wPct)}%</span>
-            </div>
-            <div className="dsp-gauge">
-              <span className="dsp-gauge-label">부피</span>
-              <span className="nx-bar dsp-gauge-bar">
-                <i className={`tone-${gaugeTone(trip.vPct)}`} style={{ width: `${Math.min(trip.vPct, 100)}%` }} />
-              </span>
-              <span className={`dsp-gauge-pct tone-${gaugeTone(trip.vPct)}`}>{Math.round(trip.vPct)}%</span>
-            </div>
+            {(
+              [
+                { label: "중량", pct: trip.wPct },
+                { label: "부피", pct: trip.vPct }
+              ] as const
+            ).map((gauge) => (
+              <div key={gauge.label} className="dsp-gauge">
+                <span className="dsp-gauge-label">{gauge.label}</span>
+                <span className="nx-bar dsp-gauge-bar">
+                  {gauge.pct != null ? (
+                    <i className={`tone-${gaugeTone(gauge.pct)}`} style={{ width: `${Math.min(gauge.pct, 100)}%` }} />
+                  ) : null}
+                </span>
+                {gauge.pct != null ? (
+                  <span className={`dsp-gauge-pct tone-${gaugeTone(gauge.pct)}`}>{Math.round(gauge.pct)}%</span>
+                ) : (
+                  <span className="dsp-gauge-pct dsp-unknown">모름</span>
+                )}
+              </div>
+            ))}
             <div className="dsp-gauge-sub">
-              {num(trip.weight)}kg · {trip.volume.toFixed(1)}m³ / {num(trip.spec.weight)}kg · {trip.spec.volume}m³
+              {trip.weight != null ? `${num(trip.weight)}kg` : "중량 모름"} · {trip.volume != null ? `${m3(trip.volume)}m³` : "부피 모름"} /{" "}
+              {num(trip.spec.weight)}kg · {trip.spec.volume}m³
             </div>
           </div>
+
+          {trip.unknownCount > 0 ? (
+            <div className="ds-callout warning dsp-warn">
+              <Icon name="alert" size={16} />
+              <span>
+                선택한 {trip.unknownCount}건에 제원(중량·부피) 미등록 품목이 있어 적재율을 계산할 수 없습니다 — 차량은 현장에서 확인해 직접 고르세요.
+                기준정보 › 품목 마스터에서 제원을 넣으면 계산됩니다.
+              </span>
+            </div>
+          ) : null}
 
           {trip.over ? (
             <div className="ds-callout danger dsp-warn">
@@ -304,11 +350,11 @@ export const DispatchPage = ({ region, title }: Props) => {
             </div>
             <div>
               <dt>중량</dt>
-              <dd>{num(trip.weight)}</dd>
+              <dd>{trip.weight != null ? num(trip.weight) : <Unknown what="중량" />}</dd>
             </div>
             <div>
               <dt>PLT</dt>
-              <dd>{trip.pallet}</dd>
+              <dd>{trip.pallet != null ? trip.pallet : <Unknown what="파레트 수" />}</dd>
             </div>
           </div>
 
@@ -326,7 +372,7 @@ export const DispatchPage = ({ region, title }: Props) => {
                     {t.customerName} · {cityOf(t.shipAddress)}
                   </div>
                 </div>
-                <b>{num(t.totalWeightKg)}</b>
+                <b>{t.totalWeightKg != null ? num(t.totalWeightKg) : <Unknown missing={t.weightMissing} what="단위 중량" />}</b>
                 <button type="button" className="dsp-remove" onClick={() => toggle(t.outboundId)} aria-label="선택 해제">
                   <Icon name="x" size={13} />
                 </button>
@@ -388,7 +434,7 @@ export const DispatchPage = ({ region, title }: Props) => {
             <tbody>
               {dispatched.map((d) => {
                 const spec = VEHICLES.find((v) => v.name === d.vehicleType) ?? VEHICLES[0];
-                const pct = Math.round((d.totalWeightKg / spec.weight) * 100);
+                const pct = d.totalWeightKg != null ? Math.round((d.totalWeightKg / spec.weight) * 100) : null;
                 return (
                   <tr key={d.id}>
                     <td className="dsp-no">{d.dispatchNo}</td>
@@ -398,16 +444,20 @@ export const DispatchPage = ({ region, title }: Props) => {
                     <td>
                       <span className="ds-badge gray">{d.vehicleType ?? "-"}</span>
                     </td>
-                    <td className="num">{num(d.totalWeightKg)}</td>
-                    <td className="num">{d.palletCount}</td>
+                    <td className="num">{d.totalWeightKg != null ? num(d.totalWeightKg) : <Unknown what="중량" />}</td>
+                    <td className="num">{d.palletCount != null ? d.palletCount : <Unknown what="파레트 수" />}</td>
                     <td className="dsp-rate">
                       {/* 막대와 % 를 한 줄로 — 폰 카드에서 둘이 위아래로 흩어지지 않게 */}
-                      <span className="dsp-rate-in">
-                        <span className="nx-bar">
-                          <i className={`tone-${gaugeTone(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      {pct != null ? (
+                        <span className="dsp-rate-in">
+                          <span className="nx-bar">
+                            <i className={`tone-${gaugeTone(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                          </span>
+                          <b className={`tone-${gaugeTone(pct)}`}>{pct}%</b>
                         </span>
-                        <b className={`tone-${gaugeTone(pct)}`}>{pct}%</b>
-                      </span>
+                      ) : (
+                        <span className="dsp-sub">중량을 몰라 계산 못 함</span>
+                      )}
                     </td>
                   </tr>
                 );

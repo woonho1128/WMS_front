@@ -28,7 +28,23 @@ type OutboundRow = {
   invoiceNo: string | null;
   status: OutboundScreenStatus;
   rejectReason: string | null;
+  /** 주문 총중량(kg) — 단위 중량 미등록 품목이 있거나 라인이 없으면 null(모름). 0 으로 치지 않는다 */
+  totalWeightKg: number | null;
+  /** 단위 중량 미등록 품목 수 */
+  weightMissing: number;
 };
+
+/** 중량 칸 — 모르면 "모름"(미등록 품목 수를 툴팁으로), 라인이 없으면 "-" */
+const WeightCell = ({ row }: { row: OutboundRow }) =>
+  row.totalWeightKg != null ? (
+    <>{num(row.totalWeightKg)} kg</>
+  ) : row.weightMissing > 0 ? (
+    <span className="out-weight-unknown" title={`단위 중량 미등록 품목 ${row.weightMissing}개 — 기준정보 › 품목 마스터에서 입력`}>
+      모름
+    </span>
+  ) : (
+    <span className="out-sub">-</span>
+  );
 
 type OutboundLine = {
   id: number;
@@ -166,11 +182,14 @@ export const DashboardOutbound = () => {
     const list = rows.filter((r) => picked.includes(r.id));
     const regions = Array.from(new Set(list.map((r) => regionOf(r.shipAddress))));
     const lineCount = list.reduce((a, r) => a + (linesById[r.id]?.length ?? 0), 0);
+    // 하나라도 모르면 합계도 모른다 — 아는 것만 더해 가벼운 값을 보이지 않는다
+    const weightKnown = list.every((r) => r.totalWeightKg != null);
     return {
       any: list.length > 0,
       count: list.length,
       lineCount,
       qty: list.reduce((a, r) => a + r.qty, 0),
+      weightKg: weightKnown ? list.reduce((a, r) => a + (r.totalWeightKg ?? 0), 0) : null,
       regions,
       mixed: regions.length > 1
     };
@@ -209,10 +228,13 @@ export const DashboardOutbound = () => {
   const exportCsv = () =>
     downloadCsv(
       `출고요청서_${dateFrom}_${dateTo}`,
-      ["출고번호", "납품처", "출고유형", "권역", "요청일", "수량", "배송사", "송장번호", "상태"],
+      ["출고번호", "납품처", "출고유형", "권역", "요청일", "수량", "중량(kg)", "배송사", "송장번호", "상태"],
       filtered.map((r) => [
         r.outboundNo, r.customerName, r.outType, regionOf(r.shipAddress),
-        r.scheduledDate, r.qty, r.carrier, r.invoiceNo, r.status
+        r.scheduledDate, r.qty,
+        // 모르면 빈칸이 아니라 '모름' — 엑셀에서 0 으로 더해지지 않게
+        r.totalWeightKg ?? (r.weightMissing > 0 ? "모름" : ""),
+        r.carrier, r.invoiceNo, r.status
       ])
     );
 
@@ -328,7 +350,8 @@ export const DashboardOutbound = () => {
         {tray.any ? (
           <div className="out-tray">
             <span className="out-tray-sum">
-              <b>{tray.count}건 선택</b> · {tray.lineCount}라인 · {num(tray.qty)} EA
+              <b>{tray.count}건 선택</b> · {tray.lineCount}라인 · {num(tray.qty)} EA ·{" "}
+              {tray.weightKg != null ? `${num(Math.round(tray.weightKg * 10) / 10)} kg` : <span className="out-weight-unknown">무게 모름</span>}
             </span>
             <span className={`ds-badge ${tray.mixed ? "warning" : "info"}`}>{tray.regions.join(" + ")}</span>
             {tray.mixed ? <span className="out-tray-warn">권역이 섞여 있습니다 — 배차 시 분리됩니다.</span> : null}
@@ -362,6 +385,7 @@ export const DashboardOutbound = () => {
                 <th>권역</th>
                 <th>요청일</th>
                 <th className="num">수량</th>
+                <th className="num">중량</th>
                 <th>진행</th>
                 <th>상태</th>
                 <th className="out-act-col rt-actions">처리</th>
@@ -398,6 +422,9 @@ export const DashboardOutbound = () => {
                     </td>
                     <td className="out-date">{(row.scheduledDate ?? "").slice(5)}</td>
                     <td className="num">{num(row.qty)}</td>
+                    <td className="num">
+                      <WeightCell row={row} />
+                    </td>
                     <td className="out-prog">
                       <span className="out-prog-text">
                         {prog.done}/{prog.total || "-"}
@@ -442,7 +469,7 @@ export const DashboardOutbound = () => {
               })}
               {!paged.length && !loading ? (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <div className="nx-empty">조건에 맞는 출고 요청이 없습니다.</div>
                   </td>
                 </tr>

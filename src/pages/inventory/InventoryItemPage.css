@@ -180,8 +180,44 @@
   font-size: 12px;
 }
 
+/* 물류 제원 — 미등록은 눈에 띄게(배차 합계를 '모름'으로 만드는 값) */
+.item-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.item-spec-missing {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 4px;
+  border: 1px dashed var(--c-warning-line); color: var(--c-warning-ink);
+  font-size: 11px; font-weight: 700;
+}
+.item-spec-btn {
+  height: 28px; padding: 0 10px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.item-spec-btn:hover { background: var(--surface-2); border-color: var(--border-strong); }
+
+/* 필터 — 중량 미등록만 */
+.item-check {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px;
+  font-size: 12px !important; font-weight: 600 !important; color: var(--ink) !important;
+}
+.item-check input { width: 16px; height: 16px; }
+.item-check b { font-variant-numeric: tabular-nums; }
+.item-check b.is-warn { color: var(--c-warning-ink); }
+
+/* 제원 입력 창 */
+.item-spec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.item-spec-grid .ds-field { margin-bottom: 0; }
+.item-spec-grid input { width: 100%; min-width: 0; box-sizing: border-box; }
+.item-spec-hint { margin: 10px 0 0; font-size: 12px; line-height: 1.55; color: var(--ink-muted); }
+
 @media (max-width: 1200px) {
   .item-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+@media (max-width: 640px) {
+  .item-filters { grid-template-columns: minmax(0, 1fr); }
+  .item-spec-grid { grid-template-columns: minmax(0, 1fr); }
+  /* 16px 미만이면 iOS 가 입력할 때 화면을 확대한다 */
+  .item-spec-grid input { min-height: 42px; font-size: 16px; }
 }
