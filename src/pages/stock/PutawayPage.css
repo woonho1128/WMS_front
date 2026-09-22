@@ -34,6 +34,24 @@
   box-sizing: border-box;
 }
 
+/* 고른 칸에 지금 든 것 — 이미 있어도 넣을 수 있다, 무엇과 섞이는지만 보인다 */
+.pa-contents { display: grid; gap: 6px; }
+.pa-contents-list {
+  display: grid; gap: 3px;
+  padding: 8px 10px; border-radius: 8px;
+  background: var(--surface-2); border: 1px solid var(--border-soft);
+  font-size: 12px;
+}
+.pa-contents-head { font-size: 11px; font-weight: 800; color: var(--ink-faint); }
+.pa-contents-empty { color: var(--ink-muted); }
+.pa-contents-row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.pa-contents-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--ink); }
+.pa-contents-lot { flex: 0 0 auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+.pa-contents-row b { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.pa-contents-row b small { font-weight: 600; color: var(--ink-faint); }
+/* 격납하려는 품목과 같은 줄 */
+.pa-contents-row.is-same .pa-contents-name { color: var(--primary-ink); }
+
 /* 폰: 로케이션 고르는 칸을 한 줄 통째로 — 한 줄에 셋을 넣으면 셀렉트가 99px 라
    "로케이션 선…" 으로 잘리고 라벨이 세 줄로 꺾였다 (2026-09-22). 수량 · 삭제는 다음 줄 */
 @media (max-width: 640px) {

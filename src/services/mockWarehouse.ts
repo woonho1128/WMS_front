@@ -374,6 +374,45 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       });
     });
 
+    // 혼적 예시 — 파레트 자리 하나에 품목 여러 종 (2026-09-22 현업 회의 9번 "이미 있어도 넣을 수 있게").
+    // 1단(바닥 단)은 어느 구역이든 채워져 있어 코드가 흔들리지 않는다. 원래 품목을 파레트 절반으로 줄이고
+    // 다른 품목을 조금씩 얹어 칸 하나(1파레트 자리)를 넘지 않게 한다. 시드 난수는 쓰지 않는다(나머지 시드는 그대로).
+    const MIXED_SEED: Array<{ code: string; extra: Array<[string, number]> }> = [
+      { code: "B-05", extra: [["SKU-13002", 0.3]] },
+      { code: "C-06", extra: [["SKU-30245", 0.35]] },
+      { code: "D-11", extra: [["SKU-31010", 0.25], ["SKU-40015", 0.2]] },
+      { code: "G-06", extra: [["SKU-30120", 0.3]] }
+    ];
+    MIXED_SEED.forEach(({ code, extra }) => {
+      const base = ctx.stocks().find((stock) => stock.locationCode === code);
+      if (!base) return;
+      const baseQty = Math.max(1, Math.round(uppOf(base.itemCode) * 0.45));
+      base.onHand = baseQty;
+      base.allocated = Math.min(Number(base.allocated) || 0, baseQty);
+      base.available = base.stockStatus === "AVAILABLE" ? baseQty - base.allocated : 0;
+      extra.forEach(([extraCode, share], idx) => {
+        // 원래 품목과 같으면 혼적이 아니다 — 다른 부자재로
+        const itemCode = extraCode === base.itemCode ? "SKU-30120" : extraCode;
+        const item = itemOf(itemCode)!;
+        const onHand = Math.max(1, Math.round(uppOf(itemCode) * share));
+        const receivedDate = shiftDate(String(base.receivedDate), -(3 + idx * 4));
+        ctx.stocks().push({
+          ...base,
+          stockId: ctx.nextStockId(),
+          itemCode,
+          itemName: item.itemName,
+          lotNo: `LOT${receivedDate.slice(2).replace(/-/g, "")}-${pad(lotSeq++, 4)}`,
+          stockStatus: "AVAILABLE",
+          receivedDate,
+          onHand,
+          allocated: 0,
+          available: onHand,
+          safetyStock: item.safetyStock,
+          unit: item.unit
+        });
+      });
+    });
+
     // 랙 없는 장소 (입고장 · 출고장 · 사무실) — 자유형 예시 포함
     ICHEON_PLACES.forEach((place) => {
       ctx.zones.push({
@@ -482,6 +521,9 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
   const locationRow = (loc: AnyRecord) => {
     const zone = zoneOf(loc.zoneId);
     const rack = rackOf(loc.rackId);
+    const live = liveStocksAt(loc.code);
+    // 품목 이름은 겹치지 않게, 가나다순 (서버 GROUP_CONCAT DISTINCT … ORDER BY 와 같게)
+    const names = Array.from(new Set(live.map((row) => String(row.itemName)))).sort((a, b) => a.localeCompare(b, "ko"));
     return {
       ...loc,
       warehouseId: zone?.warehouseId ?? warehouseByName(loc.warehouseName)?.id ?? null,
@@ -491,7 +533,11 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
       maxWeightKg: loc.maxWeightKg ?? null,
       rackMaxLoadKg: rack?.maxLoadKg ?? null,
       palletSpec: rack?.palletSpec ?? null,
-      stockCount: liveStocksAt(loc.code).length
+      stockCount: live.length,
+      /** 든 품목 종류 수 — 2 이상이면 혼적 */
+      skuCount: new Set(live.map((row) => row.itemCode)).size,
+      /** 든 품목 이름 ", " 로 이음 (표시용) — 비었으면 null */
+      skuNames: names.length ? names.join(", ") : null
     };
   };
 

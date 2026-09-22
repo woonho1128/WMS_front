@@ -19,6 +19,7 @@ import {
   COLOR_MODE_LABEL,
   LOCATION_TYPE_LABEL,
   bucketOf,
+  isMixed,
   legendFor,
   purposeMeta,
   slotColorOf,
@@ -278,6 +279,14 @@ export const Warehouse3D = ({
   const floorObjects = useMemo(() => layout.objects.filter((object) => object.floor === floor), [layout.objects, floor]);
   const floorVehicles = useMemo(() => layout.vehicles.filter((vehicle) => vehicle.floor === floor), [layout.vehicles, floor]);
   const slotById = useMemo(() => new Map(layout.slots.map((slot) => [slot.locationId, slot])), [layout.slots]);
+  /** 구역별 혼적 칸 수 — 혼적 색 기준일 때 구역 라벨에 */
+  const mixedByZone = useMemo(() => {
+    const counts = new Map<number, number>();
+    layout.slots.forEach((slot) => {
+      if (isMixed(slot)) counts.set(slot.zoneId, (counts.get(slot.zoneId) ?? 0) + 1);
+    });
+    return counts;
+  }, [layout.slots]);
   const highlightSet = useMemo(() => (highlightIds && highlightIds.length ? new Set(highlightIds) : null), [highlightIds]);
 
   // 네이티브 이벤트 핸들러가 항상 최신 값을 읽도록
@@ -1246,7 +1255,8 @@ export const Warehouse3D = ({
       emptyMat.opacity = dropValidity ? (theme === "dark" ? 0.42 : 0.55) : theme === "dark" ? 0.3 : 0.45;
       visual.emptySlots.forEach((slot, idx) => {
         if (!slot.active) color.set(INACTIVE_COLOR).lerp(new THREE.Color(pal.slot), 0.5);
-        else if (colorMode === "util") color.set(pal.slot);
+        // 빈 칸은 섞일 것이 없다 — 혼적 모드도 적치율 모드처럼 바탕색
+        else if (colorMode === "util" || colorMode === "mixed") color.set(pal.slot);
         else color.set(slotColorOf(slot, zone.util, colorMode)).lerp(new THREE.Color(pal.slot), 0.45);
         if (highlightSet) color.lerp(dim, highlightSet.has(slot.locationId) ? 0 : 0.6);
         if (highlightSet?.has(slot.locationId)) color.set(0xffffff);
@@ -1386,10 +1396,18 @@ export const Warehouse3D = ({
         {floorZones.map((zone) => {
           const bucket = bucketOf(zone.util);
           const meta = purposeMeta(zone.purpose);
+          const mixedCount = mixedByZone.get(zone.id) ?? 0;
+          const tone = !meta.racks
+            ? "place"
+            : colorMode === "util"
+              ? bucket.key
+              : colorMode === "mixed" && mixedCount > 0
+                ? "busy"
+                : "neutral";
           return (
             <div
               key={zone.id}
-              className={`wh3d-label tone-${!meta.racks ? "place" : colorMode === "util" ? bucket.key : "neutral"}${selection.zoneId === zone.id ? " is-active" : ""}`}
+              className={`wh3d-label tone-${tone}${selection.zoneId === zone.id ? " is-active" : ""}`}
               style={!meta.racks ? { borderColor: meta.token } : undefined}
               ref={(el) => {
                 if (el) labelRefs.current.set(zone.id, el);
@@ -1399,7 +1417,7 @@ export const Warehouse3D = ({
               <span className="wh3d-label-name">{zone.name}</span>
               {meta.racks ? (
                 <>
-                  <span className="wh3d-label-util">{zone.util}%</span>
+                  <span className="wh3d-label-util">{colorMode === "mixed" ? `혼적 ${mixedCount}칸` : `${zone.util}%`}</span>
                   <span className="wh3d-label-code">{zone.codeRange}</span>
                 </>
               ) : (
@@ -1418,6 +1436,7 @@ export const Warehouse3D = ({
               <b>{labelSlot.code}</b>
               <span>
                 {LOCATION_TYPE_LABEL[labelSlot.locationType]} · {labelSlot.pallets > 0 ? `${labelSlot.pallets} / ${labelSlot.capacity} 파레트` : "빈 슬롯"}
+                {isMixed(labelSlot) ? ` · 혼적 ${labelSlot.skuCount}종` : ""}
               </span>
             </>
           ) : null}

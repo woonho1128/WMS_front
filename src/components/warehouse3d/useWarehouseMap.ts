@@ -20,7 +20,7 @@ const COLOR_KEY = "wms.map.colorMode";
 const readColorMode = (): ColorMode => {
   try {
     const saved = window.localStorage.getItem(COLOR_KEY);
-    return saved === "type" || saved === "turnover" ? saved : "util";
+    return saved === "type" || saved === "turnover" || saved === "mixed" ? saved : "util";
   } catch {
     return "util";
   }

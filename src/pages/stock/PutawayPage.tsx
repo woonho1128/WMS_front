@@ -25,7 +25,40 @@ type PutawayRow = {
   qty: number;
 };
 
-type LocationOption = { id: number; code: string; status: string; locationType: string; zoneName: string };
+/** 로케이션에 지금 든 재고 한 줄 */
+type LocationStock = { itemCode: string; itemName: string; lotNo: string; onHand: number; unit: string };
+
+type LocationOption = {
+  id: number;
+  code: string;
+  status: string;
+  locationType: string;
+  zoneName: string;
+  /** 든 품목 종류 수 · 지금 든 재고 — 옛 서버면 없다(그때는 아무것도 표시하지 않는다. '빈 칸'으로 넘겨짚지 않는다) */
+  skuCount?: number;
+  stocks?: LocationStock[];
+};
+
+/**
+ * 격납할 칸에 지금 무엇이 들어 있나 — 이미 재고가 있어도 넣을 수 있다(막지 않음).
+ * 다른 품목이 있으면 혼적이 된다는 것만 미리 알린다 (2026-09-22 현업 회의 9번).
+ */
+const contentsOf = (loc: LocationOption | undefined, itemCode: string) => {
+  const stocks = loc?.stocks ?? [];
+  const otherKinds = new Set(stocks.filter((stock) => stock.itemCode !== itemCode).map((stock) => stock.itemCode)).size;
+  const sameItem = stocks.filter((stock) => stock.itemCode === itemCode);
+  return { known: loc?.stocks != null, stocks, otherKinds, sameItem };
+};
+
+/** 선택 목록 한 줄 끝에 붙는 내용 요약 — "이미 섞인 칸"과 "넣으면 섞이는 칸"을 가른다 */
+const optionNote = (loc: LocationOption, itemCode: string) => {
+  const { known, stocks, otherKinds } = contentsOf(loc, itemCode);
+  if (!known) return "";
+  if (!stocks.length) return " — 빈 칸";
+  if (!otherKinds) return " — 같은 품목";
+  const kinds = new Set(stocks.map((stock) => stock.itemCode)).size;
+  return kinds >= 2 ? ` — 이미 혼적 ${kinds}종` : " — 다른 품목 · 넣으면 혼적";
+};
 
 /** 격납 대상으로 배정 가능한 로케이션 유형 (직출 포함) */
 const PUTAWAY_TARGET_TYPES = ["PICKING", "RESERVE", "CROSS_DOCK"];
@@ -277,7 +310,7 @@ export const PutawayPage = () => {
                       return (
                         <option key={l.id} value={l.id} disabled={takenByOther}>
                           {l.code} · {l.zoneName} ({LOC_TYPE_LABEL[l.locationType] ?? l.locationType})
-                          {takenByOther ? " — 사용중" : ""}
+                          {takenByOther ? " — 이 격납에서 이미 고름" : target ? optionNote(l, target.itemCode) : ""}
                         </option>
                       );
                     })}
@@ -303,6 +336,7 @@ export const PutawayPage = () => {
                   삭제
                 </button>
               </div>
+              {loc && target ? <LocationContents loc={loc} itemCode={target.itemCode} /> : null}
               <label className="ds-field">
                 <span>로케이션 QR 확인 (스캔 또는 코드 입력)</span>
                 <input
@@ -349,5 +383,45 @@ export const PutawayPage = () => {
         ) : null}
       </Modal>
     </section>
+  );
+};
+
+/** 고른 칸에 지금 든 것 + 혼적 안내 (막지 않는다) */
+const LocationContents = ({ loc, itemCode }: { loc: LocationOption; itemCode: string }) => {
+  const { known, stocks, otherKinds, sameItem } = contentsOf(loc, itemCode);
+  if (!known) return null;
+  return (
+    <div className="pa-contents">
+      <div className="pa-contents-list">
+        <span className="pa-contents-head">지금 든 것</span>
+        {stocks.length === 0 ? (
+          <span className="pa-contents-empty">빈 칸</span>
+        ) : (
+          stocks.map((stock, idx) => (
+            // 같은 품목 · LOT 이 상태(가용/불량)만 달리 두 줄일 수 있어 순번을 섞는다
+            <span key={`${stock.itemCode}-${stock.lotNo}-${idx}`} className={`pa-contents-row${stock.itemCode === itemCode ? " is-same" : ""}`}>
+              <span className="pa-contents-name">{stock.itemName}</span>
+              <span className="pa-contents-lot">{stock.lotNo}</span>
+              <b>
+                {stock.onHand.toLocaleString()} <small>{stock.unit}</small>
+              </b>
+            </span>
+          ))
+        )}
+      </div>
+      {otherKinds > 0 ? (
+        <div className="ds-callout warning" style={{ margin: 0 }}>
+          <Icon name="alert" size={16} />
+          <span>
+            <b>혼적</b> — 다른 품목 {otherKinds}종이 든 칸입니다. 넣을 수는 있고, 넣으면 한 칸에 {otherKinds + 1}종이 섞입니다
+            (3D · 로케이션 목록에 혼적으로 표시).
+          </span>
+        </div>
+      ) : sameItem.length > 0 ? (
+        <div className="ds-callout info" style={{ margin: 0 }}>
+          <span>같은 품목이 이미 있습니다 — LOT 이 같으면 합쳐지고, 다르면 LOT 별로 따로 쌓입니다.</span>
+        </div>
+      ) : null}
+    </div>
   );
 };

@@ -3,6 +3,7 @@ import {
   UTIL_BUCKETS,
   bucketOf,
   formatKg,
+  isMixed,
   isOverweight,
   slotFillPct,
   type LayoutRack,
@@ -162,12 +163,14 @@ const RowCells = ({
       const pct = slotFillPct(slot);
       const empty = slot.pallets <= 0;
       const over = isOverweight(slot);
+      const mixed = isMixed(slot);
       const bucket = bucketOf(pct);
       const classes = [
         "rf-cell",
         empty ? "is-empty" : "is-filled",
         slot.active ? "" : "is-off",
         over ? "is-over" : "",
+        mixed ? "is-mixed" : "",
         slot.locationId === selectedId ? "is-sel" : "",
         highlightIds?.has(slot.locationId) ? "is-hit" : ""
       ]
@@ -175,7 +178,7 @@ const RowCells = ({
         .join(" ");
       const title = [
         `${slot.code} · ${bay}연 ${level}단`,
-        empty ? "공실" : `채움 ${pct}% (${slot.pallets}/${slot.capacity} 파레트) · SKU ${slot.skuCount}`,
+        empty ? "공실" : `채움 ${pct}% (${slot.pallets}/${slot.capacity} 파레트) · ${mixed ? `혼적 ${slot.skuCount}종` : `품목 ${slot.skuCount}종`}`,
         `무게 ${formatKg(slot.loadKg)}${slot.maxLoadKg != null ? ` / ${formatKg(slot.maxLoadKg)}` : ""}kg${over ? " — 허용 하중 초과" : ""}`,
         slot.active ? "" : "사용중지"
       ]
@@ -204,6 +207,12 @@ const RowCells = ({
               !
             </em>
           ) : null}
+          {/* 혼적 — 품목 수. 무게 초과(!)는 오른쪽 위, 이건 왼쪽 위 */}
+          {mixed ? (
+            <em className="rf-mix" aria-label={`혼적 ${slot.skuCount}종`}>
+              {slot.skuCount}
+            </em>
+          ) : null}
         </button>
       );
     })}
@@ -227,6 +236,10 @@ export const RackFaceLegend = () => (
     <span>
       <i className="rf-swatch is-over" />
       무게 초과
+    </span>
+    <span>
+      <i className="rf-swatch is-mixed">2</i>
+      혼적 (품목 수)
     </span>
     <span>
       <i className="rf-swatch is-void" />

@@ -318,7 +318,21 @@ function asWarehouseLocations(warehouseId: number) {
   const wh = warehouses.find((w) => w.id === warehouseId);
   return locations
     .filter((l) => !wh || l.warehouseName === wh.name)
-    .map((l) => ({ id: l.id, code: l.code, status: l.status, locationType: l.locationType, zoneName: l.zoneName }));
+    .map((l) => {
+      // 지금 든 재고 — 격납할 칸을 고를 때 무엇과 섞이는지 보여 준다 (서버 LocationService.optionsFor 와 같은 모양)
+      const inside = stocks
+        .filter((s) => s.locationCode === l.code && Number(s.onHand) > 0)
+        .map((s) => ({ itemCode: s.itemCode, itemName: s.itemName, lotNo: s.lotNo, onHand: Number(s.onHand), unit: s.unit }));
+      return {
+        id: l.id,
+        code: l.code,
+        status: l.status,
+        locationType: l.locationType,
+        zoneName: l.zoneName,
+        skuCount: new Set(inside.map((s) => s.itemCode)).size,
+        stocks: inside
+      };
+    });
 }
 
 function dispatchTargets(region: string) {

@@ -126,6 +126,7 @@
 .wmp-kpis b { font-size: 16px; font-weight: 800; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
 .wmp-kpis b small { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); }
 .wmp-kpis b.is-over { color: var(--c-danger-ink); }
+.wmp-kpis b.is-mixed { color: var(--c-warning-ink); }
 
 /* 무게 · 파레트 규격 */
 .wmp-load {

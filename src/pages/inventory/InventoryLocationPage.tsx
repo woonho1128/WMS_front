@@ -26,6 +26,10 @@ type LocationRow = {
   warehouseId: number | null;
   floor: string | null;
   stockCount: number;
+  /** 든 품목 종류 수 — 2 이상이면 혼적 */
+  skuCount: number;
+  /** 든 품목 이름 ", " 로 이은 것 (표시용) — 비었으면 null */
+  skuNames: string | null;
   rackId: number | null;
   rackCode: string | null;
   bay: number | null;
@@ -61,6 +65,24 @@ const weightCell = (r: LocationRow) =>
     "-"
   );
 
+/** 보관 품목 칸 — 비었으면 "-", 한 품목이면 이름, 섞였으면 혼적 배지 + 이름들 */
+const stockCell = (r: LocationRow) => {
+  if (!r.skuCount) return <span className="lp-weight-inherit">-</span>;
+  if (r.skuCount === 1) return <span className="lp-sku-names" title={r.skuNames ?? ""}>{r.skuNames}</span>;
+  return (
+    <span className="lp-sku-mixed" title={r.skuNames ?? ""}>
+      <StatusBadge tone="warning">혼적 {r.skuCount}종</StatusBadge>
+      <span className="lp-sku-names">{r.skuNames}</span>
+    </span>
+  );
+};
+
+/** 보관 상태 필터 — 혼적만 따로 볼 수 있게 (2026-09-22 현업 회의 9번) */
+type StockFilter = "전체" | "empty" | "single" | "mixed";
+const STOCK_FILTER_LABEL: Record<StockFilter, string> = { 전체: "전체", empty: "비어 있음", single: "한 품목", mixed: "혼적 (2종 이상)" };
+const matchStockFilter = (r: LocationRow, filter: StockFilter) =>
+  filter === "전체" || (filter === "empty" ? r.skuCount === 0 : filter === "single" ? r.skuCount === 1 : r.skuCount >= 2);
+
 type ZoneOption = { id: number; code: string; name: string; warehouseName: string; warehouseId?: number | null; floor?: string | null; purpose?: string | null };
 
 type Tab = "list" | "capa" | "layout";
@@ -92,6 +114,7 @@ export const InventoryLocationPage = () => {
 
   const [selWarehouse, setSelWarehouse] = useState("전체");
   const [selType, setSelType] = useState("전체");
+  const [selStock, setSelStock] = useState<StockFilter>("전체");
   const [keyword, setKeyword] = useState("");
   const [checked, setChecked] = useState<number[]>([]);
   const [bulkType, setBulkType] = useState("PICKING");
@@ -172,10 +195,12 @@ export const InventoryLocationPage = () => {
     return rows.filter((r) => {
       if (selWarehouse !== "전체" && r.warehouseName !== selWarehouse) return false;
       if (selType !== "전체" && r.locationType !== selType) return false;
-      if (kw && !`${r.code} ${r.zoneName}`.toLowerCase().includes(kw)) return false;
+      if (!matchStockFilter(r, selStock)) return false;
+      // 품목 이름으로도 찾는다 — "이 품목이 어느 칸에 있나"
+      if (kw && !`${r.code} ${r.zoneName} ${r.skuNames ?? ""}`.toLowerCase().includes(kw)) return false;
       return true;
     });
-  }, [rows, selWarehouse, selType, keyword]);
+  }, [rows, selWarehouse, selType, selStock, keyword]);
 
   const summary = useMemo(() => {
     const by = (t: string) => rows.filter((r) => r.locationType === t).length;
@@ -184,11 +209,12 @@ export const InventoryLocationPage = () => {
       picking: by("PICKING"),
       reserve: by("RESERVE"),
       bad: by("DEFECT") + by("DAMAGED"),
+      mixed: rows.filter((r) => r.skuCount >= 2).length,
       unplaced: rows.filter((r) => !r.placement).length
     };
   }, [rows]);
 
-  useEffect(() => setPage(1), [selWarehouse, selType, keyword]);
+  useEffect(() => setPage(1), [selWarehouse, selType, selStock, keyword]);
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -277,7 +303,7 @@ export const InventoryLocationPage = () => {
   const exportCsv = () =>
     downloadCsv(
       `로케이션_${new Date().toISOString().slice(0, 10)}`,
-      ["창고", "Zone", "로케이션코드", "유형", "상태", "배치", "적재한도", "최대무게(kg)", "최대무게 기준", "파레트규격", "재고건수", "사용여부"],
+      ["창고", "Zone", "로케이션코드", "유형", "상태", "배치", "적재한도", "최대무게(kg)", "최대무게 기준", "파레트규격", "재고건수", "품목 수", "보관 품목", "사용여부"],
       filtered.map((r) => [
         r.warehouseName,
         r.zoneName,
@@ -290,6 +316,8 @@ export const InventoryLocationPage = () => {
         r.maxWeightKg != null ? "로케이션" : r.rackMaxLoadKg != null ? "랙" : "",
         r.palletSpec ?? "",
         r.stockCount,
+        r.skuCount,
+        r.skuNames ?? "",
         r.active ? "사용" : "미사용"
       ])
     );
@@ -364,13 +392,24 @@ export const InventoryLocationPage = () => {
         <article className="app-surface outbound-summary-card"><span>피킹</span><strong>{summary.picking}개</strong></article>
         <article className="app-surface outbound-summary-card"><span>보충</span><strong>{summary.reserve}개</strong></article>
         <article className="app-surface outbound-summary-card"><span>불량/파손</span><strong>{summary.bad}개</strong></article>
+        {/* 혼적 — 누르면 혼적만 (다시 누르면 전체) */}
+        <button
+          type="button"
+          className={`app-surface outbound-summary-card lp-mix-card${selStock === "mixed" ? " is-on" : ""}${summary.mixed ? " has-mixed" : ""}`}
+          onClick={() => setSelStock((cur) => (cur === "mixed" ? "전체" : "mixed"))}
+          aria-pressed={selStock === "mixed"}
+          title={selStock === "mixed" ? "전체 보기" : "품목이 2종 이상 섞인 로케이션만 보기"}
+        >
+          <span>혼적 (2종 이상)</span>
+          <strong>{summary.mixed}개</strong>
+        </button>
       </section>
 
       <DashboardCard className="outbound-filter-card" title="로케이션 관리">
         <div className="outbound-filter-grid">
           <label className="outbound-keyword">
-            <span>검색 (코드/Zone)</span>
-            <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="로케이션 코드 / Zone" />
+            <span>검색 (코드/Zone/품목)</span>
+            <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="로케이션 코드 / Zone / 품목명" />
           </label>
           <label>
             <span>창고</span>
@@ -383,6 +422,14 @@ export const InventoryLocationPage = () => {
             <select value={selType} onChange={(e) => setSelType(e.target.value)}>
               <option value="전체">전체</option>
               {TYPE_KEYS.map((t) => <option key={t} value={t}>{TYPE_META[t].label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>보관</span>
+            <select value={selStock} onChange={(e) => setSelStock(e.target.value as StockFilter)}>
+              {(Object.keys(STOCK_FILTER_LABEL) as StockFilter[]).map((key) => (
+                <option key={key} value={key}>{STOCK_FILTER_LABEL[key]}</option>
+              ))}
             </select>
           </label>
           <div className="outbound-filter-actions">
@@ -432,15 +479,16 @@ export const InventoryLocationPage = () => {
                 <th className="num">적재한도</th>
                 <th className="num">최대 무게</th>
                 <th className="num">재고건수</th>
+                <th>보관 품목</th>
                 <th>사용여부</th>
                 <th className="rt-actions" style={{ textAlign: "right" }}>작업</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={12} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={13} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={12} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>조건에 맞는 로케이션이 없습니다.</td></tr>
+                <tr><td colSpan={13} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>조건에 맞는 로케이션이 없습니다.</td></tr>
               ) : (
                 pageRows.map((r) => {
                   const meta = TYPE_META[r.locationType];
@@ -456,6 +504,7 @@ export const InventoryLocationPage = () => {
                       <td className="num">{r.maxQty != null ? r.maxQty.toLocaleString() : "-"}</td>
                       <td className="num">{weightCell(r)}</td>
                       <td className="num">{r.stockCount}</td>
+                      <td className="lp-sku-cell">{stockCell(r)}</td>
                       <td>{r.active ? <StatusBadge tone="success">사용</StatusBadge> : <StatusBadge tone="gray">미사용</StatusBadge>}</td>
                       <td>
                         <div className="lp-row-actions">

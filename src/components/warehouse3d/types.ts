@@ -337,12 +337,13 @@ export const LOCATION_TYPE_LABEL: Record<LocationType, string> = {
 
 /* ---------- 색 기준 — 한 번에 한 가지 의미만 칠한다 ---------- */
 
-export type ColorMode = "util" | "type" | "turnover";
+export type ColorMode = "util" | "type" | "turnover" | "mixed";
 
 export const COLOR_MODE_LABEL: Record<ColorMode, string> = {
   util: "적치율",
   type: "로케이션 유형",
-  turnover: "출고 빈도"
+  turnover: "출고 빈도",
+  mixed: "혼적 (품목 수)"
 };
 
 export type LegendEntry = { key: string; label: string; color: number; token: string };
@@ -367,8 +368,24 @@ export const TURNOVER_LEGEND: Array<LegendEntry & { min: number }> = [
 export const turnoverOf = (outFreq90: number) =>
   [...TURNOVER_LEGEND].reverse().find((entry) => outFreq90 >= entry.min) ?? TURNOVER_LEGEND[0];
 
+/**
+ * 혼적 — 칸 하나에 품목이 몇 종 들어 있나 (2026-09-22 현업 회의 9번 "한눈에 보이게").
+ * 한 품목은 차분한 회색으로 두어 섞인 칸만 튀게 한다. 같은 품목의 LOT 여러 개는 혼적으로 보지 않는다.
+ */
+export const MIXED_LEGEND: Array<LegendEntry & { min: number }> = [
+  { key: "single", label: "한 품목", min: 1, color: 0x94a3b8, token: "var(--ink-muted)" },
+  { key: "mix2", label: "혼적 2종", min: 2, color: 0xf59e0b, token: "var(--c-warning)" },
+  { key: "mix3", label: "혼적 3종+", min: 3, color: 0xef4444, token: "var(--c-danger)" }
+];
+
+export const mixedOf = (skuCount: number) =>
+  [...MIXED_LEGEND].reverse().find((entry) => skuCount >= entry.min) ?? MIXED_LEGEND[0];
+
+/** 품목이 2종 이상 섞인 칸 */
+export const isMixed = (slot: Pick<LayoutSlot, "skuCount">) => slot.skuCount >= 2;
+
 export const legendFor = (mode: ColorMode): LegendEntry[] =>
-  mode === "type" ? TYPE_LEGEND : mode === "turnover" ? TURNOVER_LEGEND : UTIL_BUCKETS;
+  mode === "type" ? TYPE_LEGEND : mode === "turnover" ? TURNOVER_LEGEND : mode === "mixed" ? MIXED_LEGEND : UTIL_BUCKETS;
 
 /* ---------- 칸 하나의 숫자 — 랙 정면 격자 · 옆 패널 · 우클릭 메뉴가 같이 쓴다 ---------- */
 
@@ -383,8 +400,9 @@ export const isOverweight = (slot: Pick<LayoutSlot, "loadKg" | "maxLoadKg">) =>
 export const formatKg = (kg: number) => (kg >= 100 ? Math.round(kg).toLocaleString() : String(Math.round(kg * 10) / 10));
 
 /** 슬롯 한 칸의 색 — util 모드는 구역 적치율 색을 따른다(슬롯 1칸은 비었거나 찼거나라 구역 단위가 의미 있다) */
-export const slotColorOf = (slot: Pick<LayoutSlot, "locationType" | "outFreq90">, zoneUtil: number, mode: ColorMode) => {
+export const slotColorOf = (slot: Pick<LayoutSlot, "locationType" | "outFreq90" | "skuCount">, zoneUtil: number, mode: ColorMode) => {
   if (mode === "type") return (TYPE_LEGEND.find((entry) => entry.key === slot.locationType) ?? TYPE_LEGEND[0]).color;
   if (mode === "turnover") return turnoverOf(slot.outFreq90).color;
+  if (mode === "mixed") return mixedOf(slot.skuCount).color;
   return bucketOf(zoneUtil).color;
 };

@@ -230,6 +230,8 @@ const LocationDetail = ({
   const { detail, layout, selectedZone } = map;
   const rackSlots: LayoutSlot[] = detail?.rack && layout ? layout.slots.filter((slot) => slot.rackId === detail.rack!.id) : [];
   const typeEntry = detail ? TYPE_LEGEND.find((entry) => entry.key === detail.location.locationType) : undefined;
+  /** 이 칸에 든 품목 종류 — 2종 이상이면 혼적 */
+  const skuKinds = detail ? new Set(detail.stocks.map((stock) => stock.itemCode)).size : 0;
 
   return (
     <div className="wmp-detail">
@@ -265,6 +267,7 @@ const LocationDetail = ({
               </span>
               {detail.location.active ? null : <span className="ds-badge gray">사용중지</span>}
               {detail.location.warehouseType === "외주" ? <span className="ds-badge consign">외주</span> : null}
+              {skuKinds >= 2 ? <span className="ds-badge warning">혼적 {skuKinds}종</span> : null}
               {onOpenActions && detail.rack ? (
                 <button type="button" className="wmp-actions-btn" onClick={onOpenActions} title="보충·이동·조정·피킹 대기 주문 (맵에서 우클릭과 같음)">
                   <Icon name="dots" size={14} />
@@ -293,9 +296,9 @@ const LocationDetail = ({
             </div>
             <div>
               <span>보관 SKU</span>
-              <b>
-                {new Set(detail.stocks.map((stock) => stock.itemCode)).size}
-                <small> 종</small>
+              <b className={skuKinds >= 2 ? "is-mixed" : ""}>
+                {skuKinds}
+                <small> 종{skuKinds >= 2 ? " · 혼적" : ""}</small>
               </b>
             </div>
             <div>
