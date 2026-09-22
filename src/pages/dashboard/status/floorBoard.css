@@ -397,3 +397,66 @@
   .fb-stage { flex: 1 1 28%; }
   .fb-clock { margin-left: 0; }
 }
+
+/* ============================================================
+   폰 — 한 화면에 안 넣는다. 판이 내용 높이대로 늘어나고 페이지가 스크롤한다.
+   ------------------------------------------------------------
+   TV 배치(높이 고정 · 스크롤 없음 · 좌우/위아래 2칸)를 폰의 636px 높이에 그대로 쓰면
+   입고 칸이 넘쳐 출고 칸 위로 겹친다(2026-09-22 지적). 그래서 폰에서는:
+   - size 컨테이너 → inline-size 컨테이너 (높이를 내용에 맡긴다. 글자 사다리는 폭 기준으로 계속 산다)
+   - 입고 · 출고 · 알림을 차례로 쌓고, 목록 줄은 제 높이대로 (줄 수는 ROWS_PHONE 로 고정)
+   ============================================================ */
+@media (max-width: 640px) {
+  .fb,
+  .fb.is-full {
+    container-type: inline-size;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .fb-top { gap: 6px 10px; }
+  .fb-top > * { min-width: 0; }
+  .fb-brand { flex: 1 1 100%; }
+  .fb-clock { margin-left: 0; }
+  /* 기준 시각 설명은 폰 폭에 안 들어간다 — 점 + LIVE 만 */
+  .fb-live small { display: none; }
+  .fb-fullbtn { margin-left: auto; }
+
+  /* 세로 쌓기 (inline-size 컨테이너라 orientation 질의가 안 먹으므로 직접) */
+  .fb-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .fb-side { grid-template-rows: none; }
+
+  .fb-stages { flex-wrap: wrap; row-gap: 12px; }
+  .fb-stage { flex: 1 1 30%; padding: 0.55em 0.2em; }
+  .fb-stage span { white-space: normal; }
+
+  .fb-list { display: block; }
+  .fb-list ul { grid-template-rows: none; grid-auto-rows: auto; }
+
+  /* 한 줄: 번호 · 단계 · (지연/배차) — 다음 줄: 진행 막대 */
+  .fb-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 9px 11px;
+  }
+  .fb-row-code { flex: 1 1 55%; min-width: 0; }
+  .fb-row-stage { order: 1; }
+  .fb-row-late,
+  .fb-row-mark { order: 2; }
+  .fb-row-num { display: none; }
+  .fb-row-bar { order: 3; flex: 1 1 100%; }
+
+  .fb-pager { padding-top: 8px; }
+
+  .fb-ticker { flex-wrap: wrap; gap: 6px 10px; }
+  .fb-ticker-body { flex: 1 1 100%; white-space: normal; }
+}

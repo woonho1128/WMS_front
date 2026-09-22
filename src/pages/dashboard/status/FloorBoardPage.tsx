@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Icon } from "../../../components/ui/Icon";
+import { useIsPhone } from "../../../shared/useIsPhone";
 import { fmt, useStatusData } from "./StatusWidgets";
 import type { AlertItem, FlowStage, InboundDashboard, OutboundDashboard, Tone } from "./statusTypes";
 import "./floorBoard.css";
@@ -25,6 +26,11 @@ const ALERT_MS = 6_000;
 const ROW_MIN_H = 44;
 const ROWS_MIN = 3;
 const ROWS_MAX = 8;
+/**
+ * 폰은 한 화면에 입고·출고를 다 못 넣으므로 판이 내용 높이대로 늘어나고 스크롤한다(floorBoard.css).
+ * 그때는 목록 칸 높이가 줄 수에 따라 바뀌어 잴 수가 없으니 줄 수를 고정한다.
+ */
+const ROWS_PHONE = 5;
 
 const pad = (value: number) => String(value).padStart(2, "0");
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -162,7 +168,9 @@ type SideProps = {
 
 const BoardSide = ({ kind, title, eyebrow, icon, total, done, notes, flag, stages, doneKey, rows, emptyText }: SideProps) => {
   const listRef = useRef<HTMLDivElement>(null);
-  const perPage = useRowsThatFit(listRef);
+  const phone = useIsPhone();
+  const fitted = useRowsThatFit(listRef);
+  const perPage = phone ? ROWS_PHONE : fitted;
   const { page, pages, slice } = usePager(rows, perPage);
   const percent = total ? Math.round((done / total) * 100) : 0;
 

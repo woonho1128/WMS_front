@@ -456,6 +456,10 @@
 .wms-board-solo .wms-tabs { display: none; }
 .wms-board-solo .wms-content { padding: 0; }
 .wms-board-solo .wms-app { height: 100vh; overflow: hidden; }
+/* 폰은 판이 한 화면에 안 들어가 스크롤해야 한다 (floorBoard.css 폰 배치) */
+@media (max-width: 640px) {
+  .wms-board-solo .wms-app { height: auto; overflow: visible; }
+}
 
 /* ============================================================
    Mobile (off-canvas)
