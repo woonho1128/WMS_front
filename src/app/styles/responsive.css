@@ -87,6 +87,12 @@
   line-height: 1.5;
 }
 
+/* 칸 안에 요소가 여럿이면(값 + 아래 보조줄 — 예: 공급처 / 창고명) 전부 값 쪽 칸에 세운다.
+   안 그러면 둘째 요소가 그리드 자동 배치로 제목 칸 아래로 떨어져 엉뚱한 데 붙는다 (2026-09-22) */
+.rt-wrap.rt-cards table tbody td > * {
+  grid-column: 2;
+}
+
 /* 라벨이 없는 열(체크박스 등)은 값만 */
 .rt-wrap.rt-cards table tbody td[data-label=""] {
   display: block;

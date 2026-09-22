@@ -1,5 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import { AlertList, ColumnChart, KpiCard, LinkButton, Panel, StackBar, StatusShell, fmt, useStatusData } from "./StatusWidgets";
+import { ResponsiveTable } from "../../../components/ui/ResponsiveTable/ResponsiveTable";
+import {
+  AlertList,
+  ColumnChart,
+  KpiCard,
+  LinkButton,
+  Panel,
+  STATUS_TABLE_CARDS,
+  StackBar,
+  StatusShell,
+  fmt,
+  useStatusData
+} from "./StatusWidgets";
 import type { StockDashboard } from "./statusTypes";
 
 /* ============================================================
@@ -33,11 +45,11 @@ export const StockStatusPage = () => {
           <div className="sd-grid">
             <Panel icon="boxes" title="재고 구성" sub="상태별 수량 · 창고별 분포" aside={<LinkButton label="실시간 재고" to="/stock/stock-realtime" />}>
               <StackBar parts={data.composition} />
-              <div className="sd-table-wrap">
+              <ResponsiveTable className="sd-table-wrap" cardsBelow={STATUS_TABLE_CARDS}>
                 <table className="data-table sd-table">
                   <thead>
                     <tr>
-                      <th>창고</th>
+                      <th className="rt-title">창고</th>
                       <th className="num">총 재고</th>
                       <th className="num">가용</th>
                       <th className="num">출고 할당</th>
@@ -63,7 +75,7 @@ export const StockStatusPage = () => {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveTable>
             </Panel>
 
             <Panel icon="alert" title="재고 알림" sub={`${data.alerts.length}건`} aside={<LinkButton label="작업 알림" to="/dashboard/work-alerts" />}>

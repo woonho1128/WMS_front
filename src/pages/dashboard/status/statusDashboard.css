@@ -145,7 +145,19 @@
 }
 
 /* 송장 · 배차 표시 */
+/* ---------- 폰: 표 → 카드 (ResponsiveTable · 기준 STATUS_TABLE_CARDS = 640px) ----------
+   카드일 때는 높이 제한 · 안쪽 스크롤 없이 펼친다 — 폰에서 스크롤 안의 스크롤은 손가락으로 쓰기 어렵다 */
+.sd-table-wrap.rt-cards { max-height: none; overflow: visible; padding: 12px; }
+.sd-table-wrap.rt-cards .sd-cell-sub,
+.sd-table-wrap.rt-cards .sd-marks small { white-space: normal; }
+.sd-table-wrap.rt-cards .sd-progress { width: 100%; min-width: 0; }
+.sd-table-wrap.rt-cards .sd-empty-row td { padding: 20px 0; }
+.sd-table-wrap.rt-cards .sd-marks-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.sd-table-wrap.rt-cards .sd-marks-inner small { display: inline; margin: 0 0 0 4px; }
+
 .sd-marks { white-space: nowrap; }
+/* 표에서는 없는 것처럼 (배지들이 칸에 바로 놓인 예전 모양 그대로) — 카드에서만 한 줄 묶음이 된다 */
+.sd-marks-inner { display: contents; }
 .sd-marks span {
   display: inline-flex; align-items: center; height: 20px; padding: 0 7px; margin-right: 4px; border-radius: var(--r-xs);
   border: 1px dashed var(--border-strong); color: var(--ink-faint); font-size: 11px; font-weight: 700;

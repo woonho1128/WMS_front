@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ResponsiveTable } from "../../../components/ui/ResponsiveTable/ResponsiveTable";
 import {
   AlertList,
   Breakdown,
@@ -9,6 +10,7 @@ import {
   LinkButton,
   Panel,
   ProgressCell,
+  STATUS_TABLE_CARDS,
   StageChip,
   StatusShell,
   fmt,
@@ -62,11 +64,11 @@ export const InboundStatusPage = () => {
               aside={<LinkButton label="입고 예정" to="/inbound/inbound-schedule" />}
             >
               <FlowStepper stages={data.stages} selected={stage} onSelect={setStage} />
-              <div className="sd-table-wrap">
+              <ResponsiveTable className="sd-table-wrap" cardsBelow={STATUS_TABLE_CARDS}>
                 <table className="data-table sd-table">
                   <thead>
                     <tr>
-                      <th>입고번호</th>
+                      <th className="rt-title">입고번호</th>
                       <th>공급처 · 창고</th>
                       <th>예정일</th>
                       <th className="num">예정수량</th>
@@ -109,7 +111,7 @@ export const InboundStatusPage = () => {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveTable>
             </Panel>
 
             <Panel icon="alert" title="입고 알림" sub={`${data.alerts.length}건 · 입고·반품`} aside={<LinkButton label="작업 알림" to="/dashboard/work-alerts" />}>

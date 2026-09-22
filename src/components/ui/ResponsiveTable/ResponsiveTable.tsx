@@ -25,21 +25,27 @@ type Props = {
   children: ReactNode;
   /** 껍데기 div 에 더 붙일 클래스 */
   className?: string;
+  /**
+   * 이 폭(px) 이하면 카드로 바꾼다. 기본 980.
+   * 화면 폭을 다 쓰는 표는 기본값이면 되고, **좁은 패널 안에 있는 표**는 낮춰 준다 —
+   * 대시보드 현황처럼 PC 에서도 패널이 780px 쯤이면 기본값으론 PC 에서도 카드가 돼 버린다.
+   */
+  cardsBelow?: number;
 };
 
-export const ResponsiveTable = ({ children, className }: Props) => {
+export const ResponsiveTable = ({ children, className, cardsBelow = CARD_MAX }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
 
   // 이 껍데기가 놓인 칸의 폭을 보고 표 ↔ 카드를 정한다 (창 크기·패널 비율이 바뀌면 다시)
   useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
-    const apply = () => root.classList.toggle("rt-cards", root.clientWidth <= CARD_MAX);
+    const apply = () => root.classList.toggle("rt-cards", root.clientWidth <= cardsBelow);
     apply();
     const observer = new ResizeObserver(apply);
     observer.observe(root);
     return () => observer.disconnect();
-  }, []);
+  }, [cardsBelow]);
 
   // 렌더될 때마다 다시 심는다 — 목록이 바뀌면 새 행에도 라벨이 붙어야 한다
   useLayoutEffect(() => {

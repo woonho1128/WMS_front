@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ResponsiveTable } from "../../../components/ui/ResponsiveTable/ResponsiveTable";
 import {
   AlertList,
   Breakdown,
@@ -9,6 +10,7 @@ import {
   LinkButton,
   Panel,
   ProgressCell,
+  STATUS_TABLE_CARDS,
   StageChip,
   StatusShell,
   fmt,
@@ -76,11 +78,11 @@ export const OutboundStatusPage = () => {
                   ) : null
                 }
               />
-              <div className="sd-table-wrap">
+              <ResponsiveTable className="sd-table-wrap" cardsBelow={STATUS_TABLE_CARDS}>
                 <table className="data-table sd-table">
                   <thead>
                     <tr>
-                      <th>출하번호</th>
+                      <th className="rt-title">출하번호</th>
                       <th>납품처</th>
                       <th className="num">수량</th>
                       <th>피킹</th>
@@ -118,13 +120,17 @@ export const OutboundStatusPage = () => {
                             )}
                           </td>
                           <td className="sd-marks">
-                            <span className={row.invoiceNo ? "is-on" : undefined} title={row.invoiceNo ?? "송장 없음"}>
-                              송장
-                            </span>
-                            <span className={row.dispatched ? "is-on" : undefined} title={row.dispatched ? "배차 완료" : "배차 전"}>
-                              배차
-                            </span>
-                            <small>{row.carrier ?? "-"}</small>
+                            {/* 한 덩어리로 묶는다 — 폰 카드에서 칸 안 요소가 따로 흩어지지 않게.
+                                span 이 아니라 div(display:contents): `.sd-marks span` 배지 모양이 묶음에 먹지 않도록 */}
+                            <div className="sd-marks-inner">
+                              <span className={row.invoiceNo ? "is-on" : undefined} title={row.invoiceNo ?? "송장 없음"}>
+                                송장
+                              </span>
+                              <span className={row.dispatched ? "is-on" : undefined} title={row.dispatched ? "배차 완료" : "배차 전"}>
+                                배차
+                              </span>
+                              <small>{row.carrier ?? "-"}</small>
+                            </div>
                           </td>
                           <td>
                             <StageChip label={row.stageLabel} tone={row.tone} title={row.rejectReason ?? undefined} />
@@ -134,7 +140,7 @@ export const OutboundStatusPage = () => {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveTable>
             </Panel>
 
             <Panel icon="alert" title="출고 알림" sub={`${data.alerts.length}건 · 출고·연동`} aside={<LinkButton label="작업 알림" to="/dashboard/work-alerts" />}>
