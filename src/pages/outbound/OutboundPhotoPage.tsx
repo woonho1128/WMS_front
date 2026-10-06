@@ -615,7 +615,7 @@ export const OutboundPhotoPage = () => {
         {/* 보관 현황 — 용량을 챙기는 사람(관리자 · 물류)에게만 */}
         {storage && isManager ? (
           <p className="op-storage">
-            보관 중 사진 {storage.photoCount.toLocaleString()}장 · {kb(storage.photoBytes)} · {keepText(storage.retentionDays)} 보관 후 정리
+            보관 중 사진 {storage.photoCount.toLocaleString()}장{storage.photoCount > 0 ? ` · ${kb(storage.photoBytes)}` : ""} · {keepText(storage.retentionDays)} 보관 후 정리
             {storage.freePercent != null ? ` · 디스크 여유 ${storage.freePercent}%` : ""}
           </p>
         ) : null}

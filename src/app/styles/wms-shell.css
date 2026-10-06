@@ -426,6 +426,11 @@
 .wms-navmode button:hover { color: var(--ink-strong); }
 .wms-navmode button.is-on { background: var(--primary-bg); color: var(--primary-ink); }
 .wms-navmode button svg { flex: 0 0 auto; }
+/* 메뉴 설정을 서버에 못 올렸다 — 작게만 알린다 (화면 배치라 일은 계속할 수 있다) */
+.wms-navmode-warn {
+  display: inline-grid; place-items: center; width: 24px; height: 28px;
+  color: var(--c-warning-ink); cursor: help;
+}
 
 .wms-search {
   display: flex; align-items: center; gap: 9px;

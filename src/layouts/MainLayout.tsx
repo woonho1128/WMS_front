@@ -36,6 +36,7 @@ export const MainLayout = () => {
   const openSplit = useTabsStore((state) => state.openSplit);
   const wideEnough = useMediaQuery(SPLIT_MIN_QUERY);
   const navMode = useNavPrefsStore((state) => state.navMode);
+  const navSync = useNavPrefsStore((state) => state.sync);
   const favorites = useNavPrefsStore((state) => state.favorites);
   const activeCategory = useNavPrefsStore((state) => state.activeCategory);
   const lastScreenBySection = useNavPrefsStore((state) => state.lastScreenBySection);
@@ -226,6 +227,17 @@ export const MainLayout = () => {
                 <span>{item.label}</span>
               </button>
             ))}
+            {/* 메뉴 방식 · 즐겨찾기를 서버에 못 올렸을 때만 — 화면 배치라 이 브라우저 것으로 계속 쓴다 */}
+            {navSync === "failed" ? (
+              <span
+                className="wms-navmode-warn"
+                role="status"
+                title="메뉴 방식 · 즐겨찾기를 서버에 저장하지 못했습니다. 이 브라우저에는 남아 있고, 연결되면 다시 올립니다."
+                aria-label="메뉴 설정을 서버에 저장하지 못했습니다"
+              >
+                <Icon name="alert" size={14} />
+              </span>
+            ) : null}
           </div>
 
           <div className="wms-spacer" />
