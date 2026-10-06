@@ -1,3 +1,5 @@
+import { useAuthStore } from "../app/store/authStore";
+import { useUiStore } from "../app/store/uiStore";
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
 import { createDashboardMock, regionOf } from "./mockDashboard";
@@ -582,11 +584,44 @@ const dashboardMock = createDashboardMock({
   slots: () => ((warehouseMock.get("/warehouse/layout", new URLSearchParams("warehouseId=4")) as AnyRecord | undefined)?.slots ?? []) as AnyRecord[]
 });
 
-/* 출고 사진(증빙) — 그날 출고 건에 사진을 올린다. 사진은 메모리에만 있다 (설계 DOCS/WMS_출고사진_설계.md) */
+/* 입고 · 출고 처리 이력 — 출고 사진을 올리고 · 지우고 · 내려받으면 여기에 쌓여 출고 이력에 보인다 */
+const activityLogs: AnyRecord[] = [
+  { id: 1, refType: "OUTBOUND", refNo: "DN20260601019", action: "출고확정", detail: "출고확정 및 ERP 전송", erpSent: true, operator: "outbound", createdAt: "2026-06-17 09:30" },
+  { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" },
+  { id: 3, refType: "INBOUND", refNo: "IN-MV-20260616-001", action: "공장간이동 입고확정", detail: "창원→제천 이동입고 · 격납대기 생성 (일반입고와 구분, ERP 미전송)", erpSent: false, operator: "logistics", createdAt: "2026-06-16 15:20" }
+];
+
+/* 출고 사진(증빙) — 출고 건에 사진을 올린다. 사진은 메모리에만 있다 (설계 DOCS/WMS_출고사진_설계.md) */
 const outboundPhotoMock = createOutboundPhotoMock({
   today,
-  outbounds: () => outbounds
+  outbounds: () => outbounds,
+  // 데모는 머리글의 역할 선택을 따른다 — 역할을 바꿔 가며 규칙을 볼 수 있게
+  role: () => useUiStore.getState().currentRole,
+  operator: () => useAuthStore.getState().user?.name ?? "system",
+  log: (entry) => activityLogs.push({ id: activityLogs.length + 1, refType: "OUTBOUND", erpSent: false, ...entry })
 });
+
+/** 입고 · 출고 이력 — 종류 · 검색어로 거르고 최근 것부터. 출고 이력에는 그 출고 건의 사진 장수를 싣는다 (서버와 같은 칸) */
+function activityHistory(endpoint: string, keyword: string) {
+  const refType = endpoint === "outbound" ? "OUTBOUND" : "INBOUND";
+  // 사진 시드가 이력에 남긴 줄까지 보이게 — 시드는 처음 쓸 때 만들어진다
+  outboundPhotoMock.ready();
+  const kw = keyword.trim().toLowerCase();
+  return activityLogs
+    .filter((row) => row.refType === refType)
+    .filter((row) => !kw || [row.refNo, row.action, row.detail, row.operator].some((value) => String(value ?? "").toLowerCase().includes(kw)))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)) || b.id - a.id)
+    .map((row) => (refType === "OUTBOUND" ? { ...row, photoCount: outboundPhotoMock.countByNo(row.refNo) } : row));
+}
+
+/** 파일 내려받기(목) — 지금은 출고 사진 증빙 ZIP 하나 */
+export async function mockDownload(path: string): Promise<Blob> {
+  await delay();
+  const url = new URL(path, "http://mock.local");
+  const blob = outboundPhotoMock.download(stripQuery(url.pathname));
+  if (!blob) throw new Error("내려받을 파일이 없습니다.");
+  return blob;
+}
 
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
@@ -641,7 +676,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/dispatch") return copy(dispatched.filter((d) => !url.searchParams.get("region") || d.region === url.searchParams.get("region"))) as T;
   if (clean === "/dispatch/deliveries") return copy(dispatched.map((d) => {
     const o = outbounds.find((x) => x.outboundNo === d.outboundNo);
-    return { ...d, deliveryNo: d.dispatchNo, customerCode: o?.customerCode ?? null, invoiceNo: o?.invoiceNo ?? ("MOCK-" + d.id), qty: o?.qty ?? 0, scheduledDate: o?.scheduledDate ?? null };
+    return { ...d, deliveryNo: d.dispatchNo, customerCode: o?.customerCode ?? null, invoiceNo: o?.invoiceNo ?? ("MOCK-" + d.id), qty: o?.qty ?? 0, scheduledDate: o?.scheduledDate ?? null, photoCount: outboundPhotoMock.countByNo(d.outboundNo) };
   })) as T;
   if (clean === "/analytics/aging") return copy(stocks.map((s) => {
     // 경과일은 입고일 기준 — 목 재고가 늘어도 장기재고 판정이 실제 데이터를 따른다
@@ -660,11 +695,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/manual-orders") return copy(manualOrders) as T;
   if (clean === "/notices") return copy(notices) as T;
   if (clean === "/interfaces") return copy(interfaceLogs) as T;
-  if (clean.startsWith("/history/")) return copy([
-    { id: 1, refType: "OUTBOUND", refNo: "DN20260601019", action: "출고확정", detail: "출고확정 및 ERP 전송", erpSent: true, operator: "outbound", createdAt: "2026-06-17 09:30" },
-    { id: 2, refType: "INBOUND", refNo: "IN-20260606-003", action: "입고확정", detail: "검수 후 격납대기 생성", erpSent: false, operator: "inbound", createdAt: "2026-06-16 14:05" },
-    { id: 3, refType: "INBOUND", refNo: "IN-MV-20260616-001", action: "공장간이동 입고확정", detail: "창원→제천 이동입고 · 격납대기 생성 (일반입고와 구분, ERP 미전송)", erpSent: false, operator: "logistics", createdAt: "2026-06-16 15:20" }
-  ]) as T;
+  if (clean.startsWith("/history/")) return copy(activityHistory(clean.split("/")[2], url.searchParams.get("keyword") ?? "")) as T;
   if (clean === "/policies") return copy({ policies, buckets: policyBuckets }) as T;
   // /chatbot/ask 는 POST 이므로 위 mutation 분기(chatbotAnswer)에서 처리합니다.
 
@@ -740,6 +771,8 @@ function handleMutation(clean: string, body: AnyRecord) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) {
       row.status = "출고완료";
+      // 확정한 날 — 출고 사진은 이날까지만 누구나 더한다 (다음 날부터는 관리자 · 물류)
+      (row as AnyRecord).confirmedDate = today;
       dashboardMock.record("outbound-confirm", Number(row.qty) || 0, row.outboundNo);
     }
   } else if (clean.match(/^\/outbounds\/\d+\/reject$/)) {

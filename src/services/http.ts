@@ -31,6 +31,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return json.data as T;
 }
 
+/**
+ * 파일 내려받기 (출고 사진 증빙 ZIP 등) — JSON 이 아니라 파일이 온다.
+ * 링크(&lt;a href&gt;)로는 로그인 토큰을 못 붙여서 fetch 로 받아 저장한다(shared/download.saveBlob).
+ * 실패하면 서버가 준 사유를 그대로 던진다. 여기도 목으로 대신하지 않는다.
+ */
+export async function apiDownload(path: string): Promise<Blob> {
+  if (USE_MOCK_API) {
+    const { mockDownload } = await import("./mockApi");
+    return mockDownload(path);
+  }
+
+  const res = await fetchApi(path, { headers: authHeader() });
+  if (!res.ok) {
+    const json = (await res.json().catch(() => null)) as ApiResponse<unknown> | null;
+    throw new Error(json?.message ?? `내려받기 실패 (${res.status})`);
+  }
+  return res.blob();
+}
+
 export const apiGet = <T>(path: string) => request<T>(path);
 export const apiPost = <T>(path: string, body: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(body) });

@@ -5,6 +5,7 @@ import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { shiftDays } from "../../shared/appDate";
+import { PhotoCountLink } from "../outbound/PhotoCountLink";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type LogRow = {
@@ -16,6 +17,8 @@ type LogRow = {
   erpSent: boolean;
   operator: string | null;
   createdAt: string;
+  /** 그 출고 건의 지금 사진 장수 — 출고 이력만 온다 */
+  photoCount?: number | null;
 };
 
 const actionTone = (action: string): "info" | "success" | "danger" | "violet" | "gray" => {
@@ -34,6 +37,9 @@ type Props = {
 
 /** 입고/출고 처리 이력 (activity_log) 공용 화면 */
 export const ActivityHistoryPage = ({ endpoint, refLabel }: Props) => {
+  // 출고 이력에는 "사진 n장" 칸 — 눌러서 출고 사진 화면의 그 건으로 (DOCS/WMS_출고사진_설계.md §5)
+  const showPhotos = endpoint === "outbound";
+  const columns = showPhotos ? 7 : 6;
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,13 +126,14 @@ export const ActivityHistoryPage = ({ endpoint, refLabel }: Props) => {
                 <th>내용</th>
                 <th>ERP전송</th>
                 <th>처리자</th>
+                {showPhotos ? <th>사진</th> : null}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={columns} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>조건에 맞는 이력이 없습니다.</td></tr>
+                <tr><td colSpan={columns} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>조건에 맞는 이력이 없습니다.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id}>
@@ -136,6 +143,7 @@ export const ActivityHistoryPage = ({ endpoint, refLabel }: Props) => {
                     <td>{r.detail ?? "-"}</td>
                     <td>{r.erpSent ? <StatusBadge tone="violet">전송</StatusBadge> : <span className="cell-mut">-</span>}</td>
                     <td>{r.operator ?? "-"}</td>
+                    {showPhotos ? <td><PhotoCountLink outboundNo={r.refNo} count={r.photoCount ?? 0} quiet /></td> : null}
                   </tr>
                 ))
               )}

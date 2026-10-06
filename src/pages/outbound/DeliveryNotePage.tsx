@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
+import { resolveScreenPath } from "../../app/menuConfig";
+import { useUiStore } from "../../app/store/uiStore";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
+import { PhotoCountLink } from "./PhotoCountLink";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type DeliveryRow = {
@@ -17,9 +20,15 @@ type DeliveryRow = {
   qty: number;
   scheduledDate: string | null;
   dispatchDate: string | null;
+  /** 출고 사진 장수 — "사진 n장" 으로 출고 사진 화면에 잇는다 */
+  photoCount?: number;
 };
 
 export const DeliveryNotePage = () => {
+  // 출고 사진은 내부 전용 — 그 화면을 못 여는 역할(배송사 계정)에게는 사진 칸을 보이지 않는다
+  const role = useUiStore((state) => state.currentRole);
+  const showPhotos = resolveScreenPath("/outbound/outbound-photo", role).status === "ok";
+  const columns = showPhotos ? 10 : 9;
   const [rows, setRows] = useState<DeliveryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,13 +85,13 @@ export const DeliveryNotePage = () => {
         <ResponsiveTable>
           <table className="outbound-table">
             <thead>
-              <tr><th className="rt-title">출하번호</th><th>납품처</th><th>배송주소</th><th>배송사</th><th>차량</th><th>송장번호</th><th className="num">출고수량</th><th>출고예정일</th><th>배차일</th></tr>
+              <tr><th className="rt-title">출하번호</th><th>납품처</th><th>배송주소</th><th>배송사</th><th>차량</th><th>송장번호</th><th className="num">출고수량</th><th>출고예정일</th><th>배차일</th>{showPhotos ? <th>사진</th> : null}</tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={columns} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>출고완료 배송 내역이 없습니다.</td></tr>
+                <tr><td colSpan={columns} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>출고완료 배송 내역이 없습니다.</td></tr>
               ) : (
                 rows.map((r, idx) => (
                   <tr key={`${r.outboundNo}-${idx}`}>
@@ -95,6 +104,7 @@ export const DeliveryNotePage = () => {
                     <td className="num">{r.qty.toLocaleString()}</td>
                     <td>{r.scheduledDate ?? "-"}</td>
                     <td>{r.dispatchDate ?? "-"}</td>
+                    {showPhotos ? <td><PhotoCountLink outboundNo={r.outboundNo} count={r.photoCount ?? 0} /></td> : null}
                   </tr>
                 ))
               )}

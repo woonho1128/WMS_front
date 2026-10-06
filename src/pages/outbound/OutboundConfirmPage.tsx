@@ -8,6 +8,7 @@ import { Icon } from "../../components/ui/Icon";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { OUTBOUND_STEPS, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost, apiPut } from "../../services/http";
+import { PhotoCountLink, outboundPhotoPath } from "./PhotoCountLink";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type OutboundRow = {
@@ -26,10 +27,6 @@ type OutboundRow = {
   /** 출고 사진 장수 — 0 이면 확정할 때 경고만 (설계: 현장 작업을 막지 않는다) */
   photoCount: number;
 };
-
-/** 사진 칸 — 없으면 붉게(나중에 채우게), 있으면 장수 */
-const PhotoCell = ({ count }: { count: number }) =>
-  count > 0 ? <span className="cell-mut">{count}장</span> : <StatusBadge tone="danger">없음</StatusBadge>;
 
 export const OutboundConfirmPage = () => {
   const navigate = useNavigate();
@@ -222,7 +219,8 @@ export const OutboundConfirmPage = () => {
                           <span className="cell-mut">{row.invoiceNo ?? "-"}</span>
                         )}
                       </td>
-                      <td>{row.status === "거부" ? <span className="cell-mut">-</span> : <PhotoCell count={row.photoCount ?? 0} />}</td>
+                      {/* 사진 칸 — 누르면 출고 사진에서 그 건이 열린다. 없으면 붉게(나중에 채우게) */}
+                      <td>{row.status === "거부" ? <span className="cell-mut">-</span> : <PhotoCountLink outboundNo={row.outboundNo} count={row.photoCount ?? 0} />}</td>
                       <td>
                         <StatusBadge tone={OUTBOUND_STATUS_TONE[row.status]}>{row.status}</StatusBadge>
                         {row.status === "거부" && row.rejectReason ? (
@@ -290,7 +288,7 @@ export const OutboundConfirmPage = () => {
                 className="outbound-link-btn"
                 onClick={() => {
                   setConfirmTarget(null);
-                  navigate("/outbound/outbound-photo");
+                  navigate(outboundPhotoPath(confirmTarget.outboundNo));
                 }}
               >
                 출고관리 › 출고 사진

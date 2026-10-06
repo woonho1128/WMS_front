@@ -40,11 +40,92 @@
   color-scheme: inherit;
 }
 
+/* 조회 방식 — 하루 / 기간 (구분 칩과 같은 모양) */
+.op-scope {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.op-range {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.op-range-dates {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-faint);
+}
+
+.op-range-dates input[type="date"] {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 12.5px;
+  color-scheme: inherit;
+}
+
+.op-range-presets {
+  display: flex;
+  gap: 6px;
+}
+
+.op-range-presets button {
+  flex: 1;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* 번호 검색 중 — 날짜 조건 자리에 지금 무엇을 찾고 있는지 */
+.op-searchbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--primary-line);
+  border-radius: var(--r-md, 12px);
+  background: var(--primary-bg);
+  font-size: 12.5px;
+  color: var(--primary-ink);
+}
+
+.op-searchbar span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.op-searchbar button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .op-filters {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.op-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .op-filters input[type="text"],
@@ -77,6 +158,35 @@
 .op-missing {
   color: var(--c-danger);
   font-weight: 800;
+}
+
+.op-truncated {
+  color: var(--c-warning-ink);
+}
+
+.op-storage-warn {
+  margin-bottom: 12px;
+}
+
+/* 보관 현황 한 줄 (관리자 · 물류) */
+.op-storage {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+/* 기간 · 검색 목록의 날짜 구분 줄 */
+.op-dayhead {
+  padding: 4px 2px 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-muted);
+}
+
+.op-dayhead:not(:first-child) {
+  margin-top: 6px;
 }
 
 .op-rows {
@@ -280,6 +390,39 @@
   display: none;
 }
 
+/* 올릴 수 없는 출고 건 — 촬영 버튼 자리에 사유 */
+.op-locked {
+  margin-bottom: 4px;
+}
+
+/* 사진 요약 + 증빙 내려받기 */
+.op-photobar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.op-photobar span {
+  min-width: 0;
+}
+
+.op-photobar button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
 /* ---------- 업로드 줄 ---------- */
 .op-queue {
   display: grid;
@@ -480,6 +623,21 @@
 
   .op-grid {
     grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
+
+  /* 머리글 — [목록] 과 상태를 한 줄에, 출고 건 정보는 아래 줄 전체 폭으로 (가운데에 끼면 네 줄로 접힌다) */
+  .op-detail-head {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .op-back {
+    margin-right: auto;
+  }
+
+  .op-detail-info {
+    order: 3;
+    flex: 1 1 100%;
   }
 
   .op-actions {
