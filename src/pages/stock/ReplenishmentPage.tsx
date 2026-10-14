@@ -4,6 +4,7 @@ import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { CameraScanButton } from "../../components/ui/CameraScan";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -235,11 +236,17 @@ export const ReplenishmentPage = () => {
             </label>
             <label className="ds-field" style={{ marginTop: 10 }}>
               <span>출발 로케이션 QR 확인 ({target.sourceLocationCode})</span>
-              <input value={fromQr} onChange={(e) => setFromQr(e.target.value)} placeholder={`"${target.sourceLocationCode}" 스캔/입력`} />
+              <div className="cs-inline">
+                <input value={fromQr} onChange={(e) => setFromQr(e.target.value)} placeholder={`"${target.sourceLocationCode}" 찍기/입력`} />
+                <CameraScanButton title={`출발 ${target.sourceLocationCode} QR`} expect={[target.sourceLocationCode]} onScan={setFromQr} />
+              </div>
             </label>
             <label className="ds-field" style={{ marginTop: 10 }}>
               <span>도착 로케이션 QR 확인 ({target.targetLocationCode})</span>
-              <input value={toQr} onChange={(e) => setToQr(e.target.value)} placeholder={`"${target.targetLocationCode}" 스캔/입력`} />
+              <div className="cs-inline">
+                <input value={toQr} onChange={(e) => setToQr(e.target.value)} placeholder={`"${target.targetLocationCode}" 찍기/입력`} />
+                <CameraScanButton title={`도착 ${target.targetLocationCode} QR`} expect={[target.targetLocationCode]} onScan={setToQr} />
+              </div>
             </label>
             <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
               <StatusBadge tone={fromOk ? "success" : "gray"}>출발 {fromOk ? "확인" : "대기"}</StatusBadge>

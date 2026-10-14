@@ -3,6 +3,7 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { QrBox } from "../../components/ui/QrBox";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
+import { CameraScanButton } from "../../components/ui/CameraScan";
 import { apiGet } from "../../services/http";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
@@ -53,8 +54,8 @@ export const BarcodeLookupPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const search = async () => {
-    const q = query.trim();
+  const search = async (scanned?: string) => {
+    const q = (scanned ?? query).trim();
     if (!q) return;
     setLoading(true);
     setError(null);
@@ -76,16 +77,25 @@ export const BarcodeLookupPage = () => {
       <DashboardCard className="outbound-filter-card" title="QR / 바코드 조회">
         <div className="outbound-filter-grid">
           <label className="outbound-keyword">
-            <span>QR/바코드 스캔 (LOT 또는 SKU)</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") search(); }}
-              placeholder="예: LOT-IN-20260606-003 / SKU-10822 — 스캔 또는 입력 후 Enter"
-            />
+            <span>QR/바코드 (LOT 또는 SKU) — 휴대폰 카메라로 찍거나 입력</span>
+            <div className="cs-inline">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") search(); }}
+                placeholder="예: LOT-IN-20260606-003 / SKU-10822 — 찍거나 입력 후 Enter"
+              />
+              <CameraScanButton
+                title="QR · 바코드 조회"
+                onScan={(value) => {
+                  setQuery(value);
+                  search(value);
+                }}
+              />
+            </div>
           </label>
           <div className="outbound-filter-actions">
-            <button type="button" className="btn-primary" disabled={loading} onClick={search}>스캔 조회</button>
+            <button type="button" className="btn-primary" disabled={loading} onClick={() => search()}>스캔 조회</button>
           </div>
         </div>
       </DashboardCard>

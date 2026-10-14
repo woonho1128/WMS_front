@@ -59,6 +59,10 @@ export const fetchApi = async (path: string, init?: RequestInit) => {
   try {
     return await fetch(`${API_BASE}${path}`, init);
   } catch {
-    throw new Error(`서버에 연결할 수 없습니다 (${API_BASE}) — 백엔드가 떠 있는지, 주소가 맞는지 확인하세요.`);
+    // 창고 안쪽은 인터넷이 안 된다(2026-10-14) — 현장 사람이 알아들을 말로. 화면에 찍어 둔 값은 그대로 남는다
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      throw new Error("인터넷이 연결돼 있지 않습니다 — 찍어 둔 내용은 화면에 남아 있으니, 연결되는 곳에서 다시 누르세요.");
+    }
+    throw new Error(`서버에 연결할 수 없습니다 (${API_BASE}) — 인터넷 연결과 서버 주소를 확인하세요. 찍어 둔 내용은 화면에 남아 있습니다.`);
   }
 };

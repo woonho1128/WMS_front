@@ -1,0 +1,40 @@
+/* ============================================================
+   카메라 판독 — 휴대폰 전체 화면
+   카메라 화면이라 테마와 무관하게 검정 바탕 · 흰 글자 (고정 팔레트)
+   ============================================================ */
+
+.cs-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; flex-direction: column;
+  background: var(--p-black); color: var(--p-white);
+}
+.cs-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 14px 10px; font-size: 15px;
+}
+.cs-x {
+  display: grid; place-items: center; width: 38px; height: 38px;
+  border: none; border-radius: 999px; background: rgba(255, 255, 255, 0.16); color: var(--p-white); cursor: pointer;
+}
+.cs-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.cs-video { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* 읽는 범위 — scanDecode 와 같은 가로 90% · 세로 70% */
+.cs-frame {
+  position: absolute; left: 5%; right: 5%; top: 15%; bottom: 15%;
+  border: 3px solid rgba(255, 255, 255, 0.9); border-radius: 14px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.35);
+}
+.cs-photo { flex: 1; display: grid; place-items: center; padding: 24px; }
+.cs-shot { display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; font-size: 16px; }
+.cs-foot {
+  display: grid; gap: 8px;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  font-size: 13.5px; line-height: 1.45; background: rgba(0, 0, 0, 0.6);
+}
+.cs-msg { margin: 0; color: #ffd166; }
+.cs-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* 입력칸 + 카메라 버튼 한 줄 */
+.cs-inline { display: flex; align-items: center; gap: 6px; }
+.cs-inline > input { flex: 1; min-width: 0; }
+.cs-btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 0 0 auto; min-width: 38px; }

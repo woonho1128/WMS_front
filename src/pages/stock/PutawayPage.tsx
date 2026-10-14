@@ -4,6 +4,7 @@ import { ProcessBanner } from "../../components/ui/ProcessBanner";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { Icon } from "../../components/ui/Icon";
+import { CameraScanButton } from "../../components/ui/CameraScan";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { PUTAWAY_STEPS } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
@@ -338,13 +339,21 @@ export const PutawayPage = () => {
               </div>
               {loc && target ? <LocationContents loc={loc} itemCode={target.itemCode} /> : null}
               <label className="ds-field">
-                <span>로케이션 QR 확인 (스캔 또는 코드 입력)</span>
-                <input
-                  value={a.qr}
-                  onChange={(e) => setAssign(i, { qr: e.target.value })}
-                  placeholder={loc ? `"${loc.code}" 스캔/입력` : "로케이션을 먼저 선택하세요"}
-                  disabled={!loc}
-                />
+                <span>로케이션 QR 확인 (휴대폰 카메라로 찍거나 코드 입력)</span>
+                <div className="cs-inline">
+                  <input
+                    value={a.qr}
+                    onChange={(e) => setAssign(i, { qr: e.target.value })}
+                    placeholder={loc ? `"${loc.code}" 찍기/입력` : "로케이션을 먼저 선택하세요"}
+                    disabled={!loc}
+                  />
+                  <CameraScanButton
+                    title={loc ? `${loc.code} 로케이션 QR` : "로케이션 QR"}
+                    expect={[loc?.code]}
+                    disabled={!loc}
+                    onScan={(value) => setAssign(i, { qr: value })}
+                  />
+                </div>
               </label>
               {loc ? (
                 verified ? (
