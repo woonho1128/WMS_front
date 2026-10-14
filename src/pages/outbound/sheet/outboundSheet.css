@@ -1,0 +1,156 @@
+/* ============================================================
+   출고요청서 — 미리보기 · 인쇄 공용
+   종이라서 테마와 무관하게 흰 바탕·검정 글자 (색은 아래 종이 전용 값으로 고정)
+   치수는 mm — A4 세로, 여백 8mm → 내용 폭 194mm
+   ============================================================ */
+
+/* ---------- 한 장 ---------- */
+.osh {
+  --osh-ink: var(--p-black);
+  --osh-line: #4d4d4d;
+  --osh-line-soft: #9a9a9a;
+  --osh-faint: #666666;
+  --osh-label: #d6d6d6;
+  --osh-band-yellow: #fff7d1;
+  --osh-band-blue: #d6e4f3;
+  --osh-total: #f2f2f2;
+  --osh-separate: #ffe95c;
+
+  box-sizing: border-box;
+  width: 194mm;
+  background: var(--p-white);
+  color: var(--osh-ink);
+  font-family: var(--font);
+  font-size: 9pt;
+  line-height: 1.25;
+}
+.osh *,
+.osh *::before,
+.osh *::after { box-sizing: border-box; }
+
+/* 머리 — 회사 · 문서명 | QR · 오더번호 · 뒷자리 큰 번호 */
+.osh-top {
+  display: grid; grid-template-columns: minmax(0, 1fr) 78mm; align-items: stretch;
+  border-bottom: 0.5mm solid var(--osh-line);
+}
+.osh-brand {
+  display: flex; flex-direction: column; justify-content: center; gap: 1.2mm;
+  padding: 2mm 4mm; background: var(--osh-band-yellow);
+}
+.osh-brand b { font-size: 15pt; font-weight: 800; color: #555555; letter-spacing: 0.02em; }
+.osh-brand span { font-size: 11pt; font-weight: 800; letter-spacing: 0.35em; }
+.osh-id { display: grid; grid-template-columns: 20mm minmax(0, 1fr); gap: 3mm; align-items: center; padding: 1.5mm 1mm 1.5mm 3mm; }
+.osh-qr { width: 20mm; height: 20mm; }
+.osh-qr svg { display: block; }
+.osh-id-text { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; }
+.osh-orderno { font-size: 10pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+.osh-index { font-size: 30pt; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+/* 사무실에서 결과를 넣을 때 치는 번호 — 작아도 읽히게 */
+.osh-outno { font-size: 8.5pt; font-weight: 700; color: #333333; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* 요청내용 요약 — 기존 출고요청서의 큰 글씨 칸 */
+.osh-summary {
+  margin: 0; min-height: 12mm; padding: 1.5mm 3mm;
+  font-size: 18pt; font-weight: 800; line-height: 1.2;
+  border-bottom: 0.3mm solid var(--osh-line-soft);
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+
+/* 피킹 · 검수 확인 — 손으로 쓰는 칸 */
+.osh-sign { margin-top: 1.5mm; border-top: 0.4mm solid var(--osh-line); border-bottom: 0.4mm solid var(--osh-line); }
+.osh-sign > div {
+  display: flex; justify-content: center; align-items: center; gap: 2mm;
+  padding: 0.8mm 0; background: var(--osh-band-blue); font-size: 12pt; font-weight: 800;
+}
+.osh-sign > div + div { border-top: 0.2mm solid var(--p-white); }
+.osh-sign i,
+.osh-pack i {
+  display: inline-block; width: 28mm; height: 6.5mm; margin-right: 2mm;
+  border: 0.3mm solid var(--osh-line); background: var(--p-white); vertical-align: middle;
+}
+
+/* ---------- 표 공통 ---------- */
+.osh-info,
+.osh-items { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.osh-info th,
+.osh-info td,
+.osh-items th,
+.osh-items td {
+  height: 6.2mm; padding: 0.9mm 1.2mm;
+  border: 0.2mm solid var(--osh-line-soft);
+  text-align: center; vertical-align: middle; overflow-wrap: anywhere;
+}
+.osh .is-strong { font-weight: 800; }
+.osh .is-left { text-align: left; }
+.osh .num { text-align: center; font-variant-numeric: tabular-nums; }
+
+/* 주문 정보 */
+.osh-info { margin-top: 1.5mm; }
+.osh-info th { background: var(--osh-label); font-size: 8.5pt; font-weight: 700; }
+.osh-info td { font-size: 9pt; font-variant-numeric: tabular-nums; }
+.osh-info tr.is-tall th,
+.osh-info tr.is-tall td { height: 11mm; }
+
+/* 품목 — 세트별 */
+.osh-set { margin-top: 2.5mm; }
+.osh-set-name {
+  margin: 0; padding: 1mm 2mm;
+  background: var(--osh-band-yellow); border-bottom: 0.4mm solid var(--osh-line);
+  font-size: 11pt; font-weight: 800;
+  break-after: avoid; page-break-after: avoid;
+}
+.osh-items th { background: var(--osh-label); font-size: 9.5pt; font-weight: 700; }
+.osh-items td { font-size: 9pt; }
+.osh-items tr { break-inside: avoid; page-break-inside: avoid; }
+.osh-items tr.is-separate td { background: var(--osh-separate); }
+.osh-items .osh-memo { font-size: 8pt; line-height: 1.15; }
+.osh-items .osh-total td { background: var(--osh-total); font-weight: 700; }
+.osh-empty { margin: 4mm 0; text-align: center; color: var(--osh-faint); }
+
+/* 포장 수량 — 손으로 쓰는 칸 */
+.osh-pack {
+  display: flex; justify-content: center; align-items: center; gap: 2mm;
+  margin-top: 3mm; padding: 1.2mm 0;
+  background: var(--osh-band-yellow);
+  border-top: 0.4mm solid var(--osh-line); border-bottom: 0.4mm solid var(--osh-line);
+  font-size: 12pt; font-weight: 800;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.osh-foot { display: flex; justify-content: space-between; gap: 4mm; margin-top: 2mm; font-size: 7.5pt; color: var(--osh-faint); }
+
+/* ---------- 출력 창 ---------- */
+.ds-modal.osh-modal { width: min(940px, calc(100vw - 32px)); }
+.osh-preview {
+  max-height: 62vh; overflow: auto; padding: 14px;
+  display: grid; justify-content: center; gap: 14px;
+  border-radius: var(--r-md); border: 1px solid var(--border-soft); background: var(--bg-sunken);
+}
+/* 미리보기 종이 — A4 한 장 크기에 여백 8mm (인쇄와 같은 폭) */
+.osh-paper { zoom: 0.75; width: 210mm; min-height: 297mm; padding: 8mm; background: var(--p-white); box-shadow: var(--sh-soft); }
+.osh-more { margin: 8px 0 0; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
+.osh-note {
+  display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0;
+  font-size: 11.5px; line-height: 1.5; color: var(--ink-muted);
+}
+.osh-note svg { flex: 0 0 auto; margin-top: 2px; }
+.osh-foot-msg { margin-right: auto; align-self: center; font-size: 12px; font-weight: 700; color: var(--ink-muted); }
+.osh-print-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 760px) {
+  .osh-paper { zoom: 0.42; }
+}
+
+/* ---------- 인쇄 — 출고요청서만 남긴다 ---------- */
+.osh-print-root { display: none; }
+
+@media print {
+  html.is-printing-sheets,
+  html.is-printing-sheets body { margin: 0 !important; padding: 0 !important; background: var(--p-white) !important; }
+  html.is-printing-sheets body > *:not(.osh-print-root) { display: none !important; }
+  html.is-printing-sheets .osh-print-root { display: block; }
+  .osh-print-root .osh { width: 100%; }
+  /* 한 건씩 새 쪽에서 시작 */
+  .osh-print-root .osh + .osh { break-before: page; page-break-before: always; }
+  .osh-print-root .osh,
+  .osh-print-root .osh * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

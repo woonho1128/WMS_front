@@ -8,10 +8,11 @@ import { OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wm
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { shiftDays } from "../../shared/appDate";
+import { OutboundSheetDialog } from "../outbound/sheet/OutboundSheet";
 import "./DashboardOutbound.css";
 
 /* ============================================================
-   출고 요청서 — OMS 수신 오더 조회 · 선택 피킹 지시 발행
+   출고 요청서 — OMS 수신 오더 조회 · 선택 피킹 지시 발행 · 출고요청서 인쇄
    기준: DOCS/front 운영화면 재설계 HTML
    ============================================================ */
 
@@ -95,6 +96,8 @@ export const DashboardOutbound = () => {
   const [picked, setPicked] = useState<number[]>([]);
   const [labelTarget, setLabelTarget] = useState<OutboundRow | null>(null);
   const [rejectTarget, setRejectTarget] = useState<OutboundRow | null>(null);
+  /** 출고요청서 인쇄 대상 — null 이면 창 닫힘 */
+  const [sheetIds, setSheetIds] = useState<number[] | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -358,6 +361,10 @@ export const DashboardOutbound = () => {
             <button type="button" className="out-btn" onClick={() => setPicked([])}>
               해제
             </button>
+            <button type="button" className="out-btn" onClick={() => setSheetIds([...picked])}>
+              <Icon name="printer" size={14} />
+              출고요청서 인쇄
+            </button>
             <button type="button" className="btn-primary out-tray-cta" disabled={busy} onClick={issuePicking}>
               피킹 지시 발행 · {tray.count}건
               <Icon name="arrowR" size={15} />
@@ -454,6 +461,18 @@ export const DashboardOutbound = () => {
                         </button>
                         <button
                           type="button"
+                          className="out-btn is-icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSheetIds([row.id]);
+                          }}
+                          title="출고요청서 인쇄"
+                          aria-label="출고요청서 인쇄"
+                        >
+                          <Icon name="printer" size={13} />
+                        </button>
+                        <button
+                          type="button"
                           className={`out-btn${action.primary ? " is-primary" : ""}`}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -512,7 +531,8 @@ export const DashboardOutbound = () => {
         {labelTarget ? (
           <div className="out-label">
             <div className="out-label-qr">
-              <QrBox value={`WMS-OUT|${labelTarget.outboundNo}`} />
+              {/* 출고번호만 넣는다 — 피킹 화면 "오더 QR 스캔" 칸이 출고번호와 그대로 비교한다 (출고요청서 QR 과 같은 값) */}
+              <QrBox value={labelTarget.outboundNo} />
               <span>스캔용 QR</span>
             </div>
             <dl className="out-label-meta">
@@ -560,6 +580,9 @@ export const DashboardOutbound = () => {
           거부 건은 OMS로 거부값이 회신되어 주문이 실패 처리됩니다. 재출고는 OMS에서 오더를 다시 수신해야 합니다.
         </p>
       </Modal>
+
+      {/* ---------- 출고요청서 인쇄 (기존 OMS 출고요청서 출력물 대신) ---------- */}
+      <OutboundSheetDialog ids={sheetIds} onClose={() => setSheetIds(null)} />
     </section>
   );
 };

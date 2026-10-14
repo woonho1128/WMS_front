@@ -215,6 +215,60 @@ const outboundLines: Record<number, AnyRecord[]> = {
   ]
 };
 
+/**
+ * 출고요청서(인쇄)용 OMS 칸 — 서버는 OMS 연동 계약을 받아 저장하기 전이라 아직 보내지 않는다.
+ * 목은 연동 뒤의 모양을 보여 준다. 사람 이름 · 전화번호는 모두 가짜 값이다.
+ */
+const SHEET_OMS: Record<number, { orderNo: string; shipNo: string; sets: string[]; separate?: number[]; memos?: Record<number, string>; colors?: Record<number, string>; oms: AnyRecord }> = {
+  46: {
+    orderNo: "AU2606000046", shipNo: "DL2606000146", sets: ["욕실 기본"],
+    oms: { orderTypeName: "A/S주문(유상)", requestSummary: "오전 도착 · 하차 전 연락", salesGroupName: "충청영업팀", salesRepName: "김영업", salesRepTel: "043-000-0000", salesRepMobile: "010-0000-0001", ordererName: "박고객", ordererTel: null, ordererMobile: "010-0000-0002", residing: true, receiverName: "박고객", receiverMobile: "010-0000-0002", zipCode: "28455", requestedTime: "0800", householdCarryIn: false, shippingMemo: "현관 비밀번호는 전화로 확인" }
+  },
+  62: {
+    orderNo: "OD2606000062", shipNo: "DL2606000162", sets: ["욕실 기본"], memos: { 2: "박스 2개로 나눠 포장" },
+    oms: { orderTypeName: "일반주문", requestSummary: null, salesGroupName: "경기영업팀", salesRepName: "이영업", salesRepTel: null, salesRepMobile: "010-0000-0003", ordererName: "최고객", ordererTel: "031-000-0000", ordererMobile: "010-0000-0004", residing: null, receiverName: "최고객", receiverMobile: "010-0000-0004", zipCode: "18456", requestedTime: "1300", householdCarryIn: true, shippingMemo: null }
+  },
+  57: {
+    orderNo: "OD2606000057", shipNo: "DL2606000157", sets: ["욕실 기본"],
+    oms: { orderTypeName: "일반주문", requestSummary: null, salesGroupName: "경기영업팀", salesRepName: "이영업", salesRepTel: null, salesRepMobile: "010-0000-0003", ordererName: "정고객", ordererTel: null, ordererMobile: "010-0000-0005", residing: null, receiverName: "정현장", receiverMobile: "010-0000-0006", zipCode: "14544", requestedTime: "0900", householdCarryIn: false, shippingMemo: null }
+  },
+  52: {
+    orderNo: "OD2606000052", shipNo: "DL2606000152", sets: ["욕실 기본"],
+    oms: { orderTypeName: "일반주문", requestSummary: "주소 확인 필요", salesGroupName: "서울영업팀", salesRepName: "한영업", salesRepTel: null, salesRepMobile: "010-0000-0007", ordererName: "윤고객", ordererTel: null, ordererMobile: "010-0000-0008", residing: null, receiverName: "윤고객", receiverMobile: "010-0000-0008", zipCode: null, requestedTime: "1000", householdCarryIn: false, shippingMemo: null }
+  },
+  70: {
+    orderNo: "OD2606000070", shipNo: "DL2606000170", sets: ["거실 욕실", "욕실 기본"], separate: [3], memos: { 4: "양변기 박스 안에 포함" }, colors: { 3: "실버" },
+    oms: { orderTypeName: "일반주문", requestSummary: "2.5톤 진입 불가 — 1톤으로", salesGroupName: "서울영업팀", salesRepName: "한영업", salesRepTel: "02-000-0000", salesRepMobile: "010-0000-0007", ordererName: "강고객", ordererTel: null, ordererMobile: "010-0000-0009", residing: true, receiverName: "강현장", receiverMobile: "010-0000-0010", zipCode: "06164", requestedTime: "0800", householdCarryIn: true, shippingMemo: "엘리베이터 사용 가능 (관리실 사전 신청 완료)" }
+  }
+};
+
+/** 출고요청서 한 건 — 서버 GET /outbounds/{id}/sheet 와 같은 모양 (줄은 로케이션 순) */
+function outboundSheet(id: number) {
+  const o = outbounds.find((x) => x.id === id);
+  if (!o) throw new Error("출고 건을 찾을 수 없습니다.");
+  const extra = SHEET_OMS[id];
+  const lines = (outboundLines[id] ?? [])
+    .map((ln, idx) => ({
+      locationCode: ln.locationCode ?? null,
+      itemCode: ln.itemCode,
+      itemName: ln.itemName,
+      unit: ln.unit,
+      qty: Number(ln.orderQty) || 0,
+      setAlias: extra ? extra.sets[idx % extra.sets.length] : null,
+      colorName: extra?.colors?.[ln.id] ?? null,
+      lineMemo: extra?.memos?.[ln.id] ?? null,
+      separateLoading: extra?.separate?.includes(ln.id) ?? false
+    }))
+    .sort((a, b) => String(a.locationCode ?? "~").localeCompare(String(b.locationCode ?? "~")) || a.itemCode.localeCompare(b.itemCode));
+  const warehouseName = locations.find((l) => l.code === lines[0]?.locationCode)?.warehouseName ?? null;
+  return {
+    id: o.id, outboundNo: o.outboundNo, omsOrderNo: extra?.orderNo ?? null, shipNo: extra?.shipNo ?? null,
+    outType: o.outType, status: o.status, scheduledDate: o.scheduledDate, warehouseName,
+    customerCode: o.customerCode, customerName: o.customerName, carrier: o.carrier, shipAddress: o.shipAddress,
+    oms: extra?.oms ?? null, lines
+  };
+}
+
 let carriers: AnyRecord[] = [
   { id: 1, code: "HG", name: "한길택배", region: "전국", manager: "김배송", phone: "1588-0001", accountUser: "carrier_hg", portalRole: "배차공유", active: true },
   { id: 2, code: "GARAM", name: "가람택배", region: "수도권", manager: "이수도", phone: "1588-0002", accountUser: "carrier_garam", portalRole: "조회", active: true },
@@ -661,6 +715,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     return { ...o, totalWeightKg, weightMissing, photoCount: outboundPhotoMock.count(o.id) };
   })) as T;
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
+  if (clean.match(/^\/outbounds\/\d+\/sheet$/)) return copy(outboundSheet(Number(clean.split("/")[2]))) as T;
   if (clean === "/stocks") return copy(stocks) as T;
   if (clean === "/stocks/putaway") return copy(stocks.filter((s) => s.stockStatus === "PUTAWAY_WAIT").map(({ allocated, available, safetyStock, ...s }) => ({ ...s, qty: s.onHand }))) as T;
   if (clean === "/stocks/replenishment") return copy(computeReplenishment()) as T;
