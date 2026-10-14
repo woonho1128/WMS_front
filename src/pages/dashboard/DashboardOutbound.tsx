@@ -4,7 +4,7 @@ import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
-import { OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
+import { OUTBOUND_LINKED_ONLY, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { shiftDays } from "../../shared/appDate";
@@ -59,15 +59,17 @@ type OutboundLine = {
   availableQty: number | null;
 };
 
-const STATUSES: OutboundScreenStatus[] = ["출고대기", "피킹중", "피킹완료", "출고완료", "거부"];
+const STATUSES: OutboundScreenStatus[] = ["출고대기", "피킹중", "피킹완료", "출고완료", "거부", "취소", "시범"];
 
-/** 상태별 처리 버튼 — 전용 화면으로 넘긴다 */
+/** 상태별 처리 버튼 — 전용 화면으로 넘긴다. 취소 · 시범은 작업이 없어 받은 내용(출고요청서)만 본다 */
 const ACTION: Record<OutboundScreenStatus, { label: string; primary: boolean; to?: string }> = {
   출고대기: { label: "피킹 지시", primary: true },
   피킹중: { label: "진행 보기", primary: false, to: "/outbound/picking" },
   피킹완료: { label: "출고 확정", primary: true, to: "/outbound/outbound-confirm" },
   출고완료: { label: "내역서", primary: false, to: "/outbound/delivery-note" },
-  거부: { label: "사유 확인", primary: false }
+  거부: { label: "사유 확인", primary: false },
+  취소: { label: "요청서 보기", primary: false },
+  시범: { label: "요청서 보기", primary: false }
 };
 
 const METRO = ["서울", "경기", "인천"];
@@ -160,13 +162,14 @@ export const DashboardOutbound = () => {
 
   const tabs = useMemo(
     () =>
-      ([{ key: "전체" as const, tone: "gray" }, ...STATUSES.map((s) => ({ key: s, tone: OUTBOUND_STATUS_TONE[s] }))]).map(
-        (t) => ({
+      ([{ key: "전체" as const, tone: "gray" }, ...STATUSES.map((s) => ({ key: s, tone: OUTBOUND_STATUS_TONE[s] }))])
+        .map((t) => ({
           ...t,
           count: t.key === "전체" ? searched.length : searched.filter((r) => r.status === t.key).length
-        })
-      ),
-    [searched]
+        }))
+        // 취소 · 시범은 연동으로만 생긴다 — 없으면 탭을 숨긴다 (보고 있던 탭은 남긴다)
+        .filter((t) => !OUTBOUND_LINKED_ONLY.includes(t.key as OutboundScreenStatus) || t.count > 0 || tab === t.key),
+    [searched, tab]
   );
 
   const rejected = useMemo(() => searched.filter((r) => r.status === "거부"), [searched]);
@@ -219,6 +222,10 @@ export const DashboardOutbound = () => {
     const action = ACTION[row.status];
     if (row.status === "거부") {
       setRejectTarget(row);
+      return;
+    }
+    if (OUTBOUND_LINKED_ONLY.includes(row.status)) {
+      setSheetIds([row.id]);
       return;
     }
     if (row.status === "출고대기") {

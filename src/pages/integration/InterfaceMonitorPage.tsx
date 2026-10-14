@@ -17,9 +17,10 @@ type IfRow = {
   createdAt: string | null;
 };
 
-const isResendable = (s: string) => s === "fail" || s === "reprocess";
+/** 재전송은 WMS 가 보낸 것만 — 받은 메시지는 보낸 쪽이 같은 번호로 다시 보낸다 (서버도 막는다) */
+const isResendable = (r: IfRow) => r.direction === "SEND" && (r.state === "fail" || r.state === "reprocess");
 const dirKind = (d: string): "recv" | "send" => (d === "SEND" ? "send" : "recv");
-const dirLabel = (d: string) => (d === "SEND" ? "WMS→중계서버" : "중계서버→WMS");
+const dirLabel = (d: string) => (d === "SEND" ? "송신 (WMS→)" : "수신 (→WMS)");
 
 export const InterfaceMonitorPage = () => {
   const [rows, setRows] = useState<IfRow[]>([]);
@@ -28,7 +29,9 @@ export const InterfaceMonitorPage = () => {
   const [stateFilter, setStateFilter] = useState<"all" | InterfaceState>("all");
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [notice, setNotice] = useState("실패 · 재처리대기 건을 선택해 재전송할 수 있습니다. 외주(전송제외)는 대상이 아닙니다.");
+  const [notice, setNotice] = useState(
+    "보낸 건 중 실패 · 재처리대기를 선택해 재전송할 수 있습니다. 받은 건은 보낸 쪽이 다시 보내고, 외주(전송제외)는 대상이 아닙니다."
+  );
 
   const load = () => {
     setLoading(true);
@@ -68,7 +71,7 @@ export const InterfaceMonitorPage = () => {
 
   const resendableSelected = selected.filter((id) => {
     const r = rows.find((x) => x.id === id);
-    return r && isResendable(r.state);
+    return r && isResendable(r);
   });
 
   const toggle = (id: string) =>
@@ -77,10 +80,10 @@ export const InterfaceMonitorPage = () => {
   const resend = async (ids: string[]) => {
     const targets = ids.filter((id) => {
       const r = rows.find((x) => x.id === id);
-      return r && isResendable(r.state);
+      return r && isResendable(r);
     });
     if (targets.length === 0) {
-      setNotice("재전송 가능한 건(실패·재처리대기)이 없습니다.");
+      setNotice("재전송 가능한 건(보낸 건 중 실패·재처리대기)이 없습니다.");
       return;
     }
     for (const id of targets) {
@@ -169,7 +172,7 @@ export const InterfaceMonitorPage = () => {
             ) : (
               filtered.map((row) => {
                 const meta = INTERFACE_STATUS[row.state] ?? { label: row.state, tone: "gray" as const };
-                const resendable = isResendable(row.state);
+                const resendable = isResendable(row);
                 return (
                   <tr key={row.id} className={selected.includes(row.id) ? "row-selected" : ""}>
                     <td className="ifmon-check-col">

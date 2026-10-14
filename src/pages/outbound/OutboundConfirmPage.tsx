@@ -93,7 +93,7 @@ export const OutboundConfirmPage = () => {
     setBusy(true);
     try {
       await apiPost(`/outbounds/${confirmTarget.id}/confirm`, {});
-      setNotice(`${confirmTarget.outboundNo} 출고확정 완료 — ERP I/F 자동전송(중계서버 출고결과) 대상입니다.`);
+      setNotice(`${confirmTarget.outboundNo} 출고확정 완료 — 주문 시스템에 출고확정을 알리고, ERP 출고등록 대상이 됩니다.`);
       setConfirmTarget(null);
       await reload();
     } catch (e) {
@@ -275,7 +275,7 @@ export const OutboundConfirmPage = () => {
       >
         <div className="ds-callout info">
           <Icon name="check" size={18} />
-          <span>출고확정 시 <b>중계서버로 출고결과(ERP I/F)가 자동전송</b>됩니다. 부분출고 불가 — 전량 확정됩니다.</span>
+          <span>출고확정 시 <b>주문 시스템에 출고확정을 알리고 ERP 에 출고등록</b>을 올립니다. 부분출고 불가 — 전량 확정됩니다.</span>
         </div>
         {/* 사진이 없어도 확정은 된다 — 경고만 (설계 §5 · 2026-09-20 확정, 현장 작업을 막지 않는다) */}
         {confirmTarget && (confirmTarget.photoCount ?? 0) === 0 ? (

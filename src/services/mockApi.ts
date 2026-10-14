@@ -309,7 +309,7 @@ const policyBuckets = { onHand: 2574, allocated: 107, defect: 12, moving: 50, pu
 
 const interfaceLogs: AnyRecord[] = [
   { id: "IF-260617-001", type: "출고결과", direction: "SEND", refNo: "DN20260601019", state: "success", retry: 0, message: "ERP 전송 완료", createdAt: "2026-06-17 09:30" },
-  { id: "IF-260617-002", type: "재고차감", direction: "SEND", refNo: "DN20260601021", state: "fail", retry: 1, message: "중계서버 timeout", createdAt: "2026-06-17 09:45" },
+  { id: "IF-260617-002", type: "재고차감", direction: "SEND", refNo: "DN20260601021", state: "fail", retry: 1, message: "ERP 응답 없음 (timeout)", createdAt: "2026-06-17 09:45" },
   { id: "IF-260617-003", type: "외주이동", direction: "SEND", refNo: "TR-OEM-001", state: "excluded", retry: 0, message: "외주 재고는 ERP 미연동", createdAt: "2026-06-17 10:10" }
 ];
 

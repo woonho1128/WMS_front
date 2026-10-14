@@ -36,7 +36,7 @@ export const PUTAWAY_STEPS: Step[] = [
 ];
 
 /* ---------- 재고이동 ----------
-   이동요청 → 이동확정 → 반영(일반: 중계서버→ERP / 외주: WMS만, ERP 미연동) */
+   이동요청 → 이동확정 → 반영(일반: ERP / 외주: WMS만, ERP 미연동) */
 export const TRANSFER_STEPS: Step[] = [
   { key: "request", label: "이동요청" },
   { key: "confirm", label: "이동확정" },
@@ -45,18 +45,26 @@ export const TRANSFER_STEPS: Step[] = [
 
 /* ---------- 출고 화면 운영 상태값 (v2: 피킹 단계 도입) ----------
    출고대기(요청수신) → 피킹중 → 피킹완료(송장입력) → 출고완료 / 거부
-   거부: 재고부족 등으로 주문 실패 회신 (부분출고 불가 → 전량 확정 또는 거부) */
-export type OutboundScreenStatus = "출고대기" | "피킹중" | "피킹완료" | "출고완료" | "거부";
+   거부: 재고부족 등으로 주문 실패 회신 (부분출고 불가 → 전량 확정 또는 거부)
+   주문 시스템 연동으로만 생기는 상태 — 물류 작업 대상이 아니다
+   · 취소: 주문 시스템이 출고 전에 취소한 건. 지우지 않고 남긴다
+   · 시범: 시범 운영으로 받아 둔 건(기존 방식으로 일하는 동안). 전환일에 아직 안 나간 것만 출고대기가 된다 */
+export type OutboundScreenStatus = "출고대기" | "피킹중" | "피킹완료" | "출고완료" | "거부" | "취소" | "시범";
 
 export const OUTBOUND_STATUS_TONE: Record<OutboundScreenStatus, BadgeTone> = {
   출고대기: "gray",
   피킹중: "info",
   피킹완료: "violet",
   출고완료: "success",
-  거부: "danger"
+  거부: "danger",
+  취소: "yellow",
+  시범: "teal"
 };
 
-/* ---------- 중계서버 연동 상태값 (모니터링) ---------- */
+/** 주문 시스템 연동으로만 생기는 출고 상태 — 목록에 있을 때만 탭을 보인다 */
+export const OUTBOUND_LINKED_ONLY: OutboundScreenStatus[] = ["취소", "시범"];
+
+/* ---------- 연동 상태값 (모니터링) ---------- */
 export type InterfaceState =
   | "success"
   | "fail"

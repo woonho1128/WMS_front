@@ -595,6 +595,8 @@
 .tone-success { background: var(--c-success); }
 .tone-danger { background: var(--c-danger); }
 .tone-warning { background: var(--c-warning); }
+.tone-yellow { background: var(--c-yellow); }
+.tone-teal { background: var(--c-teal); }
 
 /* ---------- 거부 배너 ---------- */
 .out-reject-banner {
