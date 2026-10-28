@@ -3,16 +3,23 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
+import { useUiStore } from "../../app/store/uiStore";
 import { apiGet, apiPut } from "../../services/http";
+import { ItemImportModal } from "./ItemImportModal";
+import { downloadItemTemplate } from "./itemImport";
 import "./InventoryItemPage.css";
 
 type Item = {
   id: number;
   code: string;
   name: string;
+  spec?: string | null;
   category: string | null;
   unit: string;
   safetyStock: number;
+  barcode?: string | null;
+  /** 주문 시스템의 출고요청이 품목을 찾는 열쇠 — 비어 있으면 그 품목은 출고요청으로 받을 수 없다 */
+  erpItemCode?: string | null;
   consign: boolean;
   active: boolean;
   /**
@@ -31,13 +38,20 @@ const weightText = (kg: number) => (kg < 1 ? `${Math.round(kg * 1000).toLocaleSt
 
 const Unregistered = () => <span className="item-spec-missing">미등록</span>;
 
+/** 품목 가져오기는 관리자만 (서버도 막는다) */
+const IMPORT_ROLES = new Set(["admin"]);
+
 export const InventoryItemPage = () => {
+  const role = useUiStore((state) => state.currentRole);
+  const canImport = IMPORT_ROLES.has(role);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
   const [missingOnly, setMissingOnly] = useState(false);
+  const [noErpOnly, setNoErpOnly] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const [editTarget, setEditTarget] = useState<Item | null>(null);
   const [form, setForm] = useState<SpecForm>({ weight: "", volume: "", upp: "" });
@@ -57,14 +71,22 @@ export const InventoryItemPage = () => {
 
   /** 중량 미등록 — 배차 · 출고 요청서 총중량을 '모름'으로 만드는 품목 */
   const missingCount = useMemo(() => items.filter((it) => it.unitWeightKg == null).length, [items]);
+  /** ERP 단품코드 없음 (사용 중) — 주문 시스템의 출고요청에 이 품목이 오면 "모르는 품목"으로 거절된다 */
+  const noErpCount = useMemo(() => items.filter((it) => it.active && !it.erpItemCode).length, [items]);
 
   const filtered = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
     return items.filter((it) => {
       if (missingOnly && it.unitWeightKg != null) return false;
-      return !kw || it.code.toLowerCase().includes(kw) || it.name.toLowerCase().includes(kw);
+      if (noErpOnly && (!it.active || it.erpItemCode)) return false;
+      return (
+        !kw ||
+        it.code.toLowerCase().includes(kw) ||
+        it.name.toLowerCase().includes(kw) ||
+        (it.erpItemCode ?? "").toLowerCase().includes(kw)
+      );
     });
-  }, [items, keyword, missingOnly]);
+  }, [items, keyword, missingOnly, noErpOnly]);
 
   const openEdit = (it: Item) => {
     setEditTarget(it);
@@ -104,14 +126,27 @@ export const InventoryItemPage = () => {
         className="item-head-card"
         title="품목 관리"
         action={
-          <button type="button" className="ghost" onClick={load}>
-            새로고침
-          </button>
+          <div className="item-head-actions">
+            {canImport ? (
+              <>
+                <button type="button" className="ghost" onClick={downloadItemTemplate}>
+                  양식 내려받기
+                </button>
+                <button type="button" className="ghost is-primary" onClick={() => setImportOpen(true)}>
+                  엑셀 가져오기
+                </button>
+              </>
+            ) : null}
+            <button type="button" className="ghost" onClick={load}>
+              새로고침
+            </button>
+          </div>
         }
       >
         <p>
           등록된 품목을 조회하고 <b>물류 제원(단위 중량 · 부피 · 파레트 입수)</b>을 입력합니다. 제원은 배차의 총중량 · 차량 추천 · 파레트 수에 쓰이고,
-          미등록 품목이 섞인 주문은 총중량이 <b>모름</b>으로 나옵니다.
+          미등록 품목이 섞인 주문은 총중량이 <b>모름</b>으로 나옵니다. <b>ERP 단품코드</b>가 없는 품목은 주문 시스템의 출고요청으로 받을 수 없습니다
+          {canImport ? " — 엑셀 가져오기로 한꺼번에 넣을 수 있습니다." : "."}
         </p>
       </DashboardCard>
 
@@ -122,7 +157,7 @@ export const InventoryItemPage = () => {
             <input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="품목 코드 또는 품목명을 입력하세요"
+              placeholder="품목 코드 · 품목명 · ERP 단품코드"
             />
           </label>
           <label className="item-missing-toggle">
@@ -130,6 +165,13 @@ export const InventoryItemPage = () => {
             <span className="item-check">
               <input type="checkbox" checked={missingOnly} onChange={(e) => setMissingOnly(e.target.checked)} />
               중량 미등록만 <b className={missingCount ? "is-warn" : ""}>{missingCount}</b>
+            </span>
+          </label>
+          <label className="item-missing-toggle">
+            <span>주문 연동</span>
+            <span className="item-check">
+              <input type="checkbox" checked={noErpOnly} onChange={(e) => setNoErpOnly(e.target.checked)} />
+              ERP 단품코드 없음만 <b className={noErpCount ? "is-warn" : ""}>{noErpCount}</b>
             </span>
           </label>
         </div>
@@ -153,6 +195,7 @@ export const InventoryItemPage = () => {
               <tr>
                 <th className="rt-title">품목 코드</th>
                 <th>품목명</th>
+                <th>ERP 단품코드</th>
                 <th>품목 그룹</th>
                 <th>단위</th>
                 <th>구분</th>
@@ -167,14 +210,14 @@ export const InventoryItemPage = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={11} style={{ textAlign: "center", padding: "28px", color: "var(--ink-faint)" }}>
+                  <td colSpan={12} style={{ textAlign: "center", padding: "28px", color: "var(--ink-faint)" }}>
                     불러오는 중...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ textAlign: "center", padding: "28px", color: "var(--ink-faint)" }}>
-                    {missingOnly ? "중량 미등록 품목이 없습니다." : "데이터가 없습니다."}
+                  <td colSpan={12} style={{ textAlign: "center", padding: "28px", color: "var(--ink-faint)" }}>
+                    {noErpOnly ? "ERP 단품코드가 없는 사용 중 품목이 없습니다." : missingOnly ? "중량 미등록 품목이 없습니다." : "데이터가 없습니다."}
                   </td>
                 </tr>
               ) : (
@@ -186,6 +229,7 @@ export const InventoryItemPage = () => {
                       </button>
                     </td>
                     <td>{it.name}</td>
+                    <td className="item-mono">{it.erpItemCode ? it.erpItemCode : <span className="item-spec-missing">없음</span>}</td>
                     <td>{it.category ?? "-"}</td>
                     <td>{it.unit}</td>
                     <td>
@@ -278,6 +322,16 @@ export const InventoryItemPage = () => {
           </div>
         ) : null}
       </Modal>
+
+      <ItemImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onApplied={(message) => {
+          setImportOpen(false);
+          setNotice(message);
+          load();
+        }}
+      />
     </section>
   );
 };

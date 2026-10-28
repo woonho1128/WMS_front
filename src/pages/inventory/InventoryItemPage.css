@@ -203,6 +203,50 @@
 .item-check b { font-variant-numeric: tabular-nums; }
 .item-check b.is-warn { color: var(--c-warning-ink); }
 
+/* 머리 버튼 — 양식 내려받기 · 엑셀 가져오기(관리자) · 새로고침 */
+.item-head-actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.item-head-card .ghost { cursor: pointer; font-family: inherit; color: var(--ink); }
+.item-head-card .ghost.is-primary { background: var(--primary); border-color: var(--primary); color: var(--ink-on-accent); }
+.item-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* 품목 가져오기 창 */
+.ds-modal.item-import-modal { width: 980px; }
+.imp-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.imp-file { flex: 1 1 200px; min-width: 0; font-size: 12.5px; color: var(--ink-muted); overflow-wrap: anywhere; }
+.imp-link {
+  border: 0; background: transparent; padding: 0; cursor: pointer;
+  font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--primary-ink); text-decoration: underline;
+}
+.imp-option { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; font-size: 12.5px; color: var(--ink); line-height: 1.5; }
+.imp-option input { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; }
+.imp-note { margin: 10px 0 0; font-size: 12px; color: var(--ink-muted); line-height: 1.5; overflow-wrap: anywhere; }
+.imp-note.is-warn { color: var(--c-warning-ink); font-weight: 700; }
+.imp-callout { margin: 10px 0 0; font-size: 12.5px; }
+.imp-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
+.imp-tab {
+  height: 30px; padding: 0 11px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-muted);
+  font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.imp-tab b { margin-left: 3px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.imp-tab.is-on { border-color: var(--primary-line); background: var(--primary-bg); color: var(--primary-ink); font-weight: 700; }
+.imp-tab.is-bad b { color: var(--c-danger-ink); }
+.imp-table-wrap { max-height: 46vh; overflow: auto; border: 1px solid var(--border-soft); border-radius: var(--r-sm); }
+.imp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.imp-table th {
+  position: sticky; top: 0; z-index: 1; background: var(--surface-2);
+  padding: 7px 8px; text-align: left; font-size: 11px; font-weight: 700; color: var(--ink-faint); white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.imp-table td { padding: 7px 8px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+.imp-table .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+.imp-table tr.is-error td { background: var(--c-danger-bg); }
+.imp-mono { font-family: var(--font-mono); white-space: nowrap; }
+.imp-missing { color: var(--c-warning-ink); font-weight: 700; }
+.imp-detail { min-width: 220px; color: var(--ink-muted); line-height: 1.5; }
+.imp-table tr.is-error .imp-detail { color: var(--c-danger-ink); font-weight: 600; }
+.imp-empty { text-align: center; padding: 20px !important; color: var(--ink-faint); }
+
 /* 제원 입력 창 */
 .item-spec-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .item-spec-grid .ds-field { margin-bottom: 0; }
