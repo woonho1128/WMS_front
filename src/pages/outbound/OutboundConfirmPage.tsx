@@ -9,7 +9,9 @@ import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { OUTBOUND_STEPS, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost, apiPut } from "../../services/http";
 import { PhotoCountLink, outboundPhotoPath } from "./PhotoCountLink";
+import { HoldDialog, type HoldTarget } from "./HoldDialog";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
+import "./outboundDialogs.css";
 
 type OutboundRow = {
   id: number;
@@ -23,10 +25,18 @@ type OutboundRow = {
   shipAddress: string | null;
   invoiceNo: string | null;
   status: OutboundScreenStatus;
+  /** 보류(출고 불가 알림) 사유 */
   rejectReason: string | null;
   /** 출고 사진 장수 — 0 이면 확정할 때 경고만 (설계: 현장 작업을 막지 않는다) */
   photoCount: number;
+  /** 확인을 기다리는 주문 변경 · 취소 — 있으면 확정하지 못하고 변경 확인 화면으로 */
+  pendingChanges?: number;
 };
+
+/** 출고확정 결과 — notified: 주문 시스템에 알렸고, 주문 시스템이 ERP 까지 반영한 뒤 확정됐다 */
+type ConfirmResult = { skippedLines: number; notified: boolean };
+
+const CHANGE_REVIEW_PATH = "/outbound/change-review";
 
 export const OutboundConfirmPage = () => {
   const navigate = useNavigate();
@@ -35,12 +45,12 @@ export const OutboundConfirmPage = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [tab, setTab] = useState<"wait" | "done" | "rejected">("wait");
+  const [tab, setTab] = useState<"wait" | "done" | "held">("wait");
   const [keyword, setKeyword] = useState("");
-  const [rejectTarget, setRejectTarget] = useState<OutboundRow | null>(null);
-  const [rejectReason, setRejectReason] = useState("재고부족");
-  const [rejectNote, setRejectNote] = useState("");
+  const [holdTarget, setHoldTarget] = useState<HoldTarget | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<OutboundRow | null>(null);
+  /** 주문 시스템 · ERP 가 받지 않은 사유 — 창을 닫지 않고 보인다 (출고는 피킹완료 그대로) */
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const reload = () => {
     setLoading(true);
@@ -54,7 +64,7 @@ export const OutboundConfirmPage = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    const status: OutboundScreenStatus = tab === "wait" ? "피킹완료" : tab === "done" ? "출고완료" : "거부";
+    const status: OutboundScreenStatus = tab === "wait" ? "피킹완료" : tab === "done" ? "출고완료" : "보류";
     const kw = keyword.trim().toLowerCase();
     return rows.filter((r) => {
       if (r.status !== status) return false;
@@ -71,7 +81,7 @@ export const OutboundConfirmPage = () => {
     () => ({
       wait: rows.filter((r) => r.status === "피킹완료").length,
       done: rows.filter((r) => r.status === "출고완료").length,
-      rejected: rows.filter((r) => r.status === "거부").length
+      held: rows.filter((r) => r.status === "보류").length
     }),
     [rows]
   );
@@ -88,35 +98,51 @@ export const OutboundConfirmPage = () => {
     }
   };
 
+  const openConfirm = (row: OutboundRow) => {
+    setConfirmError(null);
+    setConfirmTarget(row);
+  };
+
+  /** 반영을 기다리는 동안에는 닫지 않는다 — 결과를 모른 채 창이 사라지지 않게 */
+  const closeConfirm = () => {
+    if (busy) return;
+    setConfirmTarget(null);
+    setConfirmError(null);
+  };
+
   const doConfirm = async () => {
     if (!confirmTarget) return;
     setBusy(true);
+    setConfirmError(null);
     try {
-      await apiPost(`/outbounds/${confirmTarget.id}/confirm`, {});
-      setNotice(`${confirmTarget.outboundNo} 출고확정 완료 — 주문 시스템에 출고확정을 알리고, ERP 출고등록 대상이 됩니다.`);
+      const result = await apiPost<ConfirmResult>(`/outbounds/${confirmTarget.id}/confirm`, {});
+      const skipped = result?.skippedLines ?? 0;
+      setNotice(
+        `${confirmTarget.outboundNo} 출고확정 완료` +
+          (result?.notified ? " — 주문 시스템 · ERP 에 반영했습니다." : ".") +
+          (skipped > 0 ? ` 주의: 스킵 ${skipped}라인은 미출고로 남았습니다.` : "")
+      );
       setConfirmTarget(null);
       await reload();
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : "출고확정 실패");
-      setConfirmTarget(null);
+      // 주문 시스템 · ERP 가 받지 않았다 — 출고는 피킹완료 그대로. 창에 사유를 두고 [다시 시도]
+      setConfirmError(e instanceof Error ? e.message : "출고확정 실패");
     } finally {
       setBusy(false);
     }
   };
 
-  const doReject = async () => {
-    if (!rejectTarget) return;
-    const reason = rejectNote.trim() ? `${rejectReason} · ${rejectNote.trim()}` : rejectReason;
+  /** 다시 출고 — 보류를 풀어 피킹완료(집어 둔 물건이 있으면) · 출고대기로 */
+  const doResume = async (row: OutboundRow) => {
     setBusy(true);
     try {
-      await apiPost(`/outbounds/${rejectTarget.id}/reject`, { reason });
-      setNotice(`${rejectTarget.outboundNo} 거부(예외처리) — OMS 거부값 회신: ${reason}`);
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : "거부 실패");
-    } finally {
-      setRejectTarget(null);
-      setBusy(false);
+      await apiPost(`/outbounds/${row.id}/resume`, {});
+      setNotice(`${row.outboundNo} 보류를 풀었습니다 — 주문 시스템에 알리고 이어서 진행합니다.`);
       await reload();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "다시 출고 실패");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -126,13 +152,13 @@ export const OutboundConfirmPage = () => {
         title="출고 확정 단계"
         steps={OUTBOUND_STEPS}
         current={2}
-        note="피킹완료 건에 송장번호 입력 → 출고확정 시 ERP I/F 자동전송 · 실패/예외는 거부 처리"
+        note="피킹완료 건에 송장번호 입력 → 출고확정 (주문 시스템 · ERP 반영까지 기다림) · 못 나가면 출고 불가 알림(보류)"
       />
 
       <section className="outbound-summary-grid" aria-label="출고확정 요약">
         <article className="app-surface outbound-summary-card"><span>확정 대기(피킹완료)</span><strong>{summary.wait}건</strong></article>
         <article className="app-surface outbound-summary-card"><span>출고완료</span><strong>{summary.done}건</strong></article>
-        <article className="app-surface outbound-summary-card"><span>거부(예외)</span><strong>{summary.rejected}건</strong></article>
+        <article className="app-surface outbound-summary-card"><span>보류(출고 불가)</span><strong>{summary.held}건</strong></article>
       </section>
 
       <DashboardCard className="outbound-filter-card" title="출고 확정 조회">
@@ -150,7 +176,7 @@ export const OutboundConfirmPage = () => {
             <select value={tab} onChange={(e) => setTab(e.target.value as typeof tab)}>
               <option value="wait">확정 대기 (피킹완료)</option>
               <option value="done">출고완료</option>
-              <option value="rejected">거부(예외)</option>
+              <option value="held">보류 (출고 불가)</option>
             </select>
           </label>
           <div className="outbound-filter-actions">
@@ -167,10 +193,13 @@ export const OutboundConfirmPage = () => {
         </div>
       </DashboardCard>
 
-      <DashboardCard className="outbound-table-card" title={`${tab === "wait" ? "확정 대기" : tab === "done" ? "출고완료" : "거부"} 목록 (${filtered.length}건)`}>
+      <DashboardCard className="outbound-table-card" title={`${tab === "wait" ? "확정 대기" : tab === "done" ? "출고완료" : "보류"} 목록 (${filtered.length}건)`}>
         <div className="outbound-list-toolbar">
           <p className="outbound-notice">
-            {notice ?? "송장번호 입력 후 출고확정하세요. 재고부족 등 예외는 거부 처리(OMS 회신)합니다."}
+            {notice ??
+              (tab === "held"
+                ? "보류 건은 영업이 주문을 취소하면 자동으로 취소됩니다. 문제가 풀렸으면 [다시 출고]를 누르세요."
+                : "송장번호 입력 후 출고확정하세요. 재고부족 등으로 못 나가면 [출고 불가]로 주문 시스템에 알립니다.")}
           </p>
         </div>
         <ResponsiveTable>
@@ -198,7 +227,9 @@ export const OutboundConfirmPage = () => {
               ) : (
                 filtered.map((row) => {
                   const waiting = row.status === "피킹완료";
+                  const held = row.status === "보류";
                   const needInvoice = waiting && !(row.invoiceNo ?? "").trim();
+                  const changeWaiting = waiting && (row.pendingChanges ?? 0) > 0;
                   return (
                     <tr key={row.id}>
                       <td>{row.outboundNo}</td>
@@ -220,30 +251,55 @@ export const OutboundConfirmPage = () => {
                         )}
                       </td>
                       {/* 사진 칸 — 누르면 출고 사진에서 그 건이 열린다. 없으면 붉게(나중에 채우게) */}
-                      <td>{row.status === "거부" ? <span className="cell-mut">-</span> : <PhotoCountLink outboundNo={row.outboundNo} count={row.photoCount ?? 0} />}</td>
+                      <td>{held ? <span className="cell-mut">-</span> : <PhotoCountLink outboundNo={row.outboundNo} count={row.photoCount ?? 0} />}</td>
                       <td>
                         <StatusBadge tone={OUTBOUND_STATUS_TONE[row.status]}>{row.status}</StatusBadge>
-                        {row.status === "거부" && row.rejectReason ? (
+                        {held && row.rejectReason ? (
                           <div className="cell-mut" style={{ fontSize: 12, marginTop: 2 }}>{row.rejectReason}</div>
+                        ) : null}
+                        {changeWaiting ? (
+                          <div style={{ marginTop: 4 }}>
+                            <StatusBadge tone="warning">주문 변경 대기</StatusBadge>
+                          </div>
                         ) : null}
                       </td>
                       <td>
                         <div className="outbound-row-actions">
-                          {waiting ? (
+                          {changeWaiting ? (
+                            // 주문 변경 · 취소가 확인을 기다린다 — 나간 뒤에는 승인할 수 없어 확정을 막는다 (서버도 막는다)
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              title="주문 변경 · 취소를 먼저 승인하거나 거절하세요"
+                              onClick={() => navigate(CHANGE_REVIEW_PATH)}
+                            >
+                              변경 확인
+                            </button>
+                          ) : waiting ? (
                             <>
                               <button
                                 type="button"
                                 className="btn-secondary"
                                 disabled={busy || needInvoice}
                                 title={needInvoice ? "송장번호를 먼저 입력하세요" : undefined}
-                                onClick={() => setConfirmTarget(row)}
+                                onClick={() => openConfirm(row)}
                               >
                                 출고확정
                               </button>
-                              <button type="button" className="btn-secondary outbound-reject-btn" onClick={() => setRejectTarget(row)}>
-                                거부
+                              <button type="button" className="btn-secondary outbound-reject-btn" onClick={() => setHoldTarget(row)}>
+                                출고 불가
                               </button>
                             </>
+                          ) : held ? (
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              disabled={busy}
+                              title="문제가 풀렸으면 이어서 진행합니다 — 주문 시스템에 알립니다"
+                              onClick={() => doResume(row)}
+                            >
+                              다시 출고
+                            </button>
                           ) : (
                             <span className="cell-mut">처리 완료</span>
                           )}
@@ -265,17 +321,28 @@ export const OutboundConfirmPage = () => {
         icon="checkCircle"
         iconBg="var(--c-success-bg)"
         iconColor="var(--c-success)"
-        onClose={() => setConfirmTarget(null)}
+        onClose={closeConfirm}
         footer={
           <>
-            <button type="button" className="btn-secondary" onClick={() => setConfirmTarget(null)}>취소</button>
-            <button type="button" className="btn-primary" disabled={busy} onClick={doConfirm}>출고확정</button>
+            <button type="button" className="btn-secondary" disabled={busy} onClick={closeConfirm}>취소</button>
+            <button type="button" className="btn-primary" disabled={busy} onClick={doConfirm} aria-busy={busy}>
+              {busy ? <span className="ob-wait">주문 시스템 · ERP 반영 중…</span> : confirmError ? "다시 시도" : "출고확정"}
+            </button>
           </>
         }
       >
+        {confirmError ? (
+          <div className="ds-callout danger" role="alert" style={{ marginBottom: 10 }}>
+            <Icon name="alert" size={18} />
+            <span>{confirmError}</span>
+          </div>
+        ) : null}
         <div className="ds-callout info">
           <Icon name="check" size={18} />
-          <span>출고확정 시 <b>주문 시스템에 출고확정을 알리고 ERP 에 출고등록</b>을 올립니다. 부분출고 불가 — 전량 확정됩니다.</span>
+          <span>
+            주문 시스템에서 온 출고는 <b>주문 시스템이 ERP 에 반영할 때까지 기다렸다가</b> 확정합니다. 반영되지 않으면 확정하지 않고
+            피킹완료로 둡니다 — 잠시 후 다시 누르세요. 부분출고 불가 — 전량 확정됩니다.
+          </span>
         </div>
         {/* 사진이 없어도 확정은 된다 — 경고만 (설계 §5 · 2026-09-20 확정, 현장 작업을 막지 않는다) */}
         {confirmTarget && (confirmTarget.photoCount ?? 0) === 0 ? (
@@ -286,6 +353,7 @@ export const OutboundConfirmPage = () => {
               <button
                 type="button"
                 className="outbound-link-btn"
+                disabled={busy}
                 onClick={() => {
                   setConfirmTarget(null);
                   navigate(outboundPhotoPath(confirmTarget.outboundNo));
@@ -299,41 +367,14 @@ export const OutboundConfirmPage = () => {
         ) : null}
       </Modal>
 
-      <Modal
-        open={rejectTarget !== null}
-        title="출고 거부 (예외처리)"
-        desc={rejectTarget ? `${rejectTarget.outboundNo} · ${rejectTarget.customerName ?? ""}` : ""}
-        icon="ban"
-        iconBg="var(--c-danger-bg)"
-        iconColor="var(--c-danger)"
-        onClose={() => setRejectTarget(null)}
-        footer={
-          <>
-            <button type="button" className="btn-secondary" onClick={() => setRejectTarget(null)}>취소</button>
-            <button type="button" className="btn-primary" style={{ background: "var(--c-danger)", borderColor: "var(--c-danger)" }} onClick={doReject}>
-              거부 확정
-            </button>
-          </>
-        }
-      >
-        <div className="ds-callout danger" style={{ marginBottom: 14 }}>
-          <Icon name="alert" size={18} />
-          <span>거부 시 OMS로 <b>거부값이 회신</b>되어 주문이 실패 처리됩니다. (부분출고 불가)</span>
-        </div>
-        <label className="ds-field">
-          <span>거부 사유</span>
-          <select value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}>
-            <option value="재고부족">재고부족</option>
-            <option value="주소 오류">주소 오류</option>
-            <option value="품질 이슈">품질 이슈</option>
-            <option value="기타">기타</option>
-          </select>
-        </label>
-        <label className="ds-field">
-          <span>비고 (선택)</span>
-          <input value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} placeholder="상세 사유 입력" />
-        </label>
-      </Modal>
+      <HoldDialog
+        target={holdTarget}
+        onClose={() => setHoldTarget(null)}
+        onDone={(message) => {
+          setNotice(message);
+          reload();
+        }}
+      />
     </section>
   );
 };

@@ -99,6 +99,7 @@ export type OutboundRow = {
   stage: string;
   stageLabel: string;
   tone: Tone;
+  /** 보류(출고 불가 알림) 사유 */
   rejectReason: string | null;
   to: string;
 };
@@ -108,7 +109,8 @@ export type OutboundDashboard = {
   today: string;
   kpis: Kpi[];
   stages: FlowStage[];
-  rejected: { count: number; qty: number };
+  /** 보류(출고 불가 알림, 예전 거부) — 영업 확인을 기다린다 */
+  held: { count: number; qty: number };
   rows: OutboundRow[];
   hourly: Hourly;
   breakdown: BreakdownRow[];

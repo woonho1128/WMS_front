@@ -74,6 +74,7 @@ export const menuSections: MenuSection[] = [
       { slug: "outbound-order", label: "출고 요청서", description: "OMS 오더 수신·조회와 오더라벨 출력, 상태관리를 처리합니다." },
       { slug: "manual-order", label: "비운영 주문 등록", description: "상품 선택 기반 비운영 주문 등록과 BOM 구성품 자동 전개를 제공합니다." },
       { slug: "picking", label: "피킹 작업", description: "오더 QR 스캔과 로케이션 안내, 피킹재고 차감을 처리합니다." },
+      { slug: "change-review", label: "변경·취소 확인", description: "피킹이 시작된 뒤 주문 시스템에서 온 변경·취소를 승인(집은 재고 되돌림)하거나 거절합니다." },
       { slug: "outbound-confirm", label: "출고 확정", description: "출고확정과 ERP I/F 전송, 실패건 예외처리를 관리합니다." },
       { slug: "outbound-photo", label: "출고 사진", description: "출고 건별 상차·포장·송장 사진을 찍어 증빙으로 남깁니다." },
       { slug: "delivery-note", label: "배송 내역서", description: "일일 출고·배송·운송정보 조회와 내역서 출력을 제공합니다." }

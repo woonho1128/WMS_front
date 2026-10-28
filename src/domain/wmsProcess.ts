@@ -9,7 +9,7 @@ import type { BadgeTone } from "../components/ui/StatusBadge";
 
 /* ---------- 출고 (WMS 담당 구간) — v2 ----------
    출고요청 수신 → 피킹(QR 검증·피킹재고 차감) → 출고확정(송장 필수, ERP 전송) → (재고차감·결과전송 자동)
-   ※ 부분출고 불가 — 전량 확정 또는 거부. */
+   ※ 부분출고 불가 — 전량 확정. 못 나가면 출고 불가 알림(보류). */
 export const OUTBOUND_STEPS: Step[] = [
   { key: "received", label: "출고요청" },
   { key: "picking", label: "피킹" },
@@ -44,25 +44,32 @@ export const TRANSFER_STEPS: Step[] = [
 ];
 
 /* ---------- 출고 화면 운영 상태값 (v2: 피킹 단계 도입) ----------
-   출고대기(요청수신) → 피킹중 → 피킹완료(송장입력) → 출고완료 / 거부
-   거부: 재고부족 등으로 주문 실패 회신 (부분출고 불가 → 전량 확정 또는 거부)
+   출고대기(요청수신) → 피킹중 → 피킹완료(송장입력) → 출고완료
+   보류: 출고 불가 알림 (예전 '거부'). 끝난 상태가 아니다 — 영업이 주문을 취소하면 취소,
+         물류팀이 [다시 출고]를 누르면 출고대기 · 피킹완료로 돌아간다
    주문 시스템 연동으로만 생기는 상태 — 물류 작업 대상이 아니다
    · 취소: 주문 시스템이 출고 전에 취소한 건. 지우지 않고 남긴다
    · 시범: 시범 운영으로 받아 둔 건(기존 방식으로 일하는 동안). 전환일에 아직 안 나간 것만 출고대기가 된다 */
-export type OutboundScreenStatus = "출고대기" | "피킹중" | "피킹완료" | "출고완료" | "거부" | "취소" | "시범";
+export type OutboundScreenStatus = "출고대기" | "피킹중" | "피킹완료" | "출고완료" | "보류" | "취소" | "시범";
 
 export const OUTBOUND_STATUS_TONE: Record<OutboundScreenStatus, BadgeTone> = {
   출고대기: "gray",
   피킹중: "info",
   피킹완료: "violet",
   출고완료: "success",
-  거부: "danger",
+  보류: "danger",
   취소: "yellow",
   시범: "teal"
 };
 
 /** 주문 시스템 연동으로만 생기는 출고 상태 — 목록에 있을 때만 탭을 보인다 */
 export const OUTBOUND_LINKED_ONLY: OutboundScreenStatus[] = ["취소", "시범"];
+
+/** 출고 불가 알림을 보낼 수 있는 상태 */
+export const OUTBOUND_HOLDABLE: OutboundScreenStatus[] = ["출고대기", "피킹중", "피킹완료"];
+
+/** 출고일 · 인수자를 바꿀 수 있는 상태 — 나가기 전 (보류 포함) */
+export const OUTBOUND_EDITABLE: OutboundScreenStatus[] = ["출고대기", "피킹중", "피킹완료", "보류"];
 
 /* ---------- 연동 상태값 (모니터링) ---------- */
 export type InterfaceState =

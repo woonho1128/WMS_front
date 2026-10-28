@@ -21,6 +21,7 @@ const InboundConfirmPage = lazy(() => import("../inbound/InboundConfirmPage").th
 const ReturnConfirmPage = lazy(() => import("../inbound/ReturnConfirmPage").then((m) => ({ default: m.ReturnConfirmPage })));
 const PickingPage = lazy(() => import("../outbound/PickingPage").then((m) => ({ default: m.PickingPage })));
 const ManualOrderPage = lazy(() => import("../outbound/ManualOrderPage").then((m) => ({ default: m.ManualOrderPage })));
+const ChangeReviewPage = lazy(() => import("../outbound/ChangeReviewPage").then((m) => ({ default: m.ChangeReviewPage })));
 const OutboundConfirmPage = lazy(() => import("../outbound/OutboundConfirmPage").then((m) => ({ default: m.OutboundConfirmPage })));
 const OutboundPhotoPage = lazy(() => import("../outbound/OutboundPhotoPage").then((m) => ({ default: m.OutboundPhotoPage })));
 const DeliveryNotePage = lazy(() => import("../outbound/DeliveryNotePage").then((m) => ({ default: m.DeliveryNotePage })));
@@ -73,6 +74,7 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
     "outbound-order": <DashboardOutbound />,
     "manual-order": <ManualOrderPage />,
     picking: <PickingPage />,
+    "change-review": <ChangeReviewPage />,
     "outbound-confirm": <OutboundConfirmPage />,
     "outbound-photo": <OutboundPhotoPage />,
     "delivery-note": <DeliveryNotePage />,

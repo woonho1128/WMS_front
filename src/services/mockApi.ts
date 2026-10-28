@@ -3,6 +3,8 @@ import { useUiStore } from "../app/store/uiStore";
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
 import { createDashboardMock, regionOf } from "./mockDashboard";
+import { createItemImportMock } from "./mockItemImport";
+import { createOmsChangeMock } from "./mockOmsChange";
 import { createOutboundPhotoMock } from "./mockOutboundPhoto";
 import { createWarehouseMock } from "./mockWarehouse";
 
@@ -67,11 +69,12 @@ let locations = [
 const items = [
   // 물류 제원 — unitWeightKg 단위 중량(랙 허용 하중 · 배차 총중량), unitVolumeCm3 단위 부피(배차), unitsPerPallet 파레트 입수.
   // 비어 있으면(null) 미등록 — 배차 · 출고 요청서의 합계가 '모름'이 된다 (0 으로 치지 않는다)
-  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25 as number | null, unitVolumeCm3: 1500 as number | null, category: "음향기기", consign: false, active: true },
-  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08 as number | null, unitVolumeCm3: 500 as number | null, category: "케이블", consign: false, active: true },
-  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45 as number | null, unitVolumeCm3: 1200 as number | null, category: "배터리", consign: false, active: true },
-  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2 as number | null, unitVolumeCm3: 2500 as number | null, category: "주방용품", consign: true, active: true },
-  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03 as number | null, unitVolumeCm3: 100 as number | null, category: "부자재", consign: false, active: true }
+  // erpItemCode — 주문 시스템의 출고요청이 품목을 찾는 열쇠 (가짜 값). 비어 있는 품목은 "ERP 단품코드 없음" 으로 보인다
+  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25 as number | null, unitVolumeCm3: 1500 as number | null, category: "음향기기", consign: false, active: true, erpItemCode: "ERP-10241" as string | null, barcode: null as string | null },
+  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08 as number | null, unitVolumeCm3: 500 as number | null, category: "케이블", consign: false, active: true, erpItemCode: "ERP-10822" as string | null, barcode: null as string | null },
+  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45 as number | null, unitVolumeCm3: 1200 as number | null, category: "배터리", consign: false, active: true, erpItemCode: "ERP-12044" as string | null, barcode: null as string | null },
+  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2 as number | null, unitVolumeCm3: 2500 as number | null, category: "주방용품", consign: true, active: true, erpItemCode: null as string | null, barcode: null as string | null },
+  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03 as number | null, unitVolumeCm3: 100 as number | null, category: "부자재", consign: false, active: true, erpItemCode: null as string | null, barcode: null as string | null }
 ];
 
 /** 품목 목록 행 — 서버 ItemResponse 와 같은 모양 (제원은 null = 미등록) */
@@ -81,9 +84,12 @@ const itemRow = (it: AnyRecord) => {
     id: it.id,
     code: it.itemCode,
     name: it.itemName,
+    spec: it.spec ?? null,
     category: it.category,
     unit: it.unit,
     safetyStock: it.safetyStock,
+    barcode: it.barcode ?? null,
+    erpItemCode: it.erpItemCode ?? null,
     consign: it.consign,
     active: it.active,
     unitWeightKg: positive(it.unitWeightKg),
@@ -202,7 +208,7 @@ let outbounds = [
   { id: 46, outboundNo: "DN20260601020", scheduledDate: "2026-06-19", customerCode: "051794", customerName: "대림바스(주)", outType: "A/S 출고(유상)", qty: 5, carrier: "사내차량", shipAddress: "충북 청주시 흥덕구 가경로 50", invoiceNo: null, status: "출고대기", rejectReason: null },
   { id: 62, outboundNo: "DN20260601021", scheduledDate: "2026-06-20", customerCode: "219475", customerName: "대림 스마트몰", outType: "도소매출고", qty: 32, carrier: "가람택배", shipAddress: "경기 화성시 동탄대로 620", invoiceNo: "GR2606210088", status: "피킹완료", rejectReason: null },
   { id: 57, outboundNo: "DN20260601019", scheduledDate: "2026-06-18", customerCode: "132906", customerName: "주식회사 나래유통", outType: "도소매출고", qty: 31, carrier: "한길택배", shipAddress: "경기 부천시 길주로 210", invoiceNo: "HG2606190077", status: "출고완료", rejectReason: null },
-  { id: 52, outboundNo: "DN20260601018", scheduledDate: "2026-06-17", customerCode: "127419", customerName: "(주)가온마트", outType: "도소매출고", qty: 19, carrier: "온길택배", shipAddress: "경기 고양시 일산동구 중앙로 1275", invoiceNo: null, status: "거부", rejectReason: "주소 오류" },
+  { id: 52, outboundNo: "DN20260601018", scheduledDate: "2026-06-17", customerCode: "127419", customerName: "(주)가온마트", outType: "도소매출고", qty: 19, carrier: "온길택배", shipAddress: "경기 고양시 일산동구 중앙로 1275", invoiceNo: null, status: "보류", rejectReason: "주소 오류" },
   { id: 70, outboundNo: "DN20260601022", scheduledDate: today, customerCode: "771205", customerName: "한울 트레이더스", outType: "도소매출고", qty: 84, carrier: "나루택배", shipAddress: "서울 강남구 테헤란로 152", invoiceNo: null, status: "피킹중", rejectReason: null }
 ];
 
@@ -351,7 +357,7 @@ const inboundStatusLabel: Record<string, string> = {
 };
 const taskTone = (status: string) => {
   if (status.includes("완료") || status.includes("확정")) return "success";
-  if (status.includes("거부") || status.includes("반려")) return "danger";
+  if (status.includes("보류") || status.includes("거부") || status.includes("반려")) return "danger";
   if (status.includes("예정") || status.includes("대기")) return "warning";
   return "info";
 };
@@ -655,6 +661,25 @@ const outboundPhotoMock = createOutboundPhotoMock({
   log: (entry) => activityLogs.push({ id: activityLogs.length + 1, refType: "OUTBOUND", erpSent: false, ...entry })
 });
 
+/* 품목 가져오기 (엑셀 · CSV) — 서버와 같은 규칙. 관리자 역할일 때만 */
+const itemImportMock = createItemImportMock({
+  items: () => items,
+  role: () => useUiStore.getState().currentRole
+});
+
+/* 변경·취소 확인 — 피킹이 시작된 뒤 주문 시스템에서 온 변경 · 취소. 승인 · 거절은 머리글의 역할 선택을 따른다 */
+const omsChangeMock = createOmsChangeMock({
+  today,
+  outbounds: () => outbounds,
+  outboundLines: () => outboundLines,
+  removeDispatch: (outboundNo) => {
+    dispatched = dispatched.filter((d) => d.outboundNo !== outboundNo);
+  },
+  role: () => useUiStore.getState().currentRole,
+  operator: () => useAuthStore.getState().user?.name ?? "system",
+  log: (entry) => activityLogs.push({ id: activityLogs.length + 1, refType: "OUTBOUND", erpSent: false, ...entry })
+});
+
 /** 입고 · 출고 이력 — 종류 · 검색어로 거르고 최근 것부터. 출고 이력에는 그 출고 건의 사진 장수를 싣는다 (서버와 같은 칸) */
 function activityHistory(endpoint: string, keyword: string) {
   const refType = endpoint === "outbound" ? "OUTBOUND" : "INBOUND";
@@ -685,11 +710,17 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
 
   if (method !== "GET") {
     const body = init?.body ? JSON.parse(String(init.body)) : {};
+    // 출고확정 · 출고일 변경은 서버가 주문 시스템 · ERP 반영을 기다린다 — 목도 조금 더 기다려 그 화면을 보인다
+    if (/^\/outbounds\/\d+\/(confirm|schedule)$/.test(clean)) await delay(900);
     if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
     const handled = warehouseMock.mutate(method, clean, body);
     if (handled !== undefined) return copy(handled) as T;
     const photoHandled = outboundPhotoMock.mutate(method, clean, body, url.searchParams);
     if (photoHandled !== undefined) return copy(photoHandled) as T;
+    const changeHandled = omsChangeMock.mutate(method, clean, body);
+    if (changeHandled !== undefined) return copy(changeHandled) as T;
+    const itemImportHandled = itemImportMock.mutate(method, clean, body);
+    if (itemImportHandled !== undefined) return copy(itemImportHandled) as T;
     // 서버처럼 결과를 돌려주는 처리(예: 품목 제원 저장)는 그 값을, 나머지는 { ok: true }
     const result = handleMutation(clean, body);
     return copy(result ?? { ok: true }) as T;
@@ -704,6 +735,9 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   const photoData = outboundPhotoMock.get(clean, url.searchParams);
   if (photoData !== undefined) return copy(photoData) as T;
 
+  const changeData = omsChangeMock.get(clean, url.searchParams);
+  if (changeData !== undefined) return copy(changeData) as T;
+
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
   if (clean === "/inbounds") return copy(inbounds) as T;
@@ -711,11 +745,12 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds.map((o) => {
     const { totalWeightKg, weightMissing } = orderTotals(o.id);
-    // 사진 장수 — 출고 확정 때 "사진 없음" 경고 (서버 OutboundMapper.findAll 과 같은 칸)
-    return { ...o, totalWeightKg, weightMissing, photoCount: outboundPhotoMock.count(o.id) };
+    // 사진 장수 — 출고 확정 때 "사진 없음" 경고 · 확인 대기 변경 — 출고 확정 막기 (서버 OutboundMapper.findAll 과 같은 칸)
+    return { ...o, totalWeightKg, weightMissing, photoCount: outboundPhotoMock.count(o.id), pendingChanges: omsChangeMock.pendingCount(o.id) };
   })) as T;
   if (clean.match(/^\/outbounds\/\d+\/lines$/)) return copy(outboundLines[Number(clean.split("/")[2])] ?? []) as T;
   if (clean.match(/^\/outbounds\/\d+\/sheet$/)) return copy(outboundSheet(Number(clean.split("/")[2]))) as T;
+  if (clean.match(/^\/outbounds\/\d+\/delivery$/)) return copy(deliveryOf(Number(clean.split("/")[2]))) as T;
   if (clean === "/stocks") return copy(stocks) as T;
   if (clean === "/stocks/putaway") return copy(stocks.filter((s) => s.stockStatus === "PUTAWAY_WAIT").map(({ allocated, available, safetyStock, ...s }) => ({ ...s, qty: s.onHand }))) as T;
   if (clean === "/stocks/replenishment") return copy(computeReplenishment()) as T;
@@ -755,6 +790,72 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   // /chatbot/ask 는 POST 이므로 위 mutation 분기(chatbotAnswer)에서 처리합니다.
 
   return copy([]) as T;
+}
+
+/* ---------- 출고일 · 인수자 (서버 GET /outbounds/{id}/delivery · PUT schedule · receiver 와 같은 모양) ----------
+   목 출고는 모두 주문 시스템에서 온 것으로 본다. 인수자는 가짜 값 */
+const deliveryExtra: Record<number, AnyRecord> = {};
+const EDITABLE = ["출고대기", "피킹중", "피킹완료", "보류"];
+const dayBefore = (date: string | null) => {
+  if (!date) return null;
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);   // UTC 로만 — 시간대에 밀리지 않게
+};
+function deliveryOf(id: number) {
+  const row = outbounds.find((r) => r.id === id);
+  if (!row) throw new Error("출고 건을 찾을 수 없습니다.");
+  const extra = (deliveryExtra[id] ??= {
+    requestedTime: "09:00", readyDate: dayBefore(row.scheduledDate), readyTime: null, vehicleType: "04", vehicleTypeName: "1톤",
+    receiverName: "김인수", receiverMobile: "010-0000-0000", receiverTel: null, zipCode: "00000",
+    address: row.shipAddress, addressDetail: null
+  });
+  return {
+    id: row.id, outboundNo: row.outboundNo, status: row.status, fromOms: true, source: "OMS",
+    scheduledDate: row.scheduledDate, shipAddress: row.shipAddress, requestedDate: row.scheduledDate, ...extra,
+    editable: EDITABLE.includes(row.status)
+  };
+}
+const filled = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+function requireEditable(id: number) {
+  const row = outbounds.find((r) => r.id === id);
+  if (!row) throw new Error("출고 건을 찾을 수 없습니다.");
+  if (!EDITABLE.includes(row.status)) throw new Error(`${row.status} 상태라 출고일 · 인수자를 바꿀 수 없습니다.`);
+  return row;
+}
+function changeSchedule(id: number, body: AnyRecord) {
+  const row = requireEditable(id);
+  const requested = filled(body.requestedDate);
+  if (!requested) throw new Error("배송희망일을 넣으세요.");
+  const ready = filled(body.readyDate);
+  if (ready && ready > requested) throw new Error(`출고일(${ready})이 배송희망일(${requested})보다 늦습니다.`);
+  deliveryOf(id);
+  row.scheduledDate = requested;
+  const vehicle = filled(body.vehicleTypeName);
+  const codes: Record<string, string> = { 없음: "00", 다마스: "02", 라보: "03", "1톤": "04", "1.4톤": "05", "2.5톤": "06", "3.5톤": "07", "5톤이상": "08", 택배: "09" };
+  if (vehicle && !codes[vehicle]) throw new Error(`알 수 없는 배송차종입니다: ${vehicle}`);
+  Object.assign(deliveryExtra[id], {
+    requestedTime: filled(body.requestedTime), readyDate: ready, readyTime: filled(body.readyTime),
+    vehicleTypeName: vehicle, vehicleType: vehicle ? codes[vehicle] : null
+  });
+  // notified — 서버처럼 주문 시스템 · ERP 반영을 기다린 뒤 저장했다 (변경 응답에서만)
+  return { ...deliveryOf(id), notified: true };
+}
+function changeReceiver(id: number, body: AnyRecord) {
+  const row = requireEditable(id);
+  const need = (key: string, label: string) => {
+    const value = filled(body[key]);
+    if (!value) throw new Error(`${label} 칸이 비어 있습니다.`);
+    return value;
+  };
+  const values = {
+    receiverName: need("receiverName", "인수자"), receiverMobile: need("receiverMobile", "인수자 휴대폰"),
+    receiverTel: filled(body.receiverTel), zipCode: need("zipCode", "우편번호"), address: need("address", "주소"),
+    addressDetail: filled(body.addressDetail)
+  };
+  deliveryOf(id);
+  Object.assign(deliveryExtra[id], values);
+  row.shipAddress = values.addressDetail ? `${values.address} ${values.addressDetail}` : values.address;
+  return deliveryOf(id);
 }
 
 function handleMutation(clean: string, body: AnyRecord) {
@@ -824,18 +925,39 @@ function handleMutation(clean: string, body: AnyRecord) {
     }
   } else if (clean.match(/^\/outbounds\/\d+\/confirm$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) {
+    if (row && omsChangeMock.pendingCount(row.id) > 0) {
+      // 서버 OutboundService.confirm 과 같다 — 나간 뒤에는 승인할 수 없다
+      throw new Error("OMS 변경 · 취소 요청이 물류팀 확인을 기다립니다 — 변경 확인 화면에서 먼저 승인하거나 거절하세요.");
+    }    if (row) {
       row.status = "출고완료";
       // 확정한 날 — 출고 사진은 이날까지만 누구나 더한다 (다음 날부터는 관리자 · 물류)
       (row as AnyRecord).confirmedDate = today;
       dashboardMock.record("outbound-confirm", Number(row.qty) || 0, row.outboundNo);
     }
-  } else if (clean.match(/^\/outbounds\/\d+\/reject$/)) {
+    // 서버 ConfirmResult 와 같은 모양 — 목 출고는 모두 주문 시스템에서 온 것으로 본다 (주문 시스템 · ERP 반영 뒤 확정)
+    return { skippedLines: 0, notified: true };
+  } else if (clean.match(/^\/outbounds\/\d+\/(hold|reject)$/)) {
+    // 출고 불가 알림 → 보류 (서버 OutboundService.hold 와 같다. /reject 는 예전 주소)
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) {
-      row.status = "거부";
-      row.rejectReason = body.reason ?? "재고부족";
+    if (row && !["출고대기", "피킹중", "피킹완료"].includes(row.status)) {
+      throw new Error(`${row.status} 상태라 출고 불가 알림을 보낼 수 없습니다.`);
     }
+    if (row) {
+      row.status = "보류";
+      row.rejectReason = body.reason || "재고부족";
+    }
+  } else if (clean.match(/^\/outbounds\/\d+\/resume$/)) {
+    // 다시 출고 — 집어 둔 물건이 있으면 피킹완료, 없으면 출고대기
+    const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
+    if (row && row.status !== "보류") throw new Error("보류 중인 출고만 다시 출고할 수 있습니다.");
+    if (row) {
+      row.status = (outboundLines[row.id] ?? []).some((ln) => Number(ln.pickedQty) > 0) ? "피킹완료" : "출고대기";
+      row.rejectReason = null;
+    }
+  } else if (clean.match(/^\/outbounds\/\d+\/schedule$/)) {
+    return changeSchedule(Number(clean.split("/")[2]), body);
+  } else if (clean.match(/^\/outbounds\/\d+\/receiver$/)) {
+    return changeReceiver(Number(clean.split("/")[2]), body);
   } else if (clean.match(/^\/outbounds\/\d+\/invoice$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) row.invoiceNo = body.invoiceNo ?? null;

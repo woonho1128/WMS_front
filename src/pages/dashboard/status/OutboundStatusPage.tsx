@@ -30,8 +30,8 @@ export const OutboundStatusPage = () => {
   const [stage, setStage] = useState<string | null>(null);
 
   const rows = useMemo(() => (data?.rows ?? []).filter((row) => !stage || row.stage === stage), [data, stage]);
-  const stageLabel = stage === "거부" ? "거부" : data?.stages.find((item) => item.key === stage)?.label ?? null;
-  const working = (data?.rows ?? []).filter((row) => row.stage !== "출고완료" && row.stage !== "거부").length;
+  const stageLabel = stage === "보류" ? "보류" : data?.stages.find((item) => item.key === stage)?.label ?? null;
+  const working = (data?.rows ?? []).filter((row) => row.stage !== "출고완료" && row.stage !== "보류").length;
   const shippedToday = (data?.rows ?? []).filter((row) => row.stage === "출고완료").length;
 
   return (
@@ -62,18 +62,18 @@ export const OutboundStatusPage = () => {
             >
               <FlowStepper
                 stages={data.stages}
-                selected={stage === "거부" ? null : stage}
+                selected={stage === "보류" ? null : stage}
                 onSelect={setStage}
                 side={
-                  data.rejected.count ? (
+                  data.held.count ? (
                     <button
                       type="button"
-                      className={`sd-side-chip sd-tone-danger${stage === "거부" ? " is-on" : ""}`}
-                      onClick={() => setStage(stage === "거부" ? null : "거부")}
-                      aria-pressed={stage === "거부"}
-                      title="거부된 출고만 보기"
+                      className={`sd-side-chip sd-tone-danger${stage === "보류" ? " is-on" : ""}`}
+                      onClick={() => setStage(stage === "보류" ? null : "보류")}
+                      aria-pressed={stage === "보류"}
+                      title="출고 불가로 보류된 출고만 보기"
                     >
-                      거부 <b>{data.rejected.count}</b>
+                      보류 <b>{data.held.count}</b>
                     </button>
                   ) : null
                 }
@@ -113,7 +113,7 @@ export const OutboundStatusPage = () => {
                           </td>
                           <td className="num">{fmt(row.qty)}</td>
                           <td>
-                            {row.stage === "거부" ? (
+                            {row.stage === "보류" ? (
                               <span className="sd-cell-muted">—</span>
                             ) : (
                               <ProgressCell value={row.progress} tone={row.progress >= 100 ? "success" : "info"} note={`${fmt(row.pickedQty)} / ${fmt(row.qty)}`} />
@@ -160,7 +160,7 @@ export const OutboundStatusPage = () => {
               <HourlyChart hourly={data.hourly} />
             </Panel>
 
-            <Panel icon="layers" title="배송사별 오늘 출고" sub="거부 제외 · 건수와 수량">
+            <Panel icon="layers" title="배송사별 오늘 출고" sub="보류 제외 · 건수와 수량">
               <Breakdown rows={data.breakdown} empty="오늘 출고 건이 없습니다" />
             </Panel>
           </div>

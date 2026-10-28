@@ -158,7 +158,7 @@ type SideProps = {
   done: number;
   /** 큰 글씨 옆 보조 숫자 (수량 등) */
   notes: Array<{ label: string; value: string }>;
-  /** 붉게 띄울 문제 건수 (지연 · 거부) */
+  /** 붉게 띄울 문제 건수 (지연 · 보류) */
   flag: { label: string; count: number } | null;
   stages: FlowStage[];
   doneKey: string;
@@ -381,7 +381,7 @@ export const FloorBoardPage = () => {
   const outData = outbound.data;
   const outSide = useMemo(() => {
     if (!outData) return null;
-    const rows = outData.rows.filter((row) => row.stage !== "거부");
+    const rows = outData.rows.filter((row) => row.stage !== "보류");
     const done = rows.filter((row) => row.stage === "출고완료").length;
     const open = rows.filter((row) => row.stage !== "출고완료");
     const listed = open.length
@@ -390,7 +390,7 @@ export const FloorBoardPage = () => {
     return {
       total: rows.length,
       done,
-      rejected: outData.rejected.count,
+      held: outData.held.count,
       qty: rows.reduce((sum, row) => sum + row.qty, 0),
       pickedQty: rows.reduce((sum, row) => sum + row.pickedQty, 0),
       stages: outData.stages,
@@ -491,7 +491,7 @@ export const FloorBoardPage = () => {
             icon="truck"
             total={outSide.total}
             done={outSide.done}
-            flag={{ label: "거부", count: outSide.rejected }}
+            flag={{ label: "보류", count: outSide.held }}
             notes={[
               { label: "출고 수량", value: fmt(outSide.qty) },
               { label: "피킹 완료", value: fmt(outSide.pickedQty) }

@@ -635,14 +635,14 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     const dispatchedNos = new Set(ctx.dispatched().map((row) => row.outboundNo));
     ctx
       .outbounds()
-      .filter((row) => row.status === "거부")
+      .filter((row) => row.status === "보류")
       .forEach((row) =>
         push({
           id: `out-rej-${row.id}`,
           severity: "danger",
           category: "출고",
-          title: "출고 거부",
-          message: `${row.outboundNo} ${row.customerName} · ${row.rejectReason ?? "사유 미기재"} — 영업·OMS 확인 필요`,
+          title: "출고 불가 (보류)",
+          message: `${row.outboundNo} ${row.customerName} · ${row.rejectReason ?? "사유 미기재"} — 영업 확인 대기 (취소 또는 다시 출고)`,
           refs: [String(row.outboundNo)],
           action: { label: "출고 요청서", to: "/outbound/outbound-order" }
         })
@@ -859,10 +859,10 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     const shippedToday = new Set(todays("outbound-confirm").map((event) => event.ref));
     const rows = ctx
       .outbounds()
-      // 끝난·거부 건은 오늘 것만, 피킹 전 건은 출고예정일이 오늘까지인 것만
+      // 끝난·보류 건은 오늘 것만, 피킹 전 건은 출고예정일이 오늘까지인 것만
       .filter((row) =>
         row.status === "출고완료" ? row.scheduledDate === ctx.today || shippedToday.has(row.outboundNo)
-        : row.status === "거부" ? row.scheduledDate === ctx.today
+        : row.status === "보류" ? row.scheduledDate === ctx.today
         : row.status !== "출고대기" || String(row.scheduledDate) <= ctx.today
       )
       .map((row) => {
@@ -885,34 +885,34 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
           outType: row.outType,
           region,
           scheduledDate: row.scheduledDate,
-          overdue: !done && row.status !== "거부" && String(row.scheduledDate) < ctx.today,
+          overdue: !done && row.status !== "보류" && String(row.scheduledDate) < ctx.today,
           qty: orderQty,
           pickedQty,
-          progress: row.status === "거부" ? 0 : percent(pickedQty, orderQty, 0),
+          progress: row.status === "보류" ? 0 : percent(pickedQty, orderQty, 0),
           carrier: row.carrier,
           invoiceNo: row.invoiceNo,
           dispatched,
           stage: row.status,
           stageLabel: stage?.label ?? row.status,
-          tone: (row.status === "거부" ? "danger" : stage?.tone ?? "gray") as Tone,
+          tone: (row.status === "보류" ? "danger" : stage?.tone ?? "gray") as Tone,
           rejectReason: row.rejectReason,
           to
         };
       })
       .sort((a, b) => {
-        const rank = (stage: string) => (stage === "거부" ? 99 : OUTBOUND_STAGES.findIndex((item) => item.key === stage));
+        const rank = (stage: string) => (stage === "보류" ? 99 : OUTBOUND_STAGES.findIndex((item) => item.key === stage));
         return Number(b.overdue) - Number(a.overdue) || rank(a.stage) - rank(b.stage) || String(a.scheduledDate).localeCompare(String(b.scheduledDate));
       });
 
-    const active = rows.filter((row) => row.stage !== "거부");
+    const active = rows.filter((row) => row.stage !== "보류");
     const stages = OUTBOUND_STAGES.map((stage) => {
       const inStage = active.filter((row) => row.stage === stage.key);
       return { key: stage.key, label: stage.label, hint: stage.hint, tone: stage.tone, count: inStage.length, qty: sumOf(inStage, (row) => row.qty) };
     });
-    const rejected = rows.filter((row) => row.stage === "거부");
+    const held = rows.filter((row) => row.stage === "보류");
 
     const todayOrders = rows.filter((row) => row.scheduledDate === ctx.today);
-    const todayActive = todayOrders.filter((row) => row.stage !== "거부");
+    const todayActive = todayOrders.filter((row) => row.stage !== "보류");
     const pickWaiting = todayOrders.filter((row) => row.stage === "출고대기");
     const ordered = sumOf(todayActive, (row) => row.qty);
     const picked = sumOf(todayActive, (row) => row.pickedQty);
@@ -938,7 +938,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
         delta: delta(todayOrders.length, HISTORY.outboundOrders[5], "건", null),
         trend: trend(HISTORY.outboundOrders, todayOrders.length, "bars"),
         to: "/outbound/outbound-order",
-        hint: "출고예정일이 오늘인 출고 요청 (거부 포함)"
+        hint: "출고예정일이 오늘인 출고 요청 (보류 포함)"
       },
       {
         key: "picking",
@@ -951,7 +951,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
         delta: deltaSoFar(pickingRate, HISTORY.pickingRate[5], "%p", true),
         trend: trend(HISTORY.pickingRate, pickingRate, "line"),
         to: "/outbound/picking",
-        hint: "오늘 출고지시(거부 제외) 주문 수량 가운데 피킹한 수량"
+        hint: "오늘 출고지시(보류 제외) 주문 수량 가운데 피킹한 수량"
       },
       {
         key: "shipped",
@@ -995,7 +995,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
       today: ctx.today,
       kpis,
       stages,
-      rejected: { count: rejected.length, qty: sumOf(rejected, (row) => row.qty) },
+      held: { count: held.length, qty: sumOf(held, (row) => row.qty) },
       rows,
       hourly: hourly(
         [
@@ -1182,7 +1182,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
         picking: byStatus("피킹중"),
         picked: byStatus("피킹완료"),
         completed: byStatus("출고완료"),
-        rejected: byStatus("거부")
+        held: byStatus("보류")
       },
       stock: {
         total: sumOf(stocks, (stock) => stock.onHand),
@@ -1218,7 +1218,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
         피킹중: outCount("피킹중"),
         피킹완료: outCount("피킹완료"),
         출고완료: outCount("출고완료"),
-        거부: outCount("거부"),
+        보류: outCount("보류"),
         total: outbounds.length,
         progressPct: percent(outCount("출고완료"), outbounds.length, 0)
       }

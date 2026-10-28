@@ -24,7 +24,7 @@ type LogRow = {
 const actionTone = (action: string): "info" | "success" | "danger" | "violet" | "gray" => {
   if (action.includes("ERP")) return "violet";
   if (action.includes("확정")) return "success";
-  if (action.includes("거부") || action.includes("반려")) return "danger";
+  if (action.includes("출고불가") || action.includes("거부") || action.includes("반려")) return "danger";
   if (action.includes("피킹") || action.includes("승인") || action.includes("등록")) return "info";
   return "gray";
 };

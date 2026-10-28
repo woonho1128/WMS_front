@@ -77,6 +77,11 @@ const configMap: Record<string, FeatureScreenConfig> = {
     columns: ["오더번호", "피킹로케이션", "품목", "지시수량", "피킹수량", "상태"],
     actions: ["오더 QR스캔", "로케이션·품목 QR확인", "피킹 완료"]
   },
+  "change-review": {
+    filters: ["확인 대기", "처리 완료"],
+    columns: ["출하번호", "요청", "납품처", "출고 상태", "집은 수량", "받은 시각"],
+    actions: ["승인(재고 되돌림)", "거절(사유)"]
+  },
   "outbound-confirm": {
     filters: ["출고일", "오더번호", "상태"],
     columns: ["오더번호", "납품처", "수량", "ERP 전송", "상태"],
@@ -84,7 +89,7 @@ const configMap: Record<string, FeatureScreenConfig> = {
   },
   "floor-board": {
     filters: ["없음 — 자동 갱신"],
-    columns: ["입고 단계별 건수", "출고 단계별 건수", "진행률", "지연·거부", "알림"],
+    columns: ["입고 단계별 건수", "출고 단계별 건수", "진행률", "지연·보류", "알림"],
     actions: ["전체화면", "자동 갱신 30초", "목록 자동 넘김"]
   },
   "outbound-photo": {

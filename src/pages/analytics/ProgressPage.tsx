@@ -95,7 +95,7 @@ export const ProgressPage = () => {
       </section>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }} className="summary-grid">
-        <FunnelCard title="출고 진행" funnel={data?.outbound} stages={["출고대기", "피킹중", "피킹완료", "출고완료", "거부"]} />
+        <FunnelCard title="출고 진행" funnel={data?.outbound} stages={["출고대기", "피킹중", "피킹완료", "출고완료", "보류"]} />
         <FunnelCard title="입고 진행" funnel={data?.inbound} stages={["입고예정", "입고등록", "로케이션지정", "입고확정"]} />
       </div>
     </section>

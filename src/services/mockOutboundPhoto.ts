@@ -161,7 +161,7 @@ export function createOutboundPhotoMock(ctx: OutboundPhotoMockCtx) {
   /** 오늘 출고 건 몇 개와 지난 출고 건에 사진을 미리 넣어 둔다 — 찍은 건/안 찍은 건이 섞여 보이게 */
   const seed = () => {
     if (seeded) return;
-    const todayRows = ctx.outbounds().filter((row) => row.scheduledDate === ctx.today && row.status !== "거부");
+    const todayRows = ctx.outbounds().filter((row) => row.scheduledDate === ctx.today && row.status !== "보류");
     if (!todayRows.length) return;
     seeded = true;
 
@@ -218,7 +218,7 @@ export function createOutboundPhotoMock(ctx: OutboundPhotoMockCtx) {
   const uploadBlock = (row: AnyRecord): string | null => {
     const role = ctx.role?.() ?? "admin";
     if (!WRITE_ROLES.has(role)) return "사진은 관리자 · 물류 · 출고 담당자가 올립니다.";
-    if (row.status === "거부") return "거부된 출고 건에는 사진을 올리지 않습니다.";
+    if (row.status === "보류") return "출고 불가로 보류 중인 출고 건입니다 — 다시 출고한 뒤 사진을 올리세요.";
     const confirmed = confirmedDateOf(row);
     if (confirmed && confirmed < ctx.today && !MANAGER_ROLES.has(role)) {
       return `출고 확정(${confirmed}) 다음 날부터는 관리자 · 물류 담당자만 사진을 추가할 수 있습니다.`;
@@ -229,7 +229,7 @@ export function createOutboundPhotoMock(ctx: OutboundPhotoMockCtx) {
   /**
    * 출고 대상 — 조회 범위는 셋 중 하나 (서버와 같다).
    * from·to = 기간 / date = 그날 / 둘 다 없고 검색어만 = 날짜를 가리지 않는 번호 검색. 아무것도 없으면 오늘.
-   * 거부된 건은 나가지 않으니 뺀다.
+   * 보류(출고 불가)된 건은 나가지 않으니 뺀다.
    */
   const targets = (params: URLSearchParams) => {
     seed();
@@ -264,7 +264,7 @@ export function createOutboundPhotoMock(ctx: OutboundPhotoMockCtx) {
     }
 
     const matched = allOutbounds()
-      .filter((row) => row.status !== "거부")
+      .filter((row) => row.status !== "보류")
       .filter((row) => start == null || end == null || (String(row.scheduledDate) >= start && String(row.scheduledDate) <= end))
       .filter(
         (row) =>

@@ -9,6 +9,7 @@ import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { CameraScanButton } from "../../components/ui/CameraScan";
 import { OUTBOUND_STEPS, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
+import { HoldDialog, type HoldTarget } from "./HoldDialog";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터/펼침 스타일 재사용
 
 type OutboundRow = {
@@ -91,6 +92,8 @@ export const PickingPage = () => {
     Object.fromEntries(Object.entries(readProgress()).map(([id, p]) => [Number(id), p.skipped ?? []]))
   );
   const [completeTarget, setCompleteTarget] = useState<OutboundRow | null>(null);
+  /** 출고 불가 알림 대상 — 재고가 없어 못 나갈 때 */
+  const [holdTarget, setHoldTarget] = useState<HoldTarget | null>(null);
   const [mode, setModeState] = useState<VerifyMode>(readVerifyMode);
   const paper = mode === "paper";
   /** 번호로 찾은 피킹중 건 — 그 줄로 스크롤 */
@@ -419,21 +422,32 @@ export const PickingPage = () => {
                                 피킹 시작
                               </button>
                             ) : (
-                              <button
-                                type="button"
-                                className="btn-secondary"
-                                disabled={busy || !ready}
-                                title={
-                                  ready
-                                    ? undefined
-                                    : paper
-                                      ? "모든 줄을 결품으로 표시하면 완료할 수 없습니다 — 출고 거부로 처리하세요"
-                                      : "모든 줄의 로케이션 QR을 찍거나 스킵하세요 (최소 1건 피킹 필요)"
-                                }
-                                onClick={() => setCompleteTarget(row)}
-                              >
-                                피킹 완료
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  disabled={busy || !ready}
+                                  title={
+                                    ready
+                                      ? undefined
+                                      : paper
+                                        ? "모든 줄을 결품으로 표시하면 완료할 수 없습니다 — [출고 불가]로 알리세요"
+                                        : "모든 줄의 로케이션 QR을 찍거나 스킵하세요 (최소 1건 피킹 필요)"
+                                  }
+                                  onClick={() => setCompleteTarget(row)}
+                                >
+                                  피킹 완료
+                                </button>
+                                {/* 재고가 없어 못 나가면 — 출고를 보류로 멈추고 주문 시스템에 알린다 */}
+                                <button
+                                  type="button"
+                                  className="btn-secondary outbound-reject-btn"
+                                  disabled={busy}
+                                  onClick={() => setHoldTarget(row)}
+                                >
+                                  출고 불가
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -557,7 +571,7 @@ export const PickingPage = () => {
         <div className="ds-callout info">
           <Icon name="check" size={18} />
           <span>
-            {paper ? "결품이 아닌 줄은" : "확인된 라인은"} <b>피킹재고가 FIFO(LOT 입고일자순)로 차감</b>됩니다. 가용재고 부족 시 실패 — 거부 처리 대상입니다.
+            {paper ? "결품이 아닌 줄은" : "확인된 라인은"} <b>피킹재고가 FIFO(LOT 입고일자순)로 차감</b>됩니다. 가용재고가 모자라면 실패 — [출고 불가]로 알리세요.
           </span>
         </div>
         {completeTarget && (skipped[completeTarget.id]?.length ?? 0) > 0 ? (
@@ -569,6 +583,15 @@ export const PickingPage = () => {
           </div>
         ) : null}
       </Modal>
+
+      <HoldDialog
+        target={holdTarget}
+        onClose={() => setHoldTarget(null)}
+        onDone={(message) => {
+          setNotice(message);
+          reload();
+        }}
+      />
     </section>
   );
 };

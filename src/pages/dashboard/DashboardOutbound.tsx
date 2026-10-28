@@ -4,11 +4,12 @@ import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
-import { OUTBOUND_LINKED_ONLY, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
+import { OUTBOUND_EDITABLE, OUTBOUND_LINKED_ONLY, OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { shiftDays } from "../../shared/appDate";
 import { OutboundSheetDialog } from "../outbound/sheet/OutboundSheet";
+import { DeliveryEditDialog } from "../outbound/DeliveryEditDialog";
 import "./DashboardOutbound.css";
 
 /* ============================================================
@@ -28,6 +29,7 @@ type OutboundRow = {
   shipAddress: string | null;
   invoiceNo: string | null;
   status: OutboundScreenStatus;
+  /** 보류(출고 불가 알림) 사유 */
   rejectReason: string | null;
   /** 주문 총중량(kg) — 단위 중량 미등록 품목이 있거나 라인이 없으면 null(모름). 0 으로 치지 않는다 */
   totalWeightKg: number | null;
@@ -59,7 +61,7 @@ type OutboundLine = {
   availableQty: number | null;
 };
 
-const STATUSES: OutboundScreenStatus[] = ["출고대기", "피킹중", "피킹완료", "출고완료", "거부", "취소", "시범"];
+const STATUSES: OutboundScreenStatus[] = ["출고대기", "피킹중", "피킹완료", "출고완료", "보류", "취소", "시범"];
 
 /** 상태별 처리 버튼 — 전용 화면으로 넘긴다. 취소 · 시범은 작업이 없어 받은 내용(출고요청서)만 본다 */
 const ACTION: Record<OutboundScreenStatus, { label: string; primary: boolean; to?: string }> = {
@@ -67,7 +69,7 @@ const ACTION: Record<OutboundScreenStatus, { label: string; primary: boolean; to
   피킹중: { label: "진행 보기", primary: false, to: "/outbound/picking" },
   피킹완료: { label: "출고 확정", primary: true, to: "/outbound/outbound-confirm" },
   출고완료: { label: "내역서", primary: false, to: "/outbound/delivery-note" },
-  거부: { label: "사유 확인", primary: false },
+  보류: { label: "사유 · 다시 출고", primary: false },
   취소: { label: "요청서 보기", primary: false },
   시범: { label: "요청서 보기", primary: false }
 };
@@ -97,7 +99,10 @@ export const DashboardOutbound = () => {
   const [page, setPage] = useState(1);
   const [picked, setPicked] = useState<number[]>([]);
   const [labelTarget, setLabelTarget] = useState<OutboundRow | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<OutboundRow | null>(null);
+  /** 보류 사유 · 다시 출고 창 */
+  const [holdTarget, setHoldTarget] = useState<OutboundRow | null>(null);
+  /** 출고일 · 인수자 변경 창 — 출고 id */
+  const [deliveryId, setDeliveryId] = useState<number | null>(null);
   /** 출고요청서 인쇄 대상 — null 이면 창 닫힘 */
   const [sheetIds, setSheetIds] = useState<number[] | null>(null);
 
@@ -172,7 +177,7 @@ export const DashboardOutbound = () => {
     [searched, tab]
   );
 
-  const rejected = useMemo(() => searched.filter((r) => r.status === "거부"), [searched]);
+  const held = useMemo(() => searched.filter((r) => r.status === "보류"), [searched]);
 
   /* ---------- 선택 / 피킹 지시 ---------- */
   const selectable = paged.filter((r) => r.status === "출고대기");
@@ -220,8 +225,8 @@ export const DashboardOutbound = () => {
 
   const runAction = (row: OutboundRow) => {
     const action = ACTION[row.status];
-    if (row.status === "거부") {
-      setRejectTarget(row);
+    if (row.status === "보류") {
+      setHoldTarget(row);
       return;
     }
     if (OUTBOUND_LINKED_ONLY.includes(row.status)) {
@@ -233,6 +238,21 @@ export const DashboardOutbound = () => {
       return;
     }
     if (action.to) navigate(action.to);
+  };
+
+  /** 다시 출고 — 보류를 풀어 피킹완료(집어 둔 물건이 있으면) · 출고대기로. 주문 시스템에 알린다 */
+  const resume = async (row: OutboundRow) => {
+    setBusy(true);
+    try {
+      await apiPost(`/outbounds/${row.id}/resume`, {});
+      setNotice(`${row.outboundNo} 보류를 풀었습니다 — 주문 시스템에 알리고 이어서 진행합니다.`);
+      setHoldTarget(null);
+      load();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "다시 출고 실패");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const exportCsv = () =>
@@ -311,17 +331,17 @@ export const DashboardOutbound = () => {
         </div>
       ) : null}
 
-      {rejected.length ? (
+      {held.length ? (
         <div className="out-reject-banner">
           <Icon name="alert" size={17} />
           <span>
-            <b>거부 {rejected.length}건</b>
-            {rejected.length === 1
-              ? ` · ${rejected[0].outboundNo} · ${rejected[0].customerName} — ${rejected[0].rejectReason ?? "사유 미기재"}`
-              : ` · ${rejected.map((r) => r.rejectReason ?? "사유 미기재").join(", ")}`}
+            <b>보류 {held.length}건</b> (출고 불가 — 영업 확인 대기)
+            {held.length === 1
+              ? ` · ${held[0].outboundNo} · ${held[0].customerName} — ${held[0].rejectReason ?? "사유 미기재"}`
+              : ` · ${held.map((r) => r.rejectReason ?? "사유 미기재").join(", ")}`}
           </span>
-          <button type="button" className="out-btn" onClick={() => setRejectTarget(rejected[0])}>
-            사유 확인
+          <button type="button" className="out-btn" onClick={() => setHoldTarget(held[0])}>
+            사유 · 다시 출고
           </button>
         </div>
       ) : null}
@@ -443,8 +463,8 @@ export const DashboardOutbound = () => {
                       <span className="out-prog-text">
                         {prog.done}/{prog.total || "-"}
                       </span>
-                      <span className={`nx-bar ${row.status === "거부" ? "is-danger" : prog.pct === 100 ? "is-ok" : "is-info"}`}>
-                        <i style={{ width: `${row.status === "거부" ? 100 : prog.pct}%` }} />
+                      <span className={`nx-bar ${row.status === "보류" ? "is-danger" : prog.pct === 100 ? "is-ok" : "is-info"}`}>
+                        <i style={{ width: `${row.status === "보류" ? 100 : prog.pct}%` }} />
                       </span>
                     </td>
                     <td>
@@ -478,6 +498,20 @@ export const DashboardOutbound = () => {
                         >
                           <Icon name="printer" size={13} />
                         </button>
+                        {OUTBOUND_EDITABLE.includes(row.status) ? (
+                          <button
+                            type="button"
+                            className="out-btn is-icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeliveryId(row.id);
+                            }}
+                            title="출고일 · 인수자 변경"
+                            aria-label="출고일 · 인수자 변경"
+                          >
+                            <Icon name="edit" size={13} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={`out-btn${action.primary ? " is-primary" : ""}`}
@@ -564,29 +598,45 @@ export const DashboardOutbound = () => {
         ) : null}
       </Modal>
 
-      {/* ---------- 거부 사유 ---------- */}
+      {/* ---------- 보류 사유 · 다시 출고 ---------- */}
       <Modal
-        open={rejectTarget !== null}
-        title="거부 사유"
-        desc={rejectTarget ? `${rejectTarget.outboundNo} · ${rejectTarget.customerName}` : ""}
+        open={holdTarget !== null}
+        title="보류 — 출고 불가"
+        desc={holdTarget ? `${holdTarget.outboundNo} · ${holdTarget.customerName}` : ""}
         icon="alert"
         iconBg="var(--c-danger-bg)"
         iconColor="var(--c-danger-ink)"
-        onClose={() => setRejectTarget(null)}
+        onClose={() => setHoldTarget(null)}
         footer={
-          <button type="button" className="btn-secondary" onClick={() => setRejectTarget(null)}>
-            닫기
-          </button>
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setHoldTarget(null)}>
+              닫기
+            </button>
+            <button type="button" className="btn-primary" disabled={busy || !holdTarget} onClick={() => holdTarget && resume(holdTarget)}>
+              다시 출고
+            </button>
+          </>
         }
       >
         <div className="ds-callout danger">
           <Icon name="alert" size={18} />
-          <span>{rejectTarget?.rejectReason ?? "사유 미기재"}</span>
+          <span>{holdTarget?.rejectReason ?? "사유 미기재"}</span>
         </div>
         <p className="out-reject-note">
-          거부 건은 OMS로 거부값이 회신되어 주문이 실패 처리됩니다. 재출고는 OMS에서 오더를 다시 수신해야 합니다.
+          주문 시스템에 출고 불가를 알렸습니다. 영업이 주문을 취소하면 이 출고도 취소되고, 집어 둔 물건은 피킹한 LOT 그대로 제자리로 돌아갑니다.
+          문제가 풀렸으면 [다시 출고]로 이어서 진행하세요 — 집어 둔 물건이 있으면 피킹완료, 없으면 출고대기로 돌아갑니다.
         </p>
       </Modal>
+
+      {/* ---------- 출고일 · 인수자 변경 (주문 시스템에 알린다) ---------- */}
+      <DeliveryEditDialog
+        outboundId={deliveryId}
+        onClose={() => setDeliveryId(null)}
+        onSaved={(message) => {
+          setNotice(message);
+          load();
+        }}
+      />
 
       {/* ---------- 출고요청서 인쇄 (기존 OMS 출고요청서 출력물 대신) ---------- */}
       <OutboundSheetDialog ids={sheetIds} onClose={() => setSheetIds(null)} />

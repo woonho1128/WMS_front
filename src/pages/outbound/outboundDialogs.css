@@ -1,0 +1,95 @@
+/* 출고일 · 인수자 변경 창 (DeliveryEditDialog) — 색은 토큰만 (WMS_디자인시스템 7장) */
+
+.dlv-modal {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.dlv-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dlv-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.dlv-tab:hover:not(:disabled) {
+  border-color: var(--primary-line);
+  color: var(--ink);
+}
+
+.dlv-tab.is-on {
+  border-color: var(--primary-line);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+  font-weight: 600;
+}
+
+.dlv-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dlv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 12px;
+}
+
+.dlv-grid .dlv-wide {
+  grid-column: 1 / -1;
+}
+
+.dlv-note {
+  margin: 4px 0 8px;
+  color: var(--ink-muted);
+}
+
+/* 주문 시스템 · ERP 반영을 기다리는 동안 — 버튼 글 앞의 작은 원 (출고확정 · 출고일 저장은 결과를 기다린다) */
+.ob-wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ob-wait::before {
+  content: "";
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ob-spin 0.8s linear infinite;
+}
+
+@keyframes ob-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-wait::before {
+    animation: none;
+    border-right-color: currentColor;
+    opacity: 0.55;
+  }
+}
+
+@media (max-width: 640px) {
+  .dlv-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

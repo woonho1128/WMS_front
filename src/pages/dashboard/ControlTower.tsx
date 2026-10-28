@@ -34,7 +34,7 @@ const Warehouse3D = lazy(() =>
 type DashboardSummary = {
   logistics: { todayInbound: number; todayOutbound: number; totalStock: number; working: number };
   inbound: { scheduled: number; confirmed: number; putawayWait: number; returnReceived: number };
-  outbound: { waiting: number; picking: number; picked: number; completed: number; rejected: number };
+  outbound: { waiting: number; picking: number; picked: number; completed: number; held: number };
   stock: { total: number; available: number; defect: number; longTerm: number };
   alerts: { replenish: number; shortage: number; interfaceError: number; returnRejected: number };
 };

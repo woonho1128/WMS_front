@@ -15,6 +15,10 @@ type Carrier = {
   phone: string | null;
   accountUser: string | null;
   portalRole: string;   // 조회/배차공유
+  /** 주문 시스템의 배송 협력사 코드 — 배차 회신에 싣는다 */
+  omsPartnerCode: string | null;
+  /** 주문 시스템의 택배사 코드 — 배차 회신에 싣는다 */
+  parcelCompanyCode: string | null;
   active: boolean;
 };
 
@@ -22,7 +26,10 @@ const REGIONS = ["수도권", "지방권", "전국"];
 const ROLES = ["조회", "배차공유"];
 const regionTone = (r: string): "info" | "violet" | "gray" => (r === "수도권" ? "info" : r === "지방권" ? "violet" : "gray");
 
-const emptyForm = { code: "", name: "", region: "전국", manager: "", phone: "", accountUser: "", portalRole: "조회", active: true };
+const emptyForm = {
+  code: "", name: "", region: "전국", manager: "", phone: "", accountUser: "", portalRole: "조회",
+  omsPartnerCode: "", parcelCompanyCode: "", active: true
+};
 
 export const CarrierMasterPage = () => {
   const [rows, setRows] = useState<Carrier[]>([]);
@@ -55,7 +62,10 @@ export const CarrierMasterPage = () => {
   const openCreate = () => { setEditId(null); setForm({ ...emptyForm }); setModalOpen(true); };
   const openEdit = (c: Carrier) => {
     setEditId(c.id);
-    setForm({ code: c.code, name: c.name, region: c.region, manager: c.manager ?? "", phone: c.phone ?? "", accountUser: c.accountUser ?? "", portalRole: c.portalRole, active: c.active });
+    setForm({
+      code: c.code, name: c.name, region: c.region, manager: c.manager ?? "", phone: c.phone ?? "", accountUser: c.accountUser ?? "",
+      portalRole: c.portalRole, omsPartnerCode: c.omsPartnerCode ?? "", parcelCompanyCode: c.parcelCompanyCode ?? "", active: c.active
+    });
     setModalOpen(true);
   };
 
@@ -167,6 +177,9 @@ export const CarrierMasterPage = () => {
           <label className="ds-field"><span>포털 계정</span><input value={form.accountUser} onChange={(e) => setForm({ ...form, accountUser: e.target.value })} placeholder="예: carrier_hg" /></label>
           <label className="ds-field"><span>계정 권한</span><select value={form.portalRole} onChange={(e) => setForm({ ...form, portalRole: e.target.value })}>{ROLES.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
           <label className="ds-field"><span>사용여부</span><select value={form.active ? "1" : "0"} onChange={(e) => setForm({ ...form, active: e.target.value === "1" })}><option value="1">사용</option><option value="0">미사용</option></select></label>
+          {/* 배차 회신에 실어 주문 시스템이 자기 코드로 기록하게 한다 — 모르면 비워 둔다 */}
+          <label className="ds-field"><span>주문 시스템 협력사 코드</span><input value={form.omsPartnerCode} maxLength={30} onChange={(e) => setForm({ ...form, omsPartnerCode: e.target.value })} placeholder="비워도 됩니다" /></label>
+          <label className="ds-field"><span>주문 시스템 택배사 코드</span><input value={form.parcelCompanyCode} maxLength={10} onChange={(e) => setForm({ ...form, parcelCompanyCode: e.target.value })} placeholder="예: 03" /></label>
         </div>
       </Modal>
     </section>
