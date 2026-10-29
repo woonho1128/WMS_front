@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import type { UserRole } from "../roles";
 
 export type ThemeMode = "dark" | "light";
 
@@ -28,13 +27,15 @@ export const applyTheme = (theme: ThemeMode) => {
   }
 };
 
+/**
+ * 화면 상태 (테마 · 사이드바 · 패널).
+ * 무엇을 할 수 있는지(역할 · 기능)는 여기 없다 — 로그인한 사람의 기능은 app/access.ts (useAccess · useCan).
+ */
 type UiState = {
-  currentRole: UserRole;
   theme: ThemeMode;
   sidebarCollapsed: boolean;
   rightPanelOpen: boolean;
   bottomPanelOpen: boolean;
-  setCurrentRole: (role: UserRole) => void;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
   setSidebarCollapsed: (value: boolean) => void;
@@ -46,12 +47,10 @@ const initialTheme = readTheme();
 applyTheme(initialTheme);
 
 export const useUiStore = create<UiState>((set) => ({
-  currentRole: "admin",
   theme: initialTheme,
   sidebarCollapsed: false,
   rightPanelOpen: true,
   bottomPanelOpen: true,
-  setCurrentRole: (role) => set({ currentRole: role }),
   setTheme: (theme) => {
     applyTheme(theme);
     set({ theme });

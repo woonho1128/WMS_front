@@ -3,7 +3,7 @@ import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Modal } from "../../components/ui/Modal";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
-import { useUiStore } from "../../app/store/uiStore";
+import { useCan } from "../../app/access";
 import { apiGet, apiPut } from "../../services/http";
 import { ItemImportModal } from "./ItemImportModal";
 import { downloadItemTemplate } from "./itemImport";
@@ -38,12 +38,10 @@ const weightText = (kg: number) => (kg < 1 ? `${Math.round(kg * 1000).toLocaleSt
 
 const Unregistered = () => <span className="item-spec-missing">미등록</span>;
 
-/** 품목 가져오기는 관리자만 (서버도 막는다) */
-const IMPORT_ROLES = new Set(["admin"]);
-
 export const InventoryItemPage = () => {
-  const role = useUiStore((state) => state.currentRole);
-  const canImport = IMPORT_ROLES.has(role);
+  // 가져오기 = 품목 마스터 · 엑셀 가져오기 (처음 값: 관리자만), 제원 입력 = 품목 마스터 · 처리 — 서버도 같은 기능으로 막는다
+  const canImport = useCan("master/item-master:import");
+  const canEdit = useCan("master/item-master:work");
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,9 +222,13 @@ export const InventoryItemPage = () => {
                 filtered.map((it) => (
                   <tr key={it.id}>
                     <td>
-                      <button type="button" className="item-code-link" onClick={() => openEdit(it)} title="물류 제원 입력">
-                        {it.code}
-                      </button>
+                      {canEdit ? (
+                        <button type="button" className="item-code-link" onClick={() => openEdit(it)} title="물류 제원 입력">
+                          {it.code}
+                        </button>
+                      ) : (
+                        it.code
+                      )}
                     </td>
                     <td>{it.name}</td>
                     <td className="item-mono">{it.erpItemCode ? it.erpItemCode : <span className="item-spec-missing">없음</span>}</td>
@@ -247,7 +249,13 @@ export const InventoryItemPage = () => {
                       </StatusBadge>
                     </td>
                     <td>
-                      <button type="button" className="item-spec-btn" onClick={() => openEdit(it)}>
+                      <button
+                        type="button"
+                        className="item-spec-btn"
+                        onClick={() => openEdit(it)}
+                        disabled={!canEdit}
+                        title={canEdit ? undefined : "품목 마스터 · 처리 권한이 없습니다"}
+                      >
                         제원 입력
                       </button>
                     </td>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import type { MenuFeature, MenuSection } from "../../app/menuConfig";
+import { featurePath, type MenuFeature, type MenuSection } from "../../app/menuConfig";
 import { matchText, type MatchRange } from "../../app/menuSearch";
 import { FAVORITES_KEY, FAVORITES_LIMIT, type NavMode } from "../../app/store/navPrefsStore";
 import { Icon } from "../ui/Icon";
@@ -61,7 +61,8 @@ const DescSnippet = ({ text, range }: { text: string; range: MatchRange }) => {
   );
 };
 
-const pathOf = (section: MenuSection, feature: MenuFeature) => `/${section.slug}/${feature.slug}`;
+/** 메뉴 항목의 주소 — 메뉴 관리에서 다른 모듈로 옮긴 화면도 제 주소로 */
+const pathOf = (section: MenuSection, feature: MenuFeature) => featurePath(section, feature);
 
 /**
  * 좌측 메뉴 + 클라이언트 사이드 메뉴 검색.
@@ -97,15 +98,16 @@ export const SideMenu = ({
   const [cursor, setCursor] = useState(0);
   const [expanded, setExpanded] = useState<string>(activeSection ?? "dashboard");
 
-  // 즐겨찾기를 이름까지 풀어 둔다 — 이 역할이 못 보는 화면은 빠진다(지우지는 않음)
+  // 즐겨찾기를 이름까지 풀어 둔다 — 지금 메뉴에 없는(권한이 없어진) 화면은 빠진다(지우지는 않음)
   const favoriteItems = useMemo(
     () =>
       favorites
         .map((path) => {
-          const [sectionSlug, featureSlug] = path.split("/").filter(Boolean);
-          const section = sections.find((item) => item.slug === sectionSlug);
-          const feature = section?.features.find((item) => item.slug === featureSlug);
-          return section && feature ? { path, label: feature.label, sectionLabel: section.label } : null;
+          for (const section of sections) {
+            const feature = section.features.find((item) => pathOf(section, item) === path);
+            if (feature) return { path, label: feature.label, sectionLabel: section.label };
+          }
+          return null;
         })
         .filter((item): item is FavoriteItem => item !== null),
     [favorites, sections]
@@ -237,11 +239,11 @@ export const SideMenu = ({
     }
   };
 
-  const handleSectionClick = (slug: string, firstFeature?: string) => {
+  const handleSectionClick = (slug: string, firstPath?: string) => {
     if (searching) return; // 검색 중에는 결과 섹션이 항상 펼쳐져 있다
     // 접힌 사이드바에서는 첫 화면으로 바로 이동, 그 외에는 하위 화면 목록을 펼친다.
     if (collapsed && !isMobile()) {
-      if (firstFeature) navigate(`/${slug}/${firstFeature}`);
+      if (firstPath) navigate(firstPath);
       return;
     }
     setExpanded((prev) => (prev === slug ? "" : slug));
@@ -519,7 +521,7 @@ export const SideMenu = ({
                   <button
                     type="button"
                     className={`wms-navitem${isActiveSection ? " active" : ""}`}
-                    onClick={() => handleSectionClick(section.slug, section.features[0]?.slug)}
+                    onClick={() => handleSectionClick(section.slug, section.features[0] ? pathOf(section, section.features[0]) : undefined)}
                     title={section.label}
                   >
                     <span className="wms-ni-ico">

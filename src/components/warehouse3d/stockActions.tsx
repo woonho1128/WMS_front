@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiPost } from "../../services/http";
+import { useCan } from "../../app/access";
 import { useAuthStore } from "../../app/store/authStore";
-import { useUiStore } from "../../app/store/uiStore";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
 import {
@@ -21,10 +21,11 @@ import "./stockActions.css";
    재고 이동 › 3D 탭과 대시보드(우클릭 메뉴)가 같은 규칙·같은 창을 쓴다.
    ============================================================ */
 
-/** 이동·보충 — 현장 작업자 포함 */
-export const STOCK_MOVE_ROLES = ["admin", "logistics", "inventory", "inbound", "outbound"];
-/** 수량 조정 — 관리자급만 (DOCS/WMS_3D창고맵_설계.md §7) */
-export const STOCK_ADJUST_ROLES = ["admin", "logistics", "inventory"];
+/* 할 수 있는 일 = 기능 (서버가 같은 기능으로 막는다 — 권한 관리 화면에서 누가 할지 정한다)
+   이동 = 재고 이동 · 처리, 보충 = 보충 작업 · 처리, 수량 조정 = 일일 재고 실사 · 처리 (DOCS/WMS_3D창고맵_설계.md §7) */
+export const STOCK_MOVE = "stock/transfer:work";
+export const STOCK_REPLENISH = "stock/replenishment:work";
+export const STOCK_ADJUST = "stock/stocktaking:work";
 
 const ADJUST_REASONS = [
   { code: "COUNT_DIFF", label: "실사 차이" },
@@ -57,10 +58,10 @@ type AdjustDraft = { code: string; stock: SlotStock; newQty: number; reasonCode:
 type ReplenishDraft = { suggestion: ReplenishSuggestion; target: LayoutSlot | null; qty: number; max: number };
 
 export const useStockActions = (map: WarehouseMapState, options: { onChanged?: () => void } = {}) => {
-  const role = useUiStore((state) => state.currentRole);
   const operator = useAuthStore((state) => state.user?.id ?? "system");
-  const canMove = STOCK_MOVE_ROLES.includes(role);
-  const canAdjust = STOCK_ADJUST_ROLES.includes(role);
+  const canMove = useCan(STOCK_MOVE);
+  const canReplenish = useCan(STOCK_REPLENISH);
+  const canAdjust = useCan(STOCK_ADJUST);
   const { onChanged } = options;
 
   const [pending, setPending] = useState<{ from: LayoutSlot; stock: SlotStock | null } | null>(null);
@@ -242,8 +243,8 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
   /* ---------- 보충 ---------- */
   const openReplenish = useCallback(
     (suggestion: ReplenishSuggestion) => {
-      if (!canMove) {
-        setToast({ tone: "danger", text: "보충 권한이 없습니다" });
+      if (!canReplenish) {
+        setToast({ tone: "danger", text: "보충 작업 · 처리 권한이 없습니다" });
         return;
       }
       if (suggestion.sourceStockId == null) {
@@ -260,7 +261,7 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
       const max = Math.max(Math.min(suggestion.sourceAvail, byCapacity, byWeight), 0);
       setReplenish({ suggestion, target, qty: Math.min(suggestion.suggestQty, max), max });
     },
-    [canMove, slotById]
+    [canReplenish, slotById]
   );
 
   const submitReplenish = async () => {
@@ -594,6 +595,7 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
 
   return {
     canMove,
+    canReplenish,
     canAdjust,
     pending,
     pendingBanner,

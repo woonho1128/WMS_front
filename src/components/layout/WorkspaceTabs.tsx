@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { findSection, homePathFor } from "../../app/menuConfig";
+import { currentAccess } from "../../app/access";
+import { findSection, homePathFor, resolveScreenPath } from "../../app/menuConfig";
 import { FAVORITES_LIMIT, useNavPrefsStore } from "../../app/store/navPrefsStore";
-import { useUiStore } from "../../app/store/uiStore";
 import {
   HOME_PATH,
   SPLIT_MIN_QUERY,
@@ -44,6 +44,8 @@ const COMPACT_TAB = 128;
 const NOTICE_MS = 6000;
 
 const screenLabel = (path: string) => {
+  const target = resolveScreenPath(path, currentAccess());
+  if (target.status === "ok") return target.label;
   const [, sectionSlug, featureSlug] = path.split("/");
   return findSection(sectionSlug)?.features.find((feature) => feature.slug === featureSlug)?.label ?? "대시보드";
 };
@@ -135,8 +137,8 @@ export const WorkspaceTabs = ({ activePath }: Props) => {
     if (remaining.some((tab) => tab.path === activePath)) return;
 
     if (remaining.length === 0) {
-      // 홈 = 이 역할이 볼 수 있는 첫 화면 (물류 현황이 없는 역할도 있다)
-      const home = homePathFor(useUiStore.getState().currentRole, HOME_PATH);
+      // 홈 = 볼 수 있는 첫 화면 (물류 현황이 없는 사람도 있다)
+      const home = homePathFor(currentAccess(), HOME_PATH);
       openTab({ path: home, label: screenLabel(home) });
       navigate(home);
       return;

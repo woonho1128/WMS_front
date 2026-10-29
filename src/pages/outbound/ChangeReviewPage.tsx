@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
 import { StatusBadge, type BadgeTone } from "../../components/ui/StatusBadge";
-import { useUiStore } from "../../app/store/uiStore";
+import { useCan } from "../../app/access";
 import { OUTBOUND_STATUS_TONE, type OutboundScreenStatus } from "../../domain/wmsProcess";
 import { apiGet, apiPost } from "../../services/http";
 import "./ChangeReviewPage.css";
@@ -80,16 +80,13 @@ const MARK_VIEW: Record<LineMark, { label: string; tone: BadgeTone }> = {
   REMOVED: { label: "빠짐", tone: "danger" }
 };
 const REJECT_REASONS = ["이미 포장 · 상차 완료", "출고 일정상 반영 불가", "재고 확인 필요 — 전화 협의", "기타"];
-/** 승인 · 거절은 관리자 · 물류 담당자만 (서버도 막는다) */
-const MANAGER_ROLES = new Set(["admin", "logistics"]);
-
 const num = (n: number | null | undefined) => (n == null ? "-" : n.toLocaleString("ko-KR"));
 const outboundTone = (status: string) => OUTBOUND_STATUS_TONE[status as OutboundScreenStatus] ?? "gray";
 
 export const ChangeReviewPage = () => {
   const navigate = useNavigate();
-  const role = useUiStore((state) => state.currentRole);
-  const canDecide = MANAGER_ROLES.has(role);
+  // 승인 · 거절 = 변경·취소 확인 · 처리 (처음 값: 관리자 · 물류팀, 서버도 막는다)
+  const canDecide = useCan("outbound/change-review:work");
 
   const [tab, setTab] = useState<"wait" | "done">("wait");
   const [pending, setPending] = useState<ChangeRow[]>([]);
@@ -497,7 +494,7 @@ export const ChangeReviewPage = () => {
               {isPending && !canDecide ? (
                 <div className="ds-callout info chg-note">
                   <Icon name="lock" size={16} />
-                  <span>승인 · 거절은 관리자 · 물류 담당자만 할 수 있습니다.</span>
+                  <span>승인 · 거절 권한(변경·취소 확인 · 처리)이 없습니다 — 보기만 됩니다.</span>
                 </div>
               ) : null}
 

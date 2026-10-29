@@ -13,7 +13,8 @@ type Action = "NEW" | "UPDATE" | "SAME" | "ERROR";
 export type ItemImportMockCtx = {
   /** 목 품목 배열 (itemCode · itemName · erpItemCode … — mockApi 의 items) — 새 품목은 여기에 더한다 */
   items: () => AnyRecord[];
-  role: () => string | undefined;
+  /** 지금 로그인한 사람의 기능 (데모의 서버 검사) */
+  can: (feature: string) => boolean;
 };
 
 const MAX_ROWS = 10_000;
@@ -193,7 +194,7 @@ export function createItemImportMock(ctx: ItemImportMockCtx) {
   };
 
   const requireAdmin = () => {
-    if (ctx.role() !== "admin") throw new Error("품목 가져오기는 관리자만 할 수 있습니다.");
+    if (!ctx.can("master/item-master:import")) throw new Error("품목 마스터 · 엑셀 가져오기 권한이 없습니다.");
   };
 
   return {

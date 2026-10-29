@@ -5,7 +5,7 @@ import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useAuthStore } from "../../app/store/authStore";
-import { useUiStore } from "../../app/store/uiStore";
+import { useAccess, useCan } from "../../app/access";
 import { apiDelete, apiDownload, apiGet, apiPost, apiPut } from "../../services/http";
 import { apiUrl } from "../../services/apiMode";
 import { addDays, shiftDays, todayStr, weekdayKo } from "../../shared/appDate";
@@ -179,8 +179,10 @@ const shrink = async (file: File) => {
 
 export const OutboundPhotoPage = () => {
   const operator = useAuthStore((state) => state.user?.name ?? state.user?.id ?? "system");
-  // 화면에 무엇을 보일지만 정한다 — 올리기 · 지우기 권한은 서버가 로그인한 계정으로 판단한다
-  const role = useUiStore((state) => state.currentRole);
+  // 화면에 무엇을 보일지만 정한다 — 올리기 · 지우기 권한은 서버가 로그인한 계정의 기능으로 판단한다
+  // (권한이 바뀌면 access 가 새로 와서 올리기 가능 여부를 다시 받는다)
+  const access = useAccess();
+  const canManage = useCan("outbound/outbound-photo:manage");
   const [searchParams, setSearchParams] = useSearchParams();
   /** 다른 화면의 "사진 n장" 으로 들어온 출하번호 */
   const linkedNo = searchParams.get("no");
@@ -259,7 +261,7 @@ export const OutboundPhotoPage = () => {
     }
     void loadDetail(selected);
     // 역할이 바뀌면 올릴 수 있는지도 다시 묻는다 (데모의 역할 선택)
-  }, [selected, loadDetail, role]);
+  }, [selected, loadDetail, access]);
 
   // 저장 현황 — 부가 정보라 못 받아도 화면은 그대로 쓴다 (경고 · 보관 장수만 안 보인다)
   useEffect(() => {
@@ -432,7 +434,8 @@ export const OutboundPhotoPage = () => {
   const canUpload = detail?.canUpload !== false;
   const failedCount = queue.filter((item) => item.status === "failed").length;
   const workingCount = queue.filter((item) => item.status !== "failed").length;
-  const isManager = role === "admin" || role === "logistics";
+  // 저장 현황은 '지난 날 · 남의 사진 고치기' 가 있는 사람(처음 값: 관리자 · 물류팀)에게만
+  const isManager = canManage;
 
   const listTitle = search ? "출고 사진 · 번호 검색" : scope === "range" ? `출고 사진 · ${from} ~ ${to}` : `출고 사진 · ${dayText(date)}`;
   // 날짜를 한 줄씩 끼워 보여 줄지 — 응답이 아직 예전 범위의 것일 수 있어 응답이 말하는 범위를 따른다

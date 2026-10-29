@@ -3,6 +3,7 @@ import { apiGet, apiPost, apiPut } from "../../../services/http";
 import { useIsPhone } from "../../../shared/useIsPhone";
 import { useAuthStore } from "../../../app/store/authStore";
 import { useUiStore } from "../../../app/store/uiStore";
+import { useCan } from "../../../app/access";
 import { Icon } from "../../../components/ui/Icon";
 import { Modal } from "../../../components/ui/Modal";
 import { polygonArea, polygonIsSimple, stepRotation, type Pt } from "../../../components/warehouse3d/geometry";
@@ -42,7 +43,8 @@ const Warehouse3D = lazy(() =>
    · 선반(랙) 위치만 바꾼다. 재고 이동은 재고 이동 › 3D 탭의 몫
    ============================================================ */
 
-const EDIT_ROLES = ["admin", "logistics"];
+/** 편집 · 게시 = 로케이션 관리 · 처리('수정 · 3D 배치 게시') 기능 (처음 값: 관리자 · 물류팀) */
+const LAYOUT_EDIT = "master/location-master:work";
 
 type History = { past: LayoutDraft[]; present: LayoutDraft; future: LayoutDraft[] };
 
@@ -68,9 +70,8 @@ type Props = {
 
 export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublished }: Props) => {
   const theme = useUiStore((state) => state.theme);
-  const role = useUiStore((state) => state.currentRole);
   const operator = useAuthStore((state) => state.user?.id ?? "system");
-  const readOnly = !EDIT_ROLES.includes(role);
+  const readOnly = !useCan(LAYOUT_EDIT);
 
   const [meta, setMeta] = useState<Omit<DraftResponse, "draft"> | null>(null);
   const [published, setPublished] = useState<WarehouseLayout | null>(null);

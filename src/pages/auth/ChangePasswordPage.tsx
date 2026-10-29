@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { roleLabels } from "../../app/roles";
+import { roleNames } from "../../app/access";
 import { useAuthStore } from "../../app/store/authStore";
 import { Icon } from "../../components/ui/Icon";
 import { PASSWORD_RULE, type LoginResult } from "../../services/authService";
@@ -88,7 +88,7 @@ export const ChangePasswordPage = () => {
             <div>
               <b>{user.name}</b>
               <span>
-                {user.id} · {roleLabels[user.role] ?? user.role}
+                {user.id} · {roleNames(user.roles)}
               </span>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { apiGet } from "../../services/http";
 import { appToday } from "../../shared/appDate";
 import { useUiStore } from "../../app/store/uiStore";
 import { useAuthStore } from "../../app/store/authStore";
+import { useCan } from "../../app/access";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
@@ -23,8 +24,8 @@ import { useZoneEditSession } from "../inventory/layoutEditor/useZoneEditSession
 import { ZoneEditBar, ZoneEditPanel } from "../inventory/layoutEditor/ZoneEditPanel";
 import "./ControlTower.css";
 
-/** 구역 배치 편집 권한 — 물류 관리자·IT (DOCS/WMS_3D창고맵_설계.md 11-3) */
-const LAYOUT_EDIT_ROLES = ["admin", "logistics"];
+/** 구역 배치 편집 — 로케이션 관리 · 처리('수정 · 3D 배치 게시') 기능 (DOCS/WMS_3D창고맵_설계.md 11-3, 처음 값: 관리자 · 물류팀) */
+const LAYOUT_EDIT = "master/location-master:work";
 
 // three.js 는 무거우므로 별도 청크로 분리한다 — KPI/표는 먼저 그려지고 맵이 뒤따라 붙는다
 const Warehouse3D = lazy(() =>
@@ -109,9 +110,8 @@ export const ControlTowerPage = () => {
   const { layout, refresh: refreshMap } = map;
 
   // 구역 배치 편집 — 3D 위에서 구역을 통째로 끌어 옮긴다
-  const role = useUiStore((state) => state.currentRole);
   const operator = useAuthStore((state) => state.user?.id ?? "system");
-  const canEditLayout = LAYOUT_EDIT_ROLES.includes(role);
+  const canEditLayout = useCan(LAYOUT_EDIT);
   const zoneEdit = useZoneEditSession(map, operator);
   const [editConfirm, setEditConfirm] = useState<"save" | "discard" | null>(null);
   const { notice: editNotice, setNotice: setEditNotice } = zoneEdit;

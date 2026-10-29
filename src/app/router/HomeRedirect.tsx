@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { currentAccess } from "../access";
 import { homePathFor, resolveScreenPath } from "../menuConfig";
 import { FAVORITES_KEY, navPrefsReady, useNavPrefsStore } from "../store/navPrefsStore";
 import { HOME_PATH } from "../store/tabsStore";
-import { useUiStore } from "../store/uiStore";
 
 /**
  * 첫 화면 (`/` — 로그인 직후 · 주소 없이 들어올 때).
- * 탭형이고 즐겨찾기가 있으면 ★ 에서 마지막으로 보던 화면, 아니면 물류 현황
+ * 탭형이고 즐겨찾기가 있으면 ★ 에서 마지막으로 보던 화면, 아니면 물류 현황(못 보면 메뉴의 첫 화면)
  * (DOCS/WMS_메뉴방식_즐겨찾기_설계.md §2 "탭형 첫 화면").
  *
  * 설정은 로그인과 함께 navPrefsStore 가 불러온다. 사내 빌드는 서버에서 받는 중일 수 있어
@@ -22,10 +22,10 @@ export const HomeRedirect = () => {
     void navPrefsReady().then(() => {
       if (!alive) return;
       const { navMode, favorites, lastScreenBySection, setActiveCategory } = useNavPrefsStore.getState();
-      const role = useUiStore.getState().currentRole;
-      const mine = navMode === "tabs" ? favorites.filter((path) => resolveScreenPath(path, role).status === "ok") : [];
+      const access = currentAccess();
+      const mine = navMode === "tabs" ? favorites.filter((path) => resolveScreenPath(path, access).status === "ok") : [];
       if (!mine.length) {
-        navigate(homePathFor(role, HOME_PATH), { replace: true });
+        navigate(homePathFor(access, HOME_PATH), { replace: true });
         return;
       }
       const last = lastScreenBySection[FAVORITES_KEY];

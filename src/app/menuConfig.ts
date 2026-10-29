@@ -1,7 +1,11 @@
+import type { Access, MenuGroup } from "./access";
+
 export type MenuFeature = {
   slug: string;
   label: string;
   description: string;
+  /** 화면 주소 — 메뉴 관리에서 다른 모듈로 옮긴 화면도 주소는 그대로다. 없으면 /섹션/화면 */
+  path?: string;
 };
 
 export type MenuSection = {
@@ -13,9 +17,12 @@ export type MenuSection = {
   features: MenuFeature[];
 };
 
-export type MenuConfigByRole = Record<string, Array<{ section: string; features?: string[] }>>;
-
-// 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (9개 모듈 / 42개 화면 — 반품 예정 OMS2 이관, 출고 사진·현장 전광판 신규 2026-09-20)
+/**
+ * 화면 목록 (코드가 정한다) — 주소 · 기본 이름 · 설명 · 아이콘.
+ * 누가 어느 화면을 보는지는 여기 없다: 로그인 · /auth/me 가 준 메뉴(menus)와 기능(features)으로 정한다.
+ * 화면설계 기준: DOCS/WMS_화면설계_개발요청.md (반품 예정 OMS2 이관, 출고 사진·현장 전광판 신규 2026-09-20)
+ * + 시스템관리 3개 (계정 · 권한, 2026-10-29)
+ */
 export const menuSections: MenuSection[] = [
   {
     slug: "dashboard",
@@ -96,14 +103,12 @@ export const menuSections: MenuSection[] = [
     label: "기준정보관리",
     group: "SETTINGS",
     iconPath: "M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z",
-    description: "품목·로케이션·배송사·재고정책 기준정보와 계정을 관리합니다.",
+    description: "품목·로케이션·배송사·재고정책 기준정보를 관리합니다.",
     features: [
       { slug: "item-master", label: "품목 마스터", description: "품목 등록·수정과 TI/HI·중량·부피·안전재고를 관리합니다." },
       { slug: "location-master", label: "로케이션 관리", description: "로케이션 생성·수정과 유형(피킹/보충/직출/불량/파손)을 관리합니다." },
       { slug: "carrier-master", label: "배송사 관리", description: "배송사 등록·수정·삭제와 계정 권한을 관리합니다." },
-      { slug: "stock-policy", label: "가용재고 정책관리", description: "예약·불량·이동중 재고 반영 설정과 계산식을 관리합니다." },
-      // 관리자만 — 다른 역할은 기준정보관리의 화면을 골라서 받으므로 여기 더해도 보이지 않는다
-      { slug: "user-admin", label: "계정 관리", description: "계정 만들기·역할·잠그기와 비밀번호 초기화를 관리합니다." }
+      { slug: "stock-policy", label: "가용재고 정책관리", description: "예약·불량·이동중 재고 반영 설정과 계산식을 관리합니다." }
     ]
   },
   {
@@ -143,80 +148,85 @@ export const menuSections: MenuSection[] = [
       { slug: "notice", label: "업무 연락", description: "DECO 업무 연락을 조회합니다." },
       { slug: "ai-chatbot", label: "AI 챗봇", description: "재고/입고/출고/쇼트 Q&A와 자연어 데이터 조회를 제공합니다." }
     ]
+  },
+  {
+    slug: "system",
+    label: "시스템관리",
+    group: "SETTINGS",
+    iconPath: "M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm0 13.5c-2.33-.73-4.37-2.33-5.6-4.5.03-1.86 3.73-2.88 5.6-2.88s5.57 1.02 5.6 2.88c-1.23 2.17-3.27 3.77-5.6 4.5z",
+    description: "사용자 · 메뉴 · 권한을 관리합니다. 저장하면 다시 로그인 없이 바로 적용됩니다.",
+    features: [
+      { slug: "users", label: "사용자 관리", description: "계정 만들기·잠그기·비밀번호 초기화와 역할 주기(여러 개), 가진 권한 보기." },
+      { slug: "menus", label: "메뉴 관리", description: "메뉴 이름·순서·사용·모듈과 화면을 여는 권한을 관리합니다." },
+      { slug: "permissions", label: "권한 관리", description: "역할(권한의 묶음)과 권한(기능의 묶음)을 만들고 고칩니다." }
+    ]
   }
 ];
+
+/** 로그인만 하면 보이는 화면 — 기능이 없다 (서버 AccessCatalog 와 같다) */
+export const LOGIN_ONLY_SCREENS: ReadonlySet<string> = new Set(["communication/notice"]);
+
+/** 메뉴 묶음 아이콘 — 관리자가 만든 묶음은 기본 아이콘 */
+const GROUP_ICON = "M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h10v2H4v-2z";
 
 export const findSection = (sectionSlug?: string) =>
   menuSections.find((section) => section.slug === sectionSlug);
 
-export const roleMenuConfig: MenuConfigByRole = {
-  admin: [
-    { section: "dashboard" },
-    { section: "inbound" },
-    { section: "stock" },
-    { section: "outbound" },
-    { section: "dispatch" },
-    { section: "master" },
-    { section: "analytics" },
-    { section: "history" },
-    { section: "communication" }
-  ],
-  logistics: [
-    { section: "dashboard" },
-    { section: "inbound" },
-    { section: "stock" },
-    { section: "outbound" },
-    { section: "dispatch" },
-    { section: "analytics" },
-    { section: "history" },
-    { section: "communication" }
-  ],
-  inbound: [
-    { section: "dashboard", features: ["logistics-status", "inbound-status", "work-alerts", "floor-board"] },
-    { section: "inbound" },
-    { section: "stock", features: ["putaway", "replenishment", "stock-realtime", "barcode-lookup"] },
-    { section: "master", features: ["item-master", "location-master"] },
-    { section: "history", features: ["inbound-history", "transfer-history"] },
-    { section: "communication", features: ["notice"] }
-  ],
-  outbound: [
-    { section: "dashboard", features: ["logistics-status", "outbound-status", "work-alerts", "floor-board"] },
-    { section: "outbound" },
-    { section: "stock", features: ["transfer", "stock-realtime", "stock-available"] },
-    { section: "dispatch" },
-    { section: "master", features: ["item-master", "carrier-master"] },
-    { section: "history", features: ["outbound-history"] },
-    { section: "communication", features: ["notice"] }
-  ],
-  inventory: [
-    { section: "dashboard", features: ["logistics-status", "stock-status", "work-alerts"] },
-    { section: "stock" },
-    { section: "master", features: ["item-master", "location-master", "stock-policy"] },
-    { section: "analytics", features: ["inbound-summary", "outbound-summary", "shortage", "aging-stock"] },
-    { section: "history", features: ["transfer-history"] },
-    { section: "communication", features: ["notice"] }
-  ],
-  // 소싱 — 입고예정(언제 · 무엇이 · 얼마나)을 넣고 고치고, 끝내 안 오는 수량을 닫는다. 도착 · 검수 · 격납은 물류
-  sourcing: [
-    { section: "dashboard", features: ["inbound-status"] },
-    { section: "inbound", features: ["inbound-schedule"] },
-    { section: "stock", features: ["stock-realtime", "stock-available"] },
-    { section: "master", features: ["item-master"] },
-    { section: "analytics", features: ["inbound-summary", "shortage"] },
-    { section: "history", features: ["inbound-history"] },
-    { section: "communication", features: ["notice"] }
-  ],
-  partner: [
-    { section: "dashboard", features: ["outbound-status"] },
-    { section: "outbound", features: ["delivery-note"] },
-    { section: "dispatch", features: ["dispatch-regional"] },
-    { section: "communication", features: ["notice"] }
-  ]
+/** 화면 하나 — 주소로 */
+export const findScreen = (path: string) => {
+  const [sectionSlug, featureSlug] = path.split("/").filter(Boolean);
+  const section = findSection(sectionSlug);
+  const feature = section?.features.find((item) => item.slug === featureSlug);
+  return section && feature ? { section, feature } : null;
+};
+
+/** 메뉴 항목의 주소 — 다른 모듈로 옮긴 화면도 제 주소로 */
+export const featurePath = (section: MenuSection, feature: MenuFeature) => feature.path ?? `/${section.slug}/${feature.slug}`;
+
+/** 이 화면을 볼 수 있나 — 그 화면의 보기 기능 (업무 연락은 로그인만). 메뉴에서 숨긴 화면도 기능이 있으면 열린다 */
+export const canOpenScreen = (access: Access, sectionSlug: string, featureSlug: string) => {
+  const code = `${sectionSlug}/${featureSlug}`;
+  return LOGIN_ONLY_SCREENS.has(code) || access.features.has(`${code}:view`);
 };
 
 /**
+ * 사이드 메뉴 — 서버가 준 메뉴(관리자가 메뉴 관리에서 고친 이름 · 순서 · 모듈) 그대로.
+ * 아이콘 · 설명은 코드의 화면 목록에서. 코드에 없는 화면(새 버전 전)은 뺀다.
+ */
+export const getMenuSections = (access: Access): MenuSection[] =>
+  access.menus
+    .map((group: MenuGroup) => {
+      const own = findSection(group.code);
+      const features = group.screens
+        .map((screen) => {
+          const found = findScreen(`/${screen.code}`);
+          if (!found) return null;
+          return {
+            slug: found.feature.slug,
+            label: screen.name || found.feature.label,
+            description: found.feature.description,
+            path: `/${screen.code}`
+          } satisfies MenuFeature;
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+      return {
+        slug: group.code,
+        label: group.name,
+        group: own?.group ?? "OPERATIONS",
+        iconPath: own?.iconPath ?? GROUP_ICON,
+        description: own?.description ?? `${group.name} 화면 모음`,
+        features
+      } satisfies MenuSection;
+    })
+    .filter((section) => section.features.length > 0);
+
+/** 경로가 메뉴의 어느 묶음에 있나 (옮긴 화면이면 옮겨 간 묶음) */
+export const sectionOfMenuPath = (sections: MenuSection[], path: string) =>
+  sections.find((section) => section.features.some((feature) => featurePath(section, feature) === path));
+
+/**
  * 즐겨찾기가 비어 있을 때 "추천으로 채우기" — 역할마다 실제로 자주 여는 화면.
- * (설계 DOCS/WMS_메뉴방식_즐겨찾기_설계.md §2 · 역할이 못 보는 화면은 채울 때 걸러진다)
+ * (설계 DOCS/WMS_메뉴방식_즐겨찾기_설계.md §2 · 못 보는 화면은 채울 때 걸러진다. 추천이 없는 역할은 메뉴의 앞 화면들)
  */
 export const RECOMMENDED_FAVORITES: Record<string, string[]> = {
   inbound: ["/inbound/inbound-schedule", "/inbound/inbound-confirm", "/stock/putaway", "/stock/stock-realtime", "/stock/barcode-lookup"],
@@ -224,56 +234,48 @@ export const RECOMMENDED_FAVORITES: Record<string, string[]> = {
   inventory: ["/stock/stock-realtime", "/stock/replenishment", "/stock/stocktaking", "/stock/erp-compare", "/stock/fifo-status"],
   sourcing: ["/inbound/inbound-schedule", "/dashboard/inbound-status", "/analytics/shortage", "/stock/stock-realtime", "/history/inbound-history"],
   logistics: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/dashboard/floor-board"],
-  admin: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/dashboard/floor-board"],
-  partner: ["/dashboard/outbound-status", "/outbound/delivery-note", "/dispatch/dispatch-regional"]
+  admin: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/system/users"],
+  partner: ["/dispatch/dispatch-metro", "/dispatch/dispatch-regional"]
 };
 
-export const getMenuSectionsForRole = (role: string) => {
-  const roleMenu = roleMenuConfig[role] ?? roleMenuConfig.admin;
-  const sectionMap = new Map(menuSections.map((section) => [section.slug, section]));
-
-  return roleMenu
-    .map((rule) => {
-      const section = sectionMap.get(rule.section);
-      if (!section) return null;
-      if (!rule.features) return section;
-
-      return {
-        ...section,
-        features: section.features.filter((feature) => rule.features!.includes(feature.slug))
-      };
-    })
-    .filter((section): section is MenuSection => Boolean(section))
-    .filter((section) => section.features.length > 0);
+export const recommendedFavorites = (access: Access): string[] => {
+  const ok = (path: string) => resolveScreenPath(path, access).status === "ok";
+  for (const role of access.roles) {
+    const list = RECOMMENDED_FAVORITES[role.code]?.filter(ok);
+    if (list?.length) return list;
+  }
+  return getMenuSections(access)
+    .flatMap((section) => section.features.map((feature) => featurePath(section, feature)))
+    .filter((path) => path !== "/communication/notice")
+    .slice(0, 5);
 };
 
 /**
- * 이 역할의 첫 화면 — 보통은 preferred(물류 현황). 그 화면이 메뉴에 없는 역할(소싱 · 거래처)은 메뉴의 첫 화면으로
+ * 첫 화면 — 보통은 preferred(물류 현황). 그 화면을 못 보는 사람은 메뉴의 첫 화면으로
  * ("접근 권한이 없습니다" 로 시작하지 않게).
  */
-export const homePathFor = (role: string, preferred: string) => {
-  if (resolveScreenPath(preferred, role).status === "ok") return preferred;
-  const first = getMenuSectionsForRole(role)[0];
-  return first?.features[0] ? `/${first.slug}/${first.features[0].slug}` : preferred;
+export const homePathFor = (access: Access, preferred: string) => {
+  if (resolveScreenPath(preferred, access).status === "ok") return preferred;
+  const first = getMenuSections(access)[0];
+  return first?.features[0] ? featurePath(first, first.features[0]) : preferred;
 };
 
-/** 경로 하나가 어떤 화면인가 — 메뉴에 있는지, 이 역할이 볼 수 있는지까지 본다 */
+/** 경로 하나가 어떤 화면인가 — 코드에 있는 화면인지, 이 사람이 볼 수 있는지까지 본다 */
 export type ScreenTarget =
   | { status: "ok"; sectionSlug: string; featureSlug: string; label: string }
   | { status: "unknown" | "denied" };
 
 /**
  * 라우터 밖에서도 화면을 그려야 할 때(분할 보기의 오른쪽 패널) 경로를 화면으로 푼다.
- * 라우터가 그리는 FeaturePage 와 같은 판정을 쓴다 — 없는 메뉴는 unknown, 권한 밖이면 denied.
+ * 라우터가 그리는 FeaturePage 와 같은 판정을 쓴다 — 없는 화면은 unknown, 기능이 없으면 denied.
+ * 이름은 메뉴 관리에서 고친 이름(보이는 메뉴에 있으면).
  */
-export const resolveScreenPath = (path: string, role: string): ScreenTarget => {
-  const [sectionSlug, featureSlug] = path.split("/").filter(Boolean);
-  const source = findSection(sectionSlug);
-  const sourceFeature = source?.features.find((feature) => feature.slug === featureSlug);
-  if (!source || !sourceFeature) return { status: "unknown" };
-
-  const allowed = getMenuSectionsForRole(role).find((section) => section.slug === source.slug);
-  if (!allowed?.features.some((feature) => feature.slug === sourceFeature.slug)) return { status: "denied" };
-
-  return { status: "ok", sectionSlug: source.slug, featureSlug: sourceFeature.slug, label: sourceFeature.label };
+export const resolveScreenPath = (path: string, access: Access): ScreenTarget => {
+  const found = findScreen(path);
+  if (!found) return { status: "unknown" };
+  const { section, feature } = found;
+  if (!canOpenScreen(access, section.slug, feature.slug)) return { status: "denied" };
+  const code = `${section.slug}/${feature.slug}`;
+  const named = access.menus.flatMap((group) => group.screens).find((screen) => screen.code === code);
+  return { status: "ok", sectionSlug: section.slug, featureSlug: feature.slug, label: named?.name || feature.label };
 };

@@ -47,13 +47,14 @@ export type OmsChangeMockCtx = {
   outboundLines: () => Record<number, AnyRecord[]>;
   /** 배차를 지운다 (변경 · 취소 승인) */
   removeDispatch: (outboundNo: string) => void;
-  role: () => string | undefined;
+  /** 지금 로그인한 사람의 기능 (데모의 서버 검사) */
+  can: (feature: string) => boolean;
   operator: () => string;
   log: (entry: LogEntry) => void;
 };
 
-const MANAGER_ROLES = new Set(["admin", "logistics"]);
-const NOT_MANAGER = "변경 · 취소 승인과 거절은 관리자 · 물류 담당자만 할 수 있습니다.";
+const DECIDE = "outbound/change-review:work";
+const NOT_MANAGER = "변경·취소 확인 · 처리 권한이 없습니다.";
 
 const stamp = (day: string) => {
   const now = new Date();
@@ -186,7 +187,7 @@ export function createOmsChangeMock(ctx: OmsChangeMockCtx) {
     const c = changes.find((x) => x.id === id);
     if (!c) throw new Error("변경 요청을 찾을 수 없습니다.");
     if (c.status !== "PENDING") throw new Error(`이미 처리한 요청입니다 (${c.status}) — 목록을 새로 고치세요.`);
-    if (!MANAGER_ROLES.has(ctx.role() ?? "")) throw new Error(NOT_MANAGER);
+    if (!ctx.can(DECIDE)) throw new Error(NOT_MANAGER);
     return c;
   };
 

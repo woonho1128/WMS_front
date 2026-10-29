@@ -194,8 +194,8 @@ export const SlotContextMenu = ({ slot, point, actions, onClose, onOpenOrder, on
                   type="button"
                   role="menuitem"
                   className="scm-primary"
-                  disabled={!actions.canMove}
-                  title={actions.canMove ? undefined : "보충 권한이 없습니다"}
+                  disabled={!actions.canReplenish}
+                  title={actions.canReplenish ? undefined : "보충 작업 · 처리 권한이 없습니다"}
                   onClick={run(() => actions.openReplenish(data.replenishment!))}
                 >
                   <Icon name="layers" size={14} />
@@ -247,7 +247,7 @@ export const SlotContextMenu = ({ slot, point, actions, onClose, onOpenOrder, on
                 type="button"
                 role="menuitem"
                 disabled={!primary || !actions.canAdjust}
-                title={!actions.canAdjust ? "재고 조정 권한이 없습니다 (관리자·물류·재고 담당)" : !primary ? "조정할 재고가 없습니다" : undefined}
+                title={!actions.canAdjust ? "재고 조정 권한(일일 재고 실사 · 처리)이 없습니다" : !primary ? "조정할 재고가 없습니다" : undefined}
                 onClick={run(() => primary && actions.openAdjust(primary, slot.code))}
               >
                 <Icon name="sliders" size={14} />

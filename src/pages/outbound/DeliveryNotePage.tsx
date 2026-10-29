@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
-import { resolveScreenPath } from "../../app/menuConfig";
-import { useUiStore } from "../../app/store/uiStore";
+import { useCan } from "../../app/access";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { PhotoCountLink } from "./PhotoCountLink";
@@ -25,9 +24,8 @@ type DeliveryRow = {
 };
 
 export const DeliveryNotePage = () => {
-  // 출고 사진은 내부 전용 — 그 화면을 못 여는 역할(배송사 계정)에게는 사진 칸을 보이지 않는다
-  const role = useUiStore((state) => state.currentRole);
-  const showPhotos = resolveScreenPath("/outbound/outbound-photo", role).status === "ok";
+  // 출고 사진은 내부 전용 — 출고 사진 화면을 못 보는 사람(배송사 등)에게는 사진 칸을 보이지 않는다
+  const showPhotos = useCan("outbound/outbound-photo:view");
   const columns = showPhotos ? 10 : 9;
   const [rows, setRows] = useState<DeliveryRow[]>([]);
   const [loading, setLoading] = useState(true);

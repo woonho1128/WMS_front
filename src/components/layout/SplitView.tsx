@@ -1,5 +1,6 @@
 import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAccess } from "../../app/access";
 import { resolveScreenPath } from "../../app/menuConfig";
 import {
   SPLIT_DEFAULT_RATIO,
@@ -7,7 +8,6 @@ import {
   SPLIT_MIN_RATIO,
   useTabsStore
 } from "../../app/store/tabsStore";
-import { useUiStore } from "../../app/store/uiStore";
 import { WorkbenchPage } from "../../pages/workbench/WorkbenchPage";
 import { Icon } from "../ui/Icon";
 
@@ -35,7 +35,7 @@ const STEP = 0.02;
 export const SplitView = ({ children, mainLabel, splitPath }: Props) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const role = useUiStore((state) => state.currentRole);
+  const access = useAccess();
   const ratio = useTabsStore((state) => state.splitRatio);
   const setSplitRatio = useTabsStore((state) => state.setSplitRatio);
   const openSplit = useTabsStore((state) => state.openSplit);
@@ -43,7 +43,7 @@ export const SplitView = ({ children, mainLabel, splitPath }: Props) => {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  const target = resolveScreenPath(splitPath, role);
+  const target = resolveScreenPath(splitPath, access);
   const label = target.status === "ok" ? target.label : "나란히 보기";
 
   const dragTo = (clientX: number) => {
@@ -146,7 +146,7 @@ export const SplitView = ({ children, mainLabel, splitPath }: Props) => {
             <WorkbenchPage sectionSlug={target.sectionSlug} featureSlug={target.featureSlug} title={target.label} />
           ) : (
             <p className="wms-pane-empty">
-              {target.status === "denied" ? "이 역할에는 권한이 없는 화면입니다." : "메뉴에 없는 화면입니다."}
+              {target.status === "denied" ? "권한이 없는 화면입니다 — 관리자에게 권한을 요청하세요." : "메뉴에 없는 화면입니다."}
             </p>
           )}
         </div>

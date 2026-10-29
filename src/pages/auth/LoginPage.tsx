@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../app/store/authStore";
-import { useUiStore } from "../../app/store/uiStore";
 import { Icon } from "../../components/ui/Icon";
 import { USE_MOCK_API } from "../../services/apiMode";
 import "./LoginPage.css";
@@ -15,19 +14,15 @@ export const LoginPage = () => {
   const status = useAuthStore((state) => state.status);
   const error = useAuthStore((state) => state.error);
   const clearError = useAuthStore((state) => state.clearError);
-  const setCurrentRole = useUiStore((state) => state.setCurrentRole);
   const navigate = useNavigate();
 
   const loading = status === "loading";
 
+  // 메뉴 · 단추는 로그인 응답의 기능 · 메뉴로 그린다 (역할 이름을 따로 기억하지 않는다)
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const ok = await login(id, password);
-    if (ok) {
-      const user = useAuthStore.getState().user;
-      if (user) setCurrentRole(user.role);
-      navigate("/", { replace: true });
-    }
+    if (ok) navigate("/", { replace: true });
   };
 
   return (
@@ -97,7 +92,7 @@ export const LoginPage = () => {
             데모 계정 · 비밀번호 <b>1234</b>
             <br />
             <code>admin</code> / <code>logistics</code> / <code>inbound</code> / <code>outbound</code> /{" "}
-            <code>inventory</code> / <code>sourcing</code> / <code>partner</code>
+            <code>inventory</code> / <code>sourcing</code> / <code>sales</code> / <code>partner</code>
           </div>
         ) : null}
       </form>

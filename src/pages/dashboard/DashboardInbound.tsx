@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { INBOUND_PLANNERS, INBOUND_WORKERS, can } from "../../app/permissions";
-import { useUiStore } from "../../app/store/uiStore";
+import { useCan } from "../../app/access";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
@@ -202,10 +201,9 @@ export const DashboardInbound = () => {
   const [assignLocs, setAssignLocs] = useState<Record<number, number | "">>({});
   const [labelTarget, setLabelTarget] = useState<InboundRow | null>(null);
 
-  // 역할 — 도착 · 지정 · 검수는 물류, 남은 수량 닫기는 소싱도 (서버가 같은 묶음으로 막는다)
-  const role = useUiStore((state) => state.currentRole);
-  const canWork = can(role, INBOUND_WORKERS);
-  const canPlan = can(role, INBOUND_PLANNERS);
+  // 기능 — 도착 · 지정 · 검수 = 입고 확정 · 처리, 남은 수량 닫기 = 입고 예정 · 남은 수량 닫기 (서버가 같은 기능으로 막는다)
+  const canWork = useCan("inbound/inbound-confirm:work");
+  const canPlan = useCan("inbound/inbound-schedule:close");
 
   // 입고 회차 (나눠 입고) — 고른 건이 받은 적이 있으면 읽는다
   const [receiptsById, setReceiptsById] = useState<Record<number, Receipt[]>>({});

@@ -29,7 +29,9 @@ const CarrierMasterPage = lazy(() => import("../master/CarrierMasterPage").then(
 const DispatchMetroPage = lazy(() => import("../dispatch/DispatchMetroPage").then((m) => ({ default: m.DispatchMetroPage })));
 const DispatchRegionalPage = lazy(() => import("../dispatch/DispatchRegionalPage").then((m) => ({ default: m.DispatchRegionalPage })));
 const StockPolicyPage = lazy(() => import("../master/StockPolicyPage").then((m) => ({ default: m.StockPolicyPage })));
-const AccountAdminPage = lazy(() => import("../master/AccountAdminPage").then((m) => ({ default: m.AccountAdminPage })));
+const UsersPage = lazy(() => import("../system/UsersPage").then((m) => ({ default: m.UsersPage })));
+const MenusPage = lazy(() => import("../system/MenusPage").then((m) => ({ default: m.MenusPage })));
+const PermissionsPage = lazy(() => import("../system/PermissionsPage").then((m) => ({ default: m.PermissionsPage })));
 const ProgressPage = lazy(() => import("../analytics/ProgressPage").then((m) => ({ default: m.ProgressPage })));
 const NoticePage = lazy(() => import("../communication/NoticePage").then((m) => ({ default: m.NoticePage })));
 const ChatbotPage = lazy(() => import("../communication/ChatbotPage").then((m) => ({ default: m.ChatbotPage })));
@@ -90,7 +92,10 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
     "stock-monthly": <MonthlyStockPage />,
     progress: <ProgressPage />,
     "stock-policy": <StockPolicyPage />,
-    "user-admin": <AccountAdminPage />,
+    // 시스템관리 — 관리자 역할만 (계정 · 권한 관리 기능)
+    users: <UsersPage />,
+    menus: <MenusPage />,
+    permissions: <PermissionsPage />,
     "item-master": <InventoryItemPage />,
     "location-master": <InventoryLocationPage />,
     "system-logs": <InterfaceMonitorPage />,

@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { RECOMMENDED_FAVORITES, getMenuSectionsForRole, resolveScreenPath } from "../../app/menuConfig";
+import { useAccess } from "../../app/access";
+import { featurePath, getMenuSections, recommendedFavorites, resolveScreenPath, sectionOfMenuPath } from "../../app/menuConfig";
 import { FAVORITES_KEY, FAVORITES_LIMIT, sectionOfPath, useNavPrefsStore } from "../../app/store/navPrefsStore";
 import { SPLIT_MIN_QUERY, useTabsStore } from "../../app/store/tabsStore";
-import { useUiStore } from "../../app/store/uiStore";
 import { useMediaQuery } from "../../shared/useMediaQuery";
 import { Icon } from "../ui/Icon";
 import { usePopupMenu } from "./usePopupMenu";
@@ -28,7 +28,7 @@ type Props = {
 
 export const CategoryTabBar = ({ activePath }: Props) => {
   const navigate = useNavigate();
-  const role = useUiStore((state) => state.currentRole);
+  const access = useAccess();
   const favorites = useNavPrefsStore((state) => state.favorites);
   const recent = useNavPrefsStore((state) => state.recent);
   const activeCategory = useNavPrefsStore((state) => state.activeCategory);
@@ -49,28 +49,33 @@ export const CategoryTabBar = ({ activePath }: Props) => {
   /** 가로로 더 밀 수 있는 쪽 — 가장자리를 흐리게 해서 "더 있다"를 보인다 */
   const [edges, setEdges] = useState({ left: false, right: false });
 
-  const sections = getMenuSectionsForRole(role);
-  const category = activeCategory ?? sectionOfPath(activePath);
+  const sections = getMenuSections(access);
+  const rawCategory = activeCategory ?? sectionOfPath(activePath);
+  // 고른 칸이 지금 메뉴에 없으면(옮긴 화면 · 숨긴 모듈) 그 화면이 든 묶음으로
+  const category =
+    rawCategory === FAVORITES_KEY || sections.some((item) => item.slug === rawCategory)
+      ? rawCategory
+      : sectionOfMenuPath(sections, activePath)?.slug ?? rawCategory;
   const onFavorites = category === FAVORITES_KEY;
   const section = sections.find((item) => item.slug === category) ?? null;
 
-  /** 이 역할이 볼 수 있는 화면만 — 역할이 바뀌어 못 보게 된 즐겨찾기는 숨기기만 한다(지우지 않음) */
+  /** 볼 수 있는 화면만 — 권한이 바뀌어 못 보게 된 즐겨찾기는 숨기기만 한다(지우지 않음) */
   const describe = (path: string): Item | null => {
-    const target = resolveScreenPath(path, role);
+    const target = resolveScreenPath(path, access);
     if (target.status !== "ok") return null;
-    return { path, label: target.label, sectionLabel: sections.find((item) => item.slug === target.sectionSlug)?.label ?? "" };
+    return { path, label: target.label, sectionLabel: sectionOfMenuPath(sections, path)?.label ?? "" };
   };
 
   const items: Item[] = onFavorites
     ? favorites.map(describe).filter((item): item is Item => item !== null)
     : section
-      ? section.features.map((feature) => ({ path: `/${section.slug}/${feature.slug}`, label: feature.label, sectionLabel: section.label }))
+      ? section.features.map((feature) => ({ path: featurePath(section, feature), label: feature.label, sectionLabel: section.label }))
       : [];
   const recentItems = recent
     .filter((path) => path !== activePath)
     .map(describe)
     .filter((item): item is Item => item !== null);
-  const recommended = (RECOMMENDED_FAVORITES[role] ?? []).filter((path) => describe(path) !== null);
+  const recommended = recommendedFavorites(access);
   const full = favorites.length >= FAVORITES_LIMIT;
   const splitPartner = recentItems[0] ?? null;
 

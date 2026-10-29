@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { INBOUND_WORKERS, can } from "../../app/permissions";
-import { useUiStore } from "../../app/store/uiStore";
+import { useCan } from "../../app/access";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
@@ -75,8 +74,8 @@ const lotOf = (r: InboundRow) => (isWaiting(r) ? r.nextLotNo : r.lastLotNo) ?? `
 
 export const InboundConfirmPage = () => {
   const navigate = useNavigate();
-  const role = useUiStore((state) => state.currentRole);
-  const canWork = can(role, INBOUND_WORKERS);
+  // 도착 · 검수 · 입고확정 = 입고 확정 · 처리 (서버도 같은 기능으로 막는다)
+  const canWork = useCan("inbound/inbound-confirm:work");
 
   const [rows, setRows] = useState<InboundRow[]>([]);
   const [linesById, setLinesById] = useState<Record<number, InboundLine[]>>({});

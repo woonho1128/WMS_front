@@ -1,35 +1,40 @@
 /* ============================================================
-   목(mock) — 계정 관리 · 내 비밀번호 바꾸기
+   목(mock) — 사용자 관리 · 내 비밀번호 바꾸기
    서버 AccountService 와 같은 규칙:
-   · 관리자만 (데모는 머리글의 역할 선택을 따른다) · 지우지 않고 잠근다
+   · 사용자 관리 기능(시스템관리 — 관리자 역할만) · 지우지 않고 잠근다
+   · 역할은 여러 개 — 바꿔도 그 사람의 로그인은 이어지고 다음 요청부터 새 역할 (권한 목 mockAccess)
    · 비밀번호는 임시로 발급 → 받은 사람이 첫 로그인 때 바꾼다
    · 내 계정은 잠그거나 역할을 바꾸거나 초기화하지 못한다 · 마지막 관리자는 잠그거나 내리지 못한다
    ⚠ 목이라 메모리에만 있다 — 새로고침하면 처음 계정으로 돌아간다. 비밀번호는 데모 값이다.
    ============================================================ */
 
-import type { AuthUser, LoginResult } from "./authService";
+import type { AccountRow } from "./accessApi";
+import type { LoginResult } from "./authService";
+import type { AccessMock } from "./mockAccess";
 
 type AnyRecord = Record<string, any>;
 
 export type MockAccount = {
   password: string;
-  user: AuthUser;
+  id: string;
+  name: string;
+  mustChangePassword?: boolean;
   locked?: boolean;
   lastLoginAt?: string | null;
   passwordChangedAt?: string | null;
   lockedAt?: string | null;
   createdAt?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
 };
 
 export type AccountMockCtx = {
   accounts: Record<string, MockAccount>;
-  role: () => string | undefined;
+  access: () => AccessMock;
   me: () => string | undefined;
   now: () => string;
-  roles: readonly string[];
 };
 
-const ADMINS_ONLY = "계정 관리는 관리자만 할 수 있습니다.";
 const ID = /^[a-z0-9][a-z0-9._-]{2,29}$/;
 const TEMP_LETTERS = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
 const TEMP_DIGITS = "23456789";
@@ -53,32 +58,32 @@ export const passwordProblem = (id: string, password: string) => {
 };
 
 export function createAccountMock(ctx: AccountMockCtx) {
-  const view = (a: MockAccount) => ({
-    id: a.user.id,
-    name: a.user.name,
-    role: a.user.role,
+  const access = () => ctx.access();
+  const view = (a: MockAccount): AccountRow => ({
+    id: a.id,
+    name: a.name,
+    roles: access().rolesOfUser(a.id),
     locked: Boolean(a.locked),
-    mustChangePassword: Boolean(a.user.mustChangePassword),
+    mustChangePassword: Boolean(a.mustChangePassword),
     lastLoginAt: a.lastLoginAt ?? null,
     passwordChangedAt: a.passwordChangedAt ?? null,
     lockedAt: a.lockedAt ?? null,
     createdAt: a.createdAt ?? null,
-    updatedAt: null,
-    updatedBy: null
+    updatedAt: a.updatedAt ?? null,
+    updatedBy: a.updatedBy ?? null
   });
 
-  const requireAdmin = () => {
-    if (ctx.role() !== "admin") throw new Error(ADMINS_ONLY);
-  };
   const find = (id: string) => {
     const account = ctx.accounts[decodeURIComponent(id).trim().toLowerCase()];
     if (!account) throw new Error(`계정을 찾을 수 없습니다: ${id}`);
     return account;
   };
-  const isMe = (a: MockAccount) => (ctx.me() ?? "").toLowerCase() === a.user.id.toLowerCase();
-  const requireAnotherAdmin = () => {
-    const active = Object.values(ctx.accounts).filter((a) => a.user.role === "admin" && !a.locked).length;
-    if (active <= 1) throw new Error("마지막 관리자입니다 — 다른 관리자 계정을 먼저 만들어 두세요.");
+  const isMe = (a: MockAccount) => (ctx.me() ?? "").toLowerCase() === a.id.toLowerCase();
+  const isLocked = (userId: string) => Boolean(ctx.accounts[userId]?.locked);
+  const requireAnotherAdmin = (a: MockAccount) => {
+    if (access().isAdmin(a.id) && access().activeAdminCount(isLocked) <= 1) {
+      throw new Error("마지막 관리자입니다 — 다른 관리자 계정을 먼저 만들어 두세요.");
+    }
   };
   const nameOf = (raw: unknown) => {
     const name = String(raw ?? "").replace(/\s+/g, " ").trim();
@@ -86,54 +91,50 @@ export function createAccountMock(ctx: AccountMockCtx) {
     if (name.length > 50) throw new Error("이름은 50자까지입니다.");
     return name;
   };
-  const roleOf = (raw: unknown) => {
-    const role = String(raw ?? "").trim().toLowerCase();
-    if (!ctx.roles.includes(role)) throw new Error(`모르는 역할입니다: ${raw}`);
-    return role as AuthUser["role"];
-  };
 
   return {
     get: (clean: string): unknown => {
       if (clean !== "/accounts") return undefined;
-      requireAdmin();
+      access().requireFeature("system/users:view");
       return Object.values(ctx.accounts)
         .map(view)
         .sort((a, b) => Number(a.locked) - Number(b.locked) || a.id.localeCompare(b.id));
     },
 
-    mutate: (method: string, clean: string, body: AnyRecord): unknown => {
+    /** [결과, 서버와 같은 메시지] */
+    mutate: (method: string, clean: string, body: AnyRecord): [unknown, string] | undefined => {
       if (method === "PUT" && clean === "/me/password") {
         const account = ctx.accounts[(ctx.me() ?? "").toLowerCase()];
         if (!account) throw new Error("로그인이 끊겼습니다 — 다시 로그인하세요.");
         if (account.password !== body.currentPassword) throw new Error("지금 비밀번호가 맞지 않습니다.");
-        const problem = passwordProblem(account.user.id, String(body.newPassword ?? ""));
+        const problem = passwordProblem(account.id, String(body.newPassword ?? ""));
         if (problem) throw new Error(problem);
         if (body.newPassword === body.currentPassword) throw new Error("지금과 다른 비밀번호를 넣어 주세요.");
         account.password = String(body.newPassword);
-        account.user = { ...account.user, mustChangePassword: false };
+        account.mustChangePassword = false;
         account.passwordChangedAt = ctx.now();
-        const result: LoginResult = { user: { ...account.user }, token: `mock-jwt-${account.user.id}-${Date.now()}` };
-        return result;
+        const result: LoginResult = {
+          user: access().me(account.id, account.name, false),
+          token: `mock-jwt-${account.id}-${Date.now()}`
+        };
+        return [result, "비밀번호를 바꿨습니다."];
       }
 
       if (!clean.startsWith("/accounts")) return undefined;
-      requireAdmin();
+      access().requireFeature("system/users:work");
 
       if (method === "POST" && clean === "/accounts") {
         const id = String(body.id ?? "").trim().toLowerCase();
         if (!ID.test(id)) throw new Error("아이디는 영문 소문자 · 숫자로 시작하고, 영문 소문자 · 숫자 · . _ - 로 3~30자입니다.");
         const name = nameOf(body.name);
-        const role = roleOf(body.role);
+        const roles = access().checkRoles(body.roles);
         if (ctx.accounts[id]) throw new Error(`이미 있는 아이디입니다: ${id}`);
         const temp = temporary();
-        const account: MockAccount = {
-          password: temp,
-          user: { id, name, role, mustChangePassword: true },
-          createdAt: ctx.now(),
-          passwordChangedAt: ctx.now()
-        };
+        const account: MockAccount = { password: temp, id, name, mustChangePassword: true, createdAt: ctx.now(), passwordChangedAt: ctx.now() };
         ctx.accounts[id] = account;
-        return { account: view(account), temporaryPassword: temp };
+        access().forget(id);
+        access().setUserRoles(id, roles, { newAccount: true, locked: false, isLocked });
+        return [{ account: view(account), temporaryPassword: temp }, `${id} 계정을 만들었습니다 — 임시 비밀번호를 전해 주세요.`];
       }
 
       const match = clean.match(/^\/accounts\/([^/]+)(?:\/(lock|unlock|reset-password))?$/);
@@ -142,36 +143,36 @@ export function createAccountMock(ctx: AccountMockCtx) {
       const action = match[2];
 
       if (method === "PUT" && !action) {
-        const name = body.name == null ? account.user.name : nameOf(body.name);
-        const role = body.role == null ? account.user.role : roleOf(body.role);
-        if (role !== account.user.role) {
-          if (isMe(account)) throw new Error("내 역할은 바꿀 수 없습니다 — 다른 관리자에게 부탁하세요.");
-          if (account.user.role === "admin" && !account.locked) requireAnotherAdmin();
+        const name = body.name == null ? account.name : nameOf(body.name);
+        if (body.roles != null) access().setUserRoles(account.id, body.roles, { newAccount: false, locked: Boolean(account.locked), isLocked });
+        if (name !== account.name) {
+          account.name = name;
+          account.updatedAt = ctx.now();
+          account.updatedBy = ctx.me() ?? null;
         }
-        account.user = { ...account.user, name, role };
-        return view(account);
+        return [view(account), "저장했습니다 — 역할은 다시 로그인 없이 바로 적용됩니다."];
       }
       if (method === "POST" && action === "lock") {
         if (isMe(account)) throw new Error("내 계정은 잠글 수 없습니다.");
         if (!account.locked) {
-          if (account.user.role === "admin") requireAnotherAdmin();
+          requireAnotherAdmin(account);
           account.locked = true;
           account.lockedAt = ctx.now();
         }
-        return view(account);
+        return [view(account), `${account.id} 계정을 잠갔습니다 — 로그인과 열려 있던 화면이 모두 막힙니다.`];
       }
       if (method === "POST" && action === "unlock") {
         account.locked = false;
         account.lockedAt = null;
-        return view(account);
+        return [view(account), `${account.id} 계정의 잠금을 풀었습니다.`];
       }
       if (method === "POST" && action === "reset-password") {
         if (isMe(account)) throw new Error("내 비밀번호는 '비밀번호 바꾸기'에서 바꿉니다.");
         const temp = temporary();
         account.password = temp;
-        account.user = { ...account.user, mustChangePassword: true };
+        account.mustChangePassword = true;
         account.passwordChangedAt = ctx.now();
-        return { account: view(account), temporaryPassword: temp };
+        return [{ account: view(account), temporaryPassword: temp }, `${account.id} 의 비밀번호를 초기화했습니다 — 임시 비밀번호를 전해 주세요.`];
       }
       return undefined;
     }

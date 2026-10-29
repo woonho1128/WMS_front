@@ -170,7 +170,7 @@ export const TransferMapView = ({ onChanged }: { onChanged?: () => void }) => {
                 <button
                   type="button"
                   disabled={!actions.canAdjust}
-                  title={actions.canAdjust ? "실제 재고 수량을 조정합니다" : "재고 조정 권한이 없습니다 (관리자·물류·재고 담당)"}
+                  title={actions.canAdjust ? "실제 재고 수량을 조정합니다" : "재고 조정 권한(일일 재고 실사 · 처리)이 없습니다"}
                   onClick={() => actions.openAdjust(stock, map.detail?.location.code ?? "")}
                 >
                   조정

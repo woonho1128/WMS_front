@@ -1,9 +1,8 @@
-import { INBOUND_PLANNERS, INBOUND_WORKERS, PUTAWAY_WORKERS } from "../app/permissions";
-import { roleLabels, type UserRole } from "../app/roles";
+import type { AccessUser } from "../app/access";
 import { useAuthStore } from "../app/store/authStore";
-import { useUiStore } from "../app/store/uiStore";
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
+import { createAccessMock } from "./mockAccess";
 import { createAccountMock, type MockAccount } from "./mockAccountAdmin";
 import { createDashboardMock, regionOf } from "./mockDashboard";
 import { createItemImportMock } from "./mockItemImport";
@@ -18,19 +17,46 @@ const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 // 시드 기준일 — 화면 날짜 필터 기본값도 같은 값을 쓴다(shared/appDate)
 const today = MOCK_TODAY;
 
-/** 데모 계정 — 비밀번호는 데모 값. 계정 관리 화면(목)이 이 표를 고친다 (메모리에만) */
+const nowText = () => `${MOCK_TODAY} ${new Date().toTimeString().slice(0, 5)}`;
+
+/** 데모 계정 — 비밀번호는 데모 값. 사용자 관리 화면(목)이 이 표를 고친다 (메모리에만) */
 export const mockAccounts: Record<string, MockAccount> = {
-  admin: { password: "1234", user: { id: "admin", name: "관리자", role: "admin" }, lastLoginAt: `${MOCK_TODAY} 08:42`, createdAt: "2026-06-01 09:00" },
-  logistics: { password: "1234", user: { id: "logistics", name: "물류담당", role: "logistics" }, lastLoginAt: `${MOCK_TODAY} 08:15`, createdAt: "2026-06-01 09:00" },
-  inbound: { password: "1234", user: { id: "inbound", name: "입고담당", role: "inbound" }, lastLoginAt: `${MOCK_TODAY} 07:58`, createdAt: "2026-06-01 09:00" },
-  outbound: { password: "1234", user: { id: "outbound", name: "출고담당", role: "outbound" }, lastLoginAt: `${MOCK_TODAY} 08:03`, createdAt: "2026-06-01 09:00" },
-  inventory: { password: "1234", user: { id: "inventory", name: "재고담당", role: "inventory" }, lastLoginAt: "2026-06-16 17:20", createdAt: "2026-06-01 09:00" },
-  sourcing: { password: "1234", user: { id: "sourcing", name: "소싱담당", role: "sourcing" }, lastLoginAt: "2026-06-16 10:11", createdAt: "2026-06-10 09:00" },
-  partner: { password: "1234", user: { id: "partner", name: "협력사", role: "partner" }, lastLoginAt: "2026-06-15 14:30", createdAt: "2026-06-01 09:00" },
-  // 계정 관리 화면이 비지 않게 — 잠긴 계정 · 첫 로그인 전 계정 (가짜)
-  "temp.worker": { password: "Demo2026x", user: { id: "temp.worker", name: "단기근무", role: "inbound" }, locked: true, lockedAt: "2026-06-12 18:00", lastLoginAt: "2026-06-12 17:40", createdAt: "2026-06-02 09:00" },
-  "new.sourcing": { password: "Kq7mPx3Rt2", user: { id: "new.sourcing", name: "신규소싱", role: "sourcing", mustChangePassword: true }, createdAt: "2026-06-16 16:00" }
+  admin: { password: "1234", id: "admin", name: "관리자", lastLoginAt: `${MOCK_TODAY} 08:42`, createdAt: "2026-06-01 09:00" },
+  logistics: { password: "1234", id: "logistics", name: "물류담당", lastLoginAt: `${MOCK_TODAY} 08:15`, createdAt: "2026-06-01 09:00" },
+  inbound: { password: "1234", id: "inbound", name: "입고담당", lastLoginAt: `${MOCK_TODAY} 07:58`, createdAt: "2026-06-01 09:00" },
+  outbound: { password: "1234", id: "outbound", name: "출고담당", lastLoginAt: `${MOCK_TODAY} 08:03`, createdAt: "2026-06-01 09:00" },
+  inventory: { password: "1234", id: "inventory", name: "재고담당", lastLoginAt: "2026-06-16 17:20", createdAt: "2026-06-01 09:00" },
+  sourcing: { password: "1234", id: "sourcing", name: "소싱담당", lastLoginAt: "2026-06-16 10:11", createdAt: "2026-06-10 09:00" },
+  partner: { password: "1234", id: "partner", name: "협력사", lastLoginAt: "2026-06-15 14:30", createdAt: "2026-06-01 09:00" },
+  sales: { password: "1234", id: "sales", name: "영업담당", lastLoginAt: "2026-06-16 09:30", createdAt: "2026-06-12 09:00" },
+  // 사용자 관리 화면이 비지 않게 — 잠긴 계정 · 첫 로그인 전 계정 · 역할이 둘인 계정 (가짜)
+  "temp.worker": { password: "Demo2026x", id: "temp.worker", name: "단기근무", locked: true, lockedAt: "2026-06-12 18:00", lastLoginAt: "2026-06-12 17:40", createdAt: "2026-06-02 09:00" },
+  "new.sourcing": { password: "Kq7mPx3Rt2", id: "new.sourcing", name: "신규소싱", mustChangePassword: true, createdAt: "2026-06-16 16:00" },
+  "night.lead": { password: "Night2026x", id: "night.lead", name: "야간조장", lastLoginAt: "2026-06-16 22:10", createdAt: "2026-06-05 09:00" }
 };
+
+/* 계정 · 권한 — 역할 · 권한 · 메뉴 · 이력 (서버 access 와 같은 규칙). 처음 역할 = 계정 아이디와 같은 이름 */
+const accessMock = createAccessMock(
+  {
+    me: () => useAuthStore.getState().user?.id,
+    now: nowText,
+    nameOf: (userId) => mockAccounts[userId]?.name
+  },
+  {
+    admin: ["admin"], logistics: ["logistics"], inbound: ["inbound"], outbound: ["outbound"], inventory: ["inventory"],
+    sourcing: ["sourcing"], partner: ["partner"], sales: ["sales"], "temp.worker": ["inbound"], "new.sourcing": ["sourcing"],
+    "night.lead": ["outbound", "inventory"]
+  }
+);
+
+/** 지금 권한 버전 — http.ts 가 요청마다 보고, 바뀌었으면 내 정보를 다시 받는다 (서버의 X-Auth-Version) */
+export const mockAuthVersion = () => accessMock.version();
+
+/** 데모의 기능 검사 — 서버와 같은 기능 · 같은 문구 */
+const can = (...features: string[]) => accessMock.can(...features);
+function requireFeature(feature: string, message: string) {
+  if (!accessMock.can(feature)) throw new Error(message);
+}
 
 export async function mockLogin(id: string, password: string): Promise<LoginResult> {
   await delay();
@@ -39,23 +65,25 @@ export async function mockLogin(id: string, password: string): Promise<LoginResu
     throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
   }
   if (account.locked) throw new Error("잠긴 계정입니다 — 관리자에게 문의하세요.");
-  account.lastLoginAt = `${MOCK_TODAY} ${new Date().toTimeString().slice(0, 5)}`;
-  return { user: { ...account.user }, token: `mock-jwt-${account.user.id}` };
+  account.lastLoginAt = nowText();
+  return { user: accessMock.me(account.id, account.name, Boolean(account.mustChangePassword)), token: `mock-jwt-${account.id}` };
 }
 
-/* 계정 관리 · 내 비밀번호 — 서버와 같은 규칙. 관리 화면은 머리글의 역할 선택이 관리자일 때만 */
+/** 내 정보 (GET /auth/me) — 역할 · 기능 · 보이는 메뉴 · 권한 버전 */
+export async function mockMe(): Promise<AccessUser> {
+  await delay(60);
+  const account = mockAccounts[(useAuthStore.getState().user?.id ?? "").toLowerCase()];
+  if (!account || account.locked) throw new Error("로그인이 끊겼습니다 — 다시 로그인하세요.");
+  return accessMock.me(account.id, account.name, Boolean(account.mustChangePassword));
+}
+
+/* 사용자 관리 · 내 비밀번호 — 서버와 같은 규칙 */
 const accountMock = createAccountMock({
   accounts: mockAccounts,
-  role: () => useUiStore.getState().currentRole,
+  access: () => accessMock,
   me: () => useAuthStore.getState().user?.id,
-  now: () => `${MOCK_TODAY} ${new Date().toTimeString().slice(0, 5)}`,
-  roles: Object.keys(roleLabels)
+  now: nowText
 });
-
-/** 데모의 역할 검사 — 서버 RoleCheck 와 같은 묶음 · 같은 문구 (머리글의 역할 선택을 따른다) */
-function requireRole(allowed: readonly UserRole[], message: string) {
-  if (!allowed.includes(useUiStore.getState().currentRole)) throw new Error(message);
-}
 
 const warehouses = [
   { id: 1, code: "CW", name: "창원공장", type: "일반" },
@@ -270,8 +298,8 @@ function inboundView(row: AnyRecord) {
   };
 }
 
-const WORKERS_ONLY = "도착 · 검수 · 입고확정은 관리자 · 물류 · 입고 담당자가 합니다.";
-const PLANNERS_ONLY = "입고예정은 관리자 · 물류 · 입고 · 소싱 담당자가 고칩니다.";
+const WORKERS_ONLY = "입고 확정 · 처리 권한이 없습니다.";
+const PLANNERS_ONLY = "입고 예정 · 남은 수량 닫기 권한이 없습니다.";
 const nowHm = () => new Date().toTimeString().slice(0, 5);
 
 /**
@@ -283,8 +311,8 @@ function inboundMutation(clean: string, body: AnyRecord): unknown {
   if (!match) return undefined;
   const id = Number(match[1]);
   const action = match[2];
-  if (action === "close") requireRole(INBOUND_PLANNERS, PLANNERS_ONLY);
-  else requireRole(INBOUND_WORKERS, WORKERS_ONLY);
+  if (action === "close") requireFeature("inbound/inbound-schedule:close", PLANNERS_ONLY);
+  else requireFeature("inbound/inbound-confirm:work", WORKERS_ONLY);
   const row = inbounds.find((r) => r.id === id) as AnyRecord | undefined;
   if (!row) throw new Error("입고 건을 찾을 수 없습니다.");
   const lines = inboundLines[id] ?? [];
@@ -875,8 +903,8 @@ const activityLogs: AnyRecord[] = [
 const outboundPhotoMock = createOutboundPhotoMock({
   today,
   outbounds: () => outbounds,
-  // 데모는 머리글의 역할 선택을 따른다 — 역할을 바꿔 가며 규칙을 볼 수 있게
-  role: () => useUiStore.getState().currentRole,
+  // 로그인한 사람의 기능을 따른다 — 권한 관리에서 바꾸면 바로 규칙이 바뀐다
+  can: (feature) => can(feature),
   operator: () => useAuthStore.getState().user?.name ?? "system",
   log: (entry) => activityLogs.push({ id: activityLogs.length + 1, refType: "OUTBOUND", erpSent: false, ...entry })
 });
@@ -884,7 +912,7 @@ const outboundPhotoMock = createOutboundPhotoMock({
 /* 품목 가져오기 (엑셀 · CSV) — 서버와 같은 규칙. 관리자 역할일 때만 */
 const itemImportMock = createItemImportMock({
   items: () => items,
-  role: () => useUiStore.getState().currentRole
+  can: (feature) => can(feature)
 });
 
 /* 변경·취소 확인 — 피킹이 시작된 뒤 주문 시스템에서 온 변경 · 취소. 승인 · 거절은 머리글의 역할 선택을 따른다 */
@@ -895,7 +923,7 @@ const omsChangeMock = createOmsChangeMock({
   removeDispatch: (outboundNo) => {
     dispatched = dispatched.filter((d) => d.outboundNo !== outboundNo);
   },
-  role: () => useUiStore.getState().currentRole,
+  can: (feature) => can(feature),
   operator: () => useAuthStore.getState().user?.name ?? "system",
   log: (entry) => activityLogs.push({ id: activityLogs.length + 1, refType: "OUTBOUND", erpSent: false, ...entry })
 });
@@ -922,6 +950,16 @@ export async function mockDownload(path: string): Promise<Blob> {
   return blob;
 }
 
+/** 관리 화면의 저장 메시지 (서버 ApiResponse.message 와 같은 문구) — 바로 다음 mockRequestWithMessage 가 가져간다 */
+let lastMessage: string | null = null;
+
+/** 저장 + 서버 메시지 ("저장했습니다 — 바로 적용됩니다") */
+export async function mockRequestWithMessage<T>(path: string, init?: RequestInit): Promise<{ data: T; message: string | null }> {
+  lastMessage = null;
+  const data = await mockRequest<T>(path, init);
+  return { data, message: lastMessage };
+}
+
 export async function mockRequest<T>(path: string, init?: RequestInit): Promise<T> {
   await delay();
   const method = (init?.method ?? "GET").toUpperCase();
@@ -930,6 +968,12 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
 
   if (method !== "GET") {
     const body = init?.body ? JSON.parse(String(init.body)) : {};
+    // 계정 · 권한 — 관리 화면 (저장 메시지도 함께)
+    const accessHandled = accessMock.mutate(method, clean, body) ?? accountMock.mutate(method, clean, body);
+    if (accessHandled !== undefined) {
+      lastMessage = accessHandled[1];
+      return copy(accessHandled[0]) as T;
+    }
     // 출고확정 · 출고일 변경은 서버가 주문 시스템 · ERP 반영을 기다린다 — 목도 조금 더 기다려 그 화면을 보인다
     if (/^\/outbounds\/\d+\/(confirm|schedule)$/.test(clean)) await delay(900);
     if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
@@ -941,8 +985,6 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     if (changeHandled !== undefined) return copy(changeHandled) as T;
     const itemImportHandled = itemImportMock.mutate(method, clean, body);
     if (itemImportHandled !== undefined) return copy(itemImportHandled) as T;
-    const accountHandled = accountMock.mutate(method, clean, body);
-    if (accountHandled !== undefined) return copy(accountHandled) as T;
     const inboundHandled = inboundMutation(clean, body);
     if (inboundHandled !== undefined) return copy(inboundHandled) as T;
     // 서버처럼 결과를 돌려주는 처리(예: 품목 제원 저장)는 그 값을, 나머지는 { ok: true }
@@ -962,8 +1004,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   const changeData = omsChangeMock.get(clean, url.searchParams);
   if (changeData !== undefined) return copy(changeData) as T;
 
-  const accountData = accountMock.get(clean);
-  if (accountData !== undefined) return copy(accountData) as T;
+  const accessData = accessMock.get(clean, url.searchParams) ?? accountMock.get(clean);
+  if (accessData !== undefined) return copy(accessData) as T;
 
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
@@ -1190,7 +1232,7 @@ function handleMutation(clean: string, body: AnyRecord) {
     }
   } else if (clean.match(/^\/stocks\/putaway\/\d+\/complete$/)) {
     // 격납 확정 — 단일 또는 다중(분할) 로케이션 배정 지원
-    requireRole(PUTAWAY_WORKERS, "격납은 관리자 · 물류 · 입고 · 재고 담당자가 합니다.");
+    requireFeature("stock/putaway:work", "격납 대기 · 처리 권한이 없습니다.");
     const stockId = Number(clean.split("/")[3]);
     const src = stocks.find((s) => s.stockId === stockId);
     if (src) {

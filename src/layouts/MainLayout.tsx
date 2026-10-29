@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { RECOMMENDED_FAVORITES, findSection, getMenuSectionsForRole, resolveScreenPath } from "../app/menuConfig";
-import { roleLabels, type UserRole } from "../app/roles";
+import { featurePath, findScreen, findSection, getMenuSections, recommendedFavorites, resolveScreenPath, sectionOfMenuPath } from "../app/menuConfig";
+import { roleNames, useAccess } from "../app/access";
 import { useUiStore } from "../app/store/uiStore";
 import { useAuthStore } from "../app/store/authStore";
-import { FAVORITES_KEY, sectionOfPath, useNavPrefsStore, type NavMode } from "../app/store/navPrefsStore";
+import { FAVORITES_KEY, useNavPrefsStore, type NavMode } from "../app/store/navPrefsStore";
 import { SPLIT_MIN_QUERY, isMenuPath, useTabsStore } from "../app/store/tabsStore";
 import { useMediaQuery } from "../shared/useMediaQuery";
 import { USE_MOCK_API } from "../services/apiMode";
@@ -14,7 +14,17 @@ import { CategoryTabBar } from "../components/layout/CategoryTabBar";
 import { SideMenu } from "../components/layout/SideMenu";
 import { SplitView } from "../components/layout/SplitView";
 
-const roleOptions = Object.entries(roleLabels) as Array<[UserRole, string]>;
+/** 데모 — 다른 데모 계정으로 바꿔 들어가 메뉴 · 단추를 본다 (비밀번호는 데모 값) */
+const DEMO_ACCOUNTS: Array<[string, string]> = [
+  ["admin", "관리자"],
+  ["logistics", "물류팀"],
+  ["inbound", "입고 담당"],
+  ["outbound", "출고 담당"],
+  ["inventory", "재고 담당"],
+  ["sourcing", "소싱팀"],
+  ["sales", "영업팀"],
+  ["partner", "배송사"]
+];
 const isMobile = () => typeof window !== "undefined" && window.matchMedia("(max-width: 1024px)").matches;
 
 /** 헤더의 메뉴 방식 토글 (DOCS/WMS_메뉴방식_즐겨찾기_설계.md §1-2) */
@@ -26,12 +36,12 @@ const NAV_MODES: Array<{ mode: NavMode; label: string; icon: string; hint: strin
 export const MainLayout = () => {
   const collapsed = useUiStore((state) => state.sidebarCollapsed);
   const setCollapsed = useUiStore((state) => state.setSidebarCollapsed);
-  const currentRole = useUiStore((state) => state.currentRole);
-  const setCurrentRole = useUiStore((state) => state.setCurrentRole);
   const theme = useUiStore((state) => state.theme);
   const toggleTheme = useUiStore((state) => state.toggleTheme);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const relogin = useAuthStore((state) => state.login);
+  const access = useAccess();
   const openTab = useTabsStore((state) => state.openTab);
   const splitPath = useTabsStore((state) => state.splitPath);
   const openSplit = useTabsStore((state) => state.openSplit);
@@ -54,17 +64,23 @@ export const MainLayout = () => {
   // 화면 배치(메뉴 방식 · 즐겨찾기)는 로그인한 사람 것으로 navPrefsStore 가 이미 맞춰 두었다
 
   const userName = user?.name ?? "사용자";
-  const canPreviewRoles = USE_MOCK_API || user?.role === "admin";
+  const roleText = access.admin ? "관리자 · 모든 기능" : roleNames(user?.roles);
   const handleLogout = async () => {
     await logout();
     navigate("/login", { replace: true });
   };
+  /** 데모 — 다른 데모 계정으로 바꿔 들어간다 */
+  const switchDemoAccount = async (id: string) => {
+    if (!id || id === user?.id) return;
+    if (await relogin(id, "1234")) navigate("/", { replace: true });
+  };
 
-  const allowedMenuSections = useMemo(() => getMenuSectionsForRole(currentRole), [currentRole]);
+  // 메뉴는 서버가 준 대로 (관리자가 메뉴 관리에서 고친 이름 · 순서 · 모듈) — 권한이 바뀌면 다시 그려진다
+  const allowedMenuSections = useMemo(() => getMenuSections(access), [access]);
   const [sectionSlug, featureSlug] = location.pathname.split("/").filter(Boolean);
-  const currentSection = allowedMenuSections.find((section) => section.slug === sectionSlug);
-  const currentFeature = currentSection?.features.find((feature) => feature.slug === featureSlug);
-  const currentLabel = currentFeature?.label ?? currentSection?.label ?? "대시보드";
+  const currentSection = sectionOfMenuPath(allowedMenuSections, location.pathname);
+  const currentFeature = currentSection?.features.find((feature) => featurePath(currentSection, feature) === location.pathname);
+  const currentLabel = currentFeature?.label ?? findScreen(location.pathname)?.feature.label ?? currentSection?.label ?? "대시보드";
 
   // 경로 이동 시 모바일 드로어 닫기
   useEffect(() => {
@@ -94,13 +110,16 @@ export const MainLayout = () => {
       ? source.features.find((item) => item.slug === featureSlug)
       : undefined;
     if (featureSlug && !sourceFeature) return; // 메뉴에 없는 화면(제거된 메뉴·잘못 친 주소)은 탭을 만들지 않는다
-    openTab({ path: location.pathname, label: sourceFeature?.label ?? source.label });
+    const target = resolveScreenPath(location.pathname, access);
+    openTab({ path: location.pathname, label: target.status === "ok" ? target.label : sourceFeature?.label ?? source.label });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, navMode]);
 
-  /** 이 역할이 지금 볼 수 있는 화면인가 */
+  /** 지금 볼 수 있는 화면인가 (그 화면의 보기 기능) */
   const canOpen = (path: string | undefined): path is string =>
-    Boolean(path) && resolveScreenPath(path as string, currentRole).status === "ok";
+    Boolean(path) && resolveScreenPath(path as string, access).status === "ok";
+  /** 탭형 칸 — 경로가 지금 메뉴의 어느 묶음에 있나 (옮긴 화면이면 옮겨 간 묶음) */
+  const groupOf = (path: string) => sectionOfMenuPath(allowedMenuSections, path)?.slug;
 
   /**
    * 탭형 좌측에서 칸(★ 또는 카테고리)을 골랐을 때.
@@ -124,17 +143,14 @@ export const MainLayout = () => {
     }
     const section = allowedMenuSections.find((item) => item.slug === key);
     const first = section?.features[0];
-    if (!first) return;
+    if (!section || !first) return;
     const last = lastScreenBySection[key];
-    const target = canOpen(last) && sectionOfPath(last) === key ? last : `/${key}/${first.slug}`;
+    const target = canOpen(last) && groupOf(last) === key ? last : featurePath(section, first);
     if (target !== here) navigate(target);
   };
 
-  /** 역할별 추천 즐겨찾기 — 비어 있을 때 한 번에 채우기 (이 역할이 못 여는 화면은 뺀다) */
-  const recommended = useMemo(
-    () => (RECOMMENDED_FAVORITES[currentRole] ?? []).filter((path) => resolveScreenPath(path, currentRole).status === "ok"),
-    [currentRole]
-  );
+  /** 추천 즐겨찾기 — 비어 있을 때 한 번에 채우기 (못 여는 화면은 뺀다) */
+  const recommended = useMemo(() => recommendedFavorites(access), [access]);
 
   const toggleSidebar = () => {
     if (isMobile()) setMobileOpen((open) => !open);
@@ -172,12 +188,12 @@ export const MainLayout = () => {
 
         <SideMenu
           sections={allowedMenuSections}
-          activeSection={sectionSlug}
+          activeSection={currentSection?.slug ?? sectionSlug}
           collapsed={collapsed}
           isMobile={isMobile}
           onRequestOpen={openSidebar}
           mode={navMode}
-          activeCategory={activeCategory ?? sectionSlug ?? null}
+          activeCategory={activeCategory ?? currentSection?.slug ?? sectionSlug ?? null}
           onPickCategory={pickCategory}
           favorites={favorites}
           onToggleFavorite={toggleFavorite}
@@ -197,7 +213,7 @@ export const MainLayout = () => {
           <div className="wms-avatar">{userName.charAt(0)}</div>
           <div className="wms-user-text">
             <div className="wms-user-name">{userName}</div>
-            <div className="wms-user-role">{roleLabels[currentRole]}</div>
+            <div className="wms-user-role" title={roleText}>{roleText}</div>
           </div>
           <button
             type="button"
@@ -258,17 +274,18 @@ export const MainLayout = () => {
             <input placeholder="작업번호, 거래처, 로케이션 검색" />
           </div>
 
-          {/* 역할 바꿔 보기 — 데모는 누구나, 사내 빌드는 관리자만(메뉴 미리 보기. 권한은 서버가 계정 역할로 본다) */}
-          {canPreviewRoles ? (
+          {/* 데모만 — 다른 데모 계정으로 바꿔 들어가 본다. 사내 빌드는 내 역할 그대로 (권한은 서버가 본다) */}
+          {USE_MOCK_API ? (
             <select
               className="wms-role"
-              value={currentRole}
-              onChange={(event) => setCurrentRole(event.target.value as UserRole)}
-              aria-label="역할 선택"
-              title="역할별 메뉴 미리 보기"
+              value={DEMO_ACCOUNTS.some(([id]) => id === user?.id) ? user?.id : ""}
+              onChange={(event) => void switchDemoAccount(event.target.value)}
+              aria-label="데모 계정 바꾸기"
+              title="다른 데모 계정으로 들어가 메뉴 · 단추 보기"
             >
-              {roleOptions.map(([role, label]) => (
-                <option key={role} value={role}>
+              {DEMO_ACCOUNTS.some(([id]) => id === user?.id) ? null : <option value="">{userName}</option>}
+              {DEMO_ACCOUNTS.map(([id, label]) => (
+                <option key={id} value={id}>
                   {label}
                 </option>
               ))}
@@ -294,7 +311,7 @@ export const MainLayout = () => {
             <span className="wms-avatar">{userName.charAt(0)}</span>
             <span className="wms-userchip-text">
               <span className="wms-userchip-name">{userName}</span>
-              <span className="wms-userchip-role">{roleLabels[currentRole]}</span>
+              <span className="wms-userchip-role">{roleText}</span>
             </span>
           </button>
         </header>

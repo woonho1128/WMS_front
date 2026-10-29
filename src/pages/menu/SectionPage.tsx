@@ -1,35 +1,36 @@
 ﻿import { Link, useParams } from "react-router-dom";
-import { findSection, getMenuSectionsForRole } from "../../app/menuConfig";
-import { useUiStore } from "../../app/store/uiStore";
+import { useAccess } from "../../app/access";
+import { canOpenScreen, findSection } from "../../app/menuConfig";
 
 export const SectionPage = () => {
   const { sectionSlug } = useParams();
-  const currentRole = useUiStore((state) => state.currentRole);
-  const section = getMenuSectionsForRole(currentRole).find((item) => item.slug === sectionSlug);
+  const access = useAccess();
+  const source = findSection(sectionSlug);
 
-  if (!findSection(sectionSlug)) {
+  if (!source) {
     return <section>메뉴를 찾을 수 없습니다.</section>;
   }
 
-  if (!section) {
-    return <section>접근 권한이 없습니다.</section>;
+  const features = source.features.filter((feature) => canOpenScreen(access, source.slug, feature.slug));
+  if (!features.length) {
+    return <section>권한이 없습니다.</section>;
   }
 
   return (
     <section>
       <header className="page-header">
-        <h2>{section.label}</h2>
-        <p>{section.description}</p>
+        <h2>{source.label}</h2>
+        <p>{source.description}</p>
       </header>
       <div className="table-wrap">
         <ul className="feature-list feature-grid">
-          {section.features.map((feature) => (
+          {features.map((feature) => (
             <li key={feature.slug}>
               <div className="feature-card-head">
                 <strong>{feature.label}</strong>
               </div>
               <p>{feature.description}</p>
-              <Link to={`/${section.slug}/${feature.slug}`}>화면 열기</Link>
+              <Link to={`/${source.slug}/${feature.slug}`}>화면 열기</Link>
             </li>
           ))}
         </ul>

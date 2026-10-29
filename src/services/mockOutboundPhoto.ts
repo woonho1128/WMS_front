@@ -39,16 +39,16 @@ type LogEntry = { refNo: string; action: string; detail: string; operator: strin
 export type OutboundPhotoMockCtx = {
   today: string;
   outbounds: () => AnyRecord[];
-  /** 지금 로그인한 역할 · 이름 — 올리기 규칙과 이력에 쓴다 */
-  role?: () => string | undefined;
+  /** 지금 로그인한 사람의 기능 — 올리기 규칙에 쓴다 (없으면 모두 된다) */
+  can?: (feature: string) => boolean;
   operator?: () => string;
   /** 이력 한 줄 남기기 (activity_log 재사용) — 출고 이력 화면에 보인다 */
   log?: (entry: LogEntry) => void;
 };
 
-const WRITE_ROLES = new Set(["admin", "logistics", "outbound"]);
-/** 권한자 — 출고 확정 다음 날 이후에도 사진을 더한다 */
-const MANAGER_ROLES = new Set(["admin", "logistics"]);
+const WORK = "outbound/outbound-photo:work";
+/** 출고 확정 다음 날 이후에도 사진을 더한다 */
+const MANAGE = "outbound/outbound-photo:manage";
 const RETENTION_DAYS = 730;
 
 /** 목 화면 날짜(MOCK_TODAY) + 실제 시각 — 다른 목 데이터와 날짜가 어긋나지 않게 */
@@ -216,12 +216,12 @@ export function createOutboundPhotoMock(ctx: OutboundPhotoMockCtx) {
 
   /** 이 출고 건에 지금 사진을 올리지 못하는 사유 — 올릴 수 있으면 null (서버 OutboundPhotoService 와 같은 규칙) */
   const uploadBlock = (row: AnyRecord): string | null => {
-    const role = ctx.role?.() ?? "admin";
-    if (!WRITE_ROLES.has(role)) return "사진은 관리자 · 물류 · 출고 담당자가 올립니다.";
+    const can = (feature: string) => ctx.can?.(feature) ?? true;
+    if (!can(WORK)) return "사진을 올리는 권한(출고 사진 · 처리)이 없습니다.";
     if (row.status === "보류") return "출고 불가로 보류 중인 출고 건입니다 — 다시 출고한 뒤 사진을 올리세요.";
     const confirmed = confirmedDateOf(row);
-    if (confirmed && confirmed < ctx.today && !MANAGER_ROLES.has(role)) {
-      return `출고 확정(${confirmed}) 다음 날부터는 관리자 · 물류 담당자만 사진을 추가할 수 있습니다.`;
+    if (confirmed && confirmed < ctx.today && !can(MANAGE)) {
+      return `출고 확정(${confirmed}) 다음 날부터는 '지난 날 · 남의 사진 고치기' 권한(처음 값: 관리자 · 물류팀)이 있어야 사진을 더할 수 있습니다.`;
     }
     return null;
   };
