@@ -9,6 +9,8 @@ import { Modal } from "../../../components/ui/Modal";
 import { polygonArea, polygonIsSimple, stepRotation, type Pt } from "../../../components/warehouse3d/geometry";
 import { hasErrors, validateDraft, type LayoutDraft, type RuleIssue } from "../../../components/warehouse3d/layoutRules";
 import { ZONE_PURPOSES, purposeMeta, type LayoutSummaryRow, type MapSelection, type WarehouseLayout, type ZonePurpose } from "../../../components/warehouse3d/types";
+import { WAREHOUSE_MAP_READY } from "../../../components/warehouse3d/mapReady";
+import { MapPending } from "../../../components/warehouse3d/MapPending";
 import { PlanCanvas } from "./PlanCanvas";
 import { Inspector, TrayPanel, type Notify } from "./EditorPanels";
 import {
@@ -122,6 +124,11 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
 
   /* ---------- 불러오기 ---------- */
   const load = useCallback(async () => {
+    // 서버에 배치 API 가 아직 없다 — 부르지 않고 '준비 중' (mapReady.ts)
+    if (!WAREHOUSE_MAP_READY) {
+      setLoading(false);
+      return;
+    }
     // 다른 창고로 바꾸기 직전 저장 대기 중인 편집이 있으면 먼저 보낸다
     if (saveTimer.current && latest.current) {
       window.clearTimeout(saveTimer.current);
@@ -455,6 +462,13 @@ export const LayoutEditor = ({ warehouseId, onWarehouseChange, summary, onPublis
   };
 
   /* ---------- 그리기 ---------- */
+  if (!WAREHOUSE_MAP_READY) {
+    return (
+      <div className="le-loading">
+        <MapPending />
+      </div>
+    );
+  }
   if (loading && !draft) return <div className="le-loading">배치 초안을 불러오는 중…</div>;
   if (loadError || !draft || !meta) {
     return (

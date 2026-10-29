@@ -13,6 +13,7 @@ import { MapSidePanel } from "../../components/warehouse3d/MapSidePanel";
 import { SlotContextMenu } from "../../components/warehouse3d/SlotContextMenu";
 import { useStockActions } from "../../components/warehouse3d/stockActions";
 import { useWarehouseMap } from "../../components/warehouse3d/useWarehouseMap";
+import { MapPending } from "../../components/warehouse3d/MapPending";
 import type {
   LayoutSlot,
   MapSearchItem,
@@ -318,23 +319,29 @@ export const ControlTowerPage = () => {
               <span className="nx-sect-title">{layout?.warehouse.name ?? "창고"} 3D 현황</span>
             </div>
             <div className="ct-panel-tools">
-              <select
-                className="ct-select"
-                value={map.warehouseId}
-                onChange={(event) => map.setWarehouseId(Number(event.target.value))}
-                aria-label="창고 선택"
-                disabled={zoneEdit.active}
-                title={zoneEdit.active ? "배치 편집 중에는 창고를 바꿀 수 없습니다" : undefined}
-              >
-                {map.summary.map((row) => (
-                  <option key={row.warehouseId} value={row.warehouseId}>
-                    {row.name}
-                    {row.floors === 0 ? " · 레이아웃 미등록" : ""}
-                  </option>
-                ))}
-              </select>
-              <span className="ct-chip">{map.floor}</span>
-              <span className="ct-chip">{map.floorZones.length}개 구역</span>
+              {map.notReady ? (
+                <span className="ct-chip">준비 중</span>
+              ) : (
+                <>
+                  <select
+                    className="ct-select"
+                    value={map.warehouseId}
+                    onChange={(event) => map.setWarehouseId(Number(event.target.value))}
+                    aria-label="창고 선택"
+                    disabled={zoneEdit.active}
+                    title={zoneEdit.active ? "배치 편집 중에는 창고를 바꿀 수 없습니다" : undefined}
+                  >
+                    {map.summary.map((row) => (
+                      <option key={row.warehouseId} value={row.warehouseId}>
+                        {row.name}
+                        {row.floors === 0 ? " · 레이아웃 미등록" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="ct-chip">{map.floor}</span>
+                  <span className="ct-chip">{map.floorZones.length}개 구역</span>
+                </>
+              )}
             </div>
           </div>
           <div className="ct-map-stage">
@@ -423,7 +430,9 @@ export const ControlTowerPage = () => {
                 />
               </Suspense>
             ) : (
-              <div className="ct-map-loading">{map.error ? `레이아웃 조회 실패: ${map.error}` : "3D 레이아웃을 불러오는 중…"}</div>
+              <div className="ct-map-loading">
+                {map.notReady ? <MapPending /> : map.error ? `레이아웃 조회 실패: ${map.error}` : "3D 레이아웃을 불러오는 중…"}
+              </div>
             )}
           </div>
         </section>

@@ -7,6 +7,7 @@ import { MapSidePanel } from "../../components/warehouse3d/MapSidePanel";
 import { SlotContextMenu } from "../../components/warehouse3d/SlotContextMenu";
 import { movableQty, useStockActions } from "../../components/warehouse3d/stockActions";
 import { useWarehouseMap } from "../../components/warehouse3d/useWarehouseMap";
+import { MapPending } from "../../components/warehouse3d/MapPending";
 import type {
   LayoutSlot,
   MapSearchItem,
@@ -63,34 +64,39 @@ export const TransferMapView = ({ onChanged }: { onChanged?: () => void }) => {
               <span className="nx-eyebrow">WORK MODE</span>
               <span className="nx-sect-title">{layout?.warehouse.name ?? "창고"} 3D 재고 이동</span>
             </div>
-            <div className="tmv-map-tools">
-              <select
-                className="tmv-select"
-                value={map.warehouseId}
-                onChange={(event) => map.setWarehouseId(Number(event.target.value))}
-                aria-label="창고 선택"
-              >
-                {map.summary.map((row) => (
-                  <option key={row.warehouseId} value={row.warehouseId}>
-                    {row.name}
-                    {row.floors === 0 ? " · 레이아웃 미등록" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {map.notReady ? null : (
+              <div className="tmv-map-tools">
+                <select
+                  className="tmv-select"
+                  value={map.warehouseId}
+                  onChange={(event) => map.setWarehouseId(Number(event.target.value))}
+                  aria-label="창고 선택"
+                >
+                  {map.summary.map((row) => (
+                    <option key={row.warehouseId} value={row.warehouseId}>
+                      {row.name}
+                      {row.floors === 0 ? " · 레이아웃 미등록" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          <ol className="tmv-guide">
-            <li>
-              <b>끌어서 옮기기</b> 재고가 있는 슬롯을 다른 슬롯에 놓습니다. 놓을 수 있는 칸만 초록으로 밝아집니다.
-            </li>
-            <li>
-              <b>눌러서 옮기기</b> 오른쪽 품목의 [이동] → 도착 슬롯을 클릭합니다. (태블릿)
-            </li>
-            <li>
-              <b>우클릭 메뉴</b> 수량 확인·보충·조정·피킹 대기 주문 — 태블릿은 길게 누르기.
-            </li>
-          </ol>
+          {/* 지도로 옮기는 방법 — 지도가 없으면(준비 중) 감춘다 */}
+          {map.notReady ? null : (
+            <ol className="tmv-guide">
+              <li>
+                <b>끌어서 옮기기</b> 재고가 있는 슬롯을 다른 슬롯에 놓습니다. 놓을 수 있는 칸만 초록으로 밝아집니다.
+              </li>
+              <li>
+                <b>눌러서 옮기기</b> 오른쪽 품목의 [이동] → 도착 슬롯을 클릭합니다. (태블릿)
+              </li>
+              <li>
+                <b>우클릭 메뉴</b> 수량 확인·보충·조정·피킹 대기 주문 — 태블릿은 길게 누르기.
+              </li>
+            </ol>
+          )}
 
           <div className="tmv-stage">
             {layout ? (
@@ -143,7 +149,9 @@ export const TransferMapView = ({ onChanged }: { onChanged?: () => void }) => {
                 />
               </Suspense>
             ) : (
-              <div className="tmv-loading">{map.error ? `레이아웃 조회 실패: ${map.error}` : "레이아웃을 불러오는 중…"}</div>
+              <div className="tmv-loading">
+                {map.notReady ? <MapPending /> : map.error ? `레이아웃 조회 실패: ${map.error}` : "레이아웃을 불러오는 중…"}
+              </div>
             )}
           </div>
         </section>

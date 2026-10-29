@@ -1,0 +1,14 @@
+/* 3D 창고 지도 '준비 중' — 각 화면의 로딩 상자(가운데 정렬) 안에 들어간다 */
+.wh3d-pending {
+  display: grid; justify-items: center; gap: 6px;
+  max-width: 300px; padding: 0 16px;
+  text-align: center; line-height: 1.5;
+  font-size: 12.5px; font-weight: 500; color: var(--ink-faint);
+}
+.wh3d-pending b { font-size: 14px; font-weight: 700; color: var(--ink-muted); }
+.wh3d-pending-icon {
+  display: grid; place-items: center;
+  width: 44px; height: 44px; margin-bottom: 4px;
+  border-radius: 14px;
+  background: var(--c-info-bg); border: 1px solid var(--c-info-line); color: var(--c-info);
+}
