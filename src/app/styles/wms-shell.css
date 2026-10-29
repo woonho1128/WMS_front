@@ -325,27 +325,58 @@
   .wms-navgroup.is-fav .wms-substar.is-on { opacity: 1; }
 }
 
-/* ---------- system status ---------- */
+/* ---------- system status (주문 시스템 연동 상태 — 누르면 전체 로그) ---------- */
 .wms-sysstat {
+  display: block; width: calc(100% - 24px);
   margin: 8px 12px 0;
-  padding: 11px 13px;
+  padding: 10px 12px 11px;
   border-radius: var(--r-md);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--side-line);
+  color: var(--side-text); font: inherit; text-align: left; cursor: pointer;
+  transition: background var(--dur-1), border-color var(--dur-1);
 }
-.wms-sysstat-title {
-  font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px;
-  color: var(--side-section); margin-bottom: 7px;
+.wms-sysstat:hover { background: var(--side-hover); border-color: rgba(255, 255, 255, 0.13); }
+.wms-sysstat:focus-visible { outline: 2px solid var(--side-active); outline-offset: 2px; }
+.wms-sysstat-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  margin-bottom: 8px;
 }
+.wms-sysstat-title { font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px; color: var(--side-section); }
+.wms-sysstat-time { font-size: 10.5px; font-weight: 600; color: var(--side-muted); font-variant-numeric: tabular-nums; }
+
+/* 시스템 한 줄 — 점 · 이름 · 상태 / 아래에 한 줄 설명. 색은 --tone 하나로 */
 .wms-sysstat-row {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 700; color: var(--side-text);
+  --tone: var(--side-ok);
+  display: grid; grid-template-columns: 7px auto minmax(0, 1fr);
+  align-items: center; column-gap: 8px; row-gap: 3px;
 }
-.wms-sysdot {
-  width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px;
-  background: var(--c-success); animation: nx-pulse 2.4s infinite;
+.wms-sysstat-row.is-info { --tone: var(--side-info); }
+.wms-sysstat-row.is-warn { --tone: var(--side-warn); }
+.wms-sysstat-row.is-error { --tone: var(--side-error); }
+.wms-sysstat-row.is-off { --tone: var(--side-muted); }
+.wms-sysstat-row + .wms-sysstat-row { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--side-line); }
+.wms-sysstat-name { font-size: 12px; font-weight: 800; letter-spacing: 0.3px; color: var(--ink-on-dark); }
+.wms-sysstat-state {
+  justify-self: end; max-width: 100%;
+  font-size: 12px; font-weight: 700; color: var(--tone);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.wms-sysdot.warn { background: var(--c-warning); }
+.wms-sysstat-sub {
+  grid-column: 2 / -1;
+  font-size: 11px; color: var(--side-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wms-sysdot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+/* 살아 있는 표시 — 정상 · 주의 · 문제일 때만 퍼진다 (시범 · 꺼짐 · 확인 중은 가만히) */
+.wms-sysstat-row:is(.is-ok, .is-warn, .is-error) .wms-sysdot::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--tone); animation: wms-sysping 2.4s ease-out infinite;
+}
+@keyframes wms-sysping {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(2.8); opacity: 0; }
+}
 .wms-app.collapsed .wms-sysstat { display: none; }
 
 /* ---------- user ---------- */
@@ -591,13 +622,13 @@
   .wms-app.collapsed .wms-navitem .wms-ni-label,
   .wms-app.collapsed .wms-navitem .wms-ni-caret,
   .wms-app.collapsed .wms-subtree,
-  .wms-app.collapsed .wms-sysstat,
   .wms-app.collapsed .wms-brand-text,
   .wms-app.collapsed .wms-user-text,
   .wms-app.collapsed .wms-menusearch-meta { display: revert; }
   /* revert 는 브라우저 기본값으로 돌아가므로(버튼 → inline-block) 새로 넣은 것은 값을 적는다 */
   .wms-app.collapsed .wms-navitem .wms-ni-count { display: inline; }
   .wms-app.collapsed .wms-favedit { display: grid; }
+  .wms-app.collapsed .wms-sysstat { display: block; }
   /* 모바일 드로어는 항상 펼친 형태 — 접힘 전용 돋보기 버튼 대신 검색창 */
   .wms-app.collapsed .wms-menusearch { padding: 12px 12px 2px; }
   .wms-app.collapsed .wms-menusearch-box { display: flex; }

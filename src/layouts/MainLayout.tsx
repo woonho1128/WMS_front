@@ -12,6 +12,7 @@ import { Icon } from "../components/ui/Icon";
 import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
 import { CategoryTabBar } from "../components/layout/CategoryTabBar";
 import { SideMenu } from "../components/layout/SideMenu";
+import { LinkStatus } from "../components/layout/LinkStatus";
 import { SplitView } from "../components/layout/SplitView";
 
 /** 데모 — 다른 데모 계정으로 바꿔 들어가 메뉴 · 단추를 본다 (비밀번호는 데모 값) */
@@ -201,13 +202,8 @@ export const MainLayout = () => {
           onFillRecommended={recommended.length ? () => fillFavorites(recommended) : undefined}
         />
 
-        <div className="wms-sysstat">
-          <div className="wms-sysstat-title">SYSTEM STATUS</div>
-          <div className="wms-sysstat-row">
-            <span className="wms-sysdot" />
-            모든 연동 정상
-          </div>
-        </div>
+        {/* 주문 시스템 연동의 지금 상태 — 전체 로그를 볼 수 있는 사람에게만, 누르면 전체 로그 */}
+        <LinkStatus />
 
         <div className="wms-user">
           <div className="wms-avatar">{userName.charAt(0)}</div>

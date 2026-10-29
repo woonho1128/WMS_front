@@ -566,6 +566,23 @@ const interfaceLogs: AnyRecord[] = [
   { id: "IF-260617-003", type: "외주이동", direction: "SEND", refNo: "TR-OEM-001", state: "excluded", retry: 0, message: "외주 재고는 ERP 미연동", createdAt: "2026-06-17 10:10" }
 ];
 
+/** 사이드바 연동 상태 — 데모는 주문 시스템이 운영 중이고 몇 분 전에 받은 것으로 (서버 GET /interfaces/status 와 같은 칸) */
+const linkStatus = () => {
+  const checkedAt = nowText();
+  const [hour, minute] = checkedAt.slice(11).split(":").map(Number);
+  const at = Math.max(0, hour * 60 + minute - 4);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const quiet = { receivedFail: 0, replyWaiting: 0, replyRetrying: 0, replyFail: 0 };
+  return {
+    checkedAt,
+    replySending: true,
+    systems: [
+      { systemCode: "OMS", mode: "LIVE", server: "UP", lastReceivedAt: `${today} ${pad(Math.floor(at / 60))}:${pad(at % 60)}`, ...quiet },
+      { systemCode: "OMS2", mode: "OFF", server: "UNKNOWN", lastReceivedAt: null, ...quiet }
+    ]
+  };
+};
+
 const shortageRows: AnyRecord[] = [
   { itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", unit: "EA", safetyStock: 180, leadTime: 5, available: 60, out30: 540, avgDailyOut: 18, reorderPoint: 270, daysOfStock: 3.3, shortageEta: "2026-06-21", risk: "위험" },
   { itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", unit: "EA", safetyStock: 300, leadTime: 7, available: 75, out30: 900, avgDailyOut: 30, reorderPoint: 510, daysOfStock: 2.5, shortageEta: "2026-06-20", risk: "위험" },
@@ -1058,6 +1075,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean === "/order-products") return copy(orderProducts()) as T;
   if (clean === "/manual-orders") return copy(manualOrders) as T;
   if (clean === "/notices") return copy(notices) as T;
+  if (clean === "/interfaces/status") return copy(linkStatus()) as T;
   if (clean === "/interfaces") return copy(interfaceLogs) as T;
   if (clean.startsWith("/history/")) return copy(activityHistory(clean.split("/")[2], url.searchParams.get("keyword") ?? "")) as T;
   if (clean === "/policies") return copy({ policies, buckets: policyBuckets }) as T;
