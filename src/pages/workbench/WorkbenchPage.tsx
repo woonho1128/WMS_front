@@ -29,6 +29,7 @@ const CarrierMasterPage = lazy(() => import("../master/CarrierMasterPage").then(
 const DispatchMetroPage = lazy(() => import("../dispatch/DispatchMetroPage").then((m) => ({ default: m.DispatchMetroPage })));
 const DispatchRegionalPage = lazy(() => import("../dispatch/DispatchRegionalPage").then((m) => ({ default: m.DispatchRegionalPage })));
 const StockPolicyPage = lazy(() => import("../master/StockPolicyPage").then((m) => ({ default: m.StockPolicyPage })));
+const AccountAdminPage = lazy(() => import("../master/AccountAdminPage").then((m) => ({ default: m.AccountAdminPage })));
 const ProgressPage = lazy(() => import("../analytics/ProgressPage").then((m) => ({ default: m.ProgressPage })));
 const NoticePage = lazy(() => import("../communication/NoticePage").then((m) => ({ default: m.NoticePage })));
 const ChatbotPage = lazy(() => import("../communication/ChatbotPage").then((m) => ({ default: m.ChatbotPage })));
@@ -89,6 +90,7 @@ export const WorkbenchPage = ({ sectionSlug, featureSlug, title }: Props) => {
     "stock-monthly": <MonthlyStockPage />,
     progress: <ProgressPage />,
     "stock-policy": <StockPolicyPage />,
+    "user-admin": <AccountAdminPage />,
     "item-master": <InventoryItemPage />,
     "location-master": <InventoryLocationPage />,
     "system-logs": <InterfaceMonitorPage />,

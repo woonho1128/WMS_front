@@ -1,7 +1,17 @@
-import { authHeader } from "../app/store/authStore";
+import { authHeader, useAuthStore } from "../app/store/authStore";
 import { USE_MOCK_API, fetchApi } from "./apiMode";
 
 type ApiResponse<T> = { success: boolean; data: T | null; message: string | null };
+
+const LOGIN_AGAIN = "로그인이 끊겼습니다 — 다시 로그인하세요.";
+
+/**
+ * 401 = 로그인이 끊겼다 (계정 잠금 · 역할 변경 · 비밀번호 초기화 · 시간 만료). 로그인 화면으로 보내고 사유를 띄운다.
+ * 403 은 끊긴 게 아니라 "그 일은 내 역할이 아니다" — 화면에 사유만 보인다.
+ */
+const expireIfLoggedOut = (status: number, message: string | null | undefined) => {
+  if (status === 401 && useAuthStore.getState().token) useAuthStore.getState().expire(message ?? LOGIN_AGAIN);
+};
 
 /**
  * 모든 화면이 쓰는 요청 함수.
@@ -26,6 +36,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const json = (await res.json().catch(() => null)) as ApiResponse<T> | null;
   if (!res.ok || !json?.success) {
+    expireIfLoggedOut(res.status, json?.message);
     throw new Error(json?.message ?? `요청 실패 (${res.status})`);
   }
   return json.data as T;
@@ -45,6 +56,7 @@ export async function apiDownload(path: string): Promise<Blob> {
   const res = await fetchApi(path, { headers: authHeader() });
   if (!res.ok) {
     const json = (await res.json().catch(() => null)) as ApiResponse<unknown> | null;
+    expireIfLoggedOut(res.status, json?.message);
     throw new Error(json?.message ?? `내려받기 실패 (${res.status})`);
   }
   return res.blob();

@@ -7,6 +7,7 @@ import { useAuthStore } from "../app/store/authStore";
 import { FAVORITES_KEY, sectionOfPath, useNavPrefsStore, type NavMode } from "../app/store/navPrefsStore";
 import { SPLIT_MIN_QUERY, isMenuPath, useTabsStore } from "../app/store/tabsStore";
 import { useMediaQuery } from "../shared/useMediaQuery";
+import { USE_MOCK_API } from "../services/apiMode";
 import { Icon } from "../components/ui/Icon";
 import { WorkspaceTabs } from "../components/layout/WorkspaceTabs";
 import { CategoryTabBar } from "../components/layout/CategoryTabBar";
@@ -53,6 +54,7 @@ export const MainLayout = () => {
   // 화면 배치(메뉴 방식 · 즐겨찾기)는 로그인한 사람 것으로 navPrefsStore 가 이미 맞춰 두었다
 
   const userName = user?.name ?? "사용자";
+  const canPreviewRoles = USE_MOCK_API || user?.role === "admin";
   const handleLogout = async () => {
     await logout();
     navigate("/login", { replace: true });
@@ -197,6 +199,15 @@ export const MainLayout = () => {
             <div className="wms-user-name">{userName}</div>
             <div className="wms-user-role">{roleLabels[currentRole]}</div>
           </div>
+          <button
+            type="button"
+            className="wms-logout wms-password"
+            onClick={() => navigate("/password")}
+            title="비밀번호 바꾸기"
+            aria-label="비밀번호 바꾸기"
+          >
+            <Icon name="key" size={16} />
+          </button>
           <button type="button" className="wms-logout" onClick={handleLogout} title="로그아웃" aria-label="로그아웃">
             <Icon name="logout" size={17} />
           </button>
@@ -247,18 +258,22 @@ export const MainLayout = () => {
             <input placeholder="작업번호, 거래처, 로케이션 검색" />
           </div>
 
-          <select
-            className="wms-role"
-            value={currentRole}
-            onChange={(event) => setCurrentRole(event.target.value as UserRole)}
-            aria-label="역할 선택"
-          >
-            {roleOptions.map(([role, label]) => (
-              <option key={role} value={role}>
-                {label}
-              </option>
-            ))}
-          </select>
+          {/* 역할 바꿔 보기 — 데모는 누구나, 사내 빌드는 관리자만(메뉴 미리 보기. 권한은 서버가 계정 역할로 본다) */}
+          {canPreviewRoles ? (
+            <select
+              className="wms-role"
+              value={currentRole}
+              onChange={(event) => setCurrentRole(event.target.value as UserRole)}
+              aria-label="역할 선택"
+              title="역할별 메뉴 미리 보기"
+            >
+              {roleOptions.map(([role, label]) => (
+                <option key={role} value={role}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          ) : null}
 
           <button
             type="button"

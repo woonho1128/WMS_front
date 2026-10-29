@@ -5,6 +5,8 @@ export type AuthUser = {
   id: string;
   name: string;
   role: UserRole;
+  /** 임시 비밀번호로 들어왔다 — 비밀번호부터 바꾼다 (그 전에는 서버가 다른 요청을 막는다) */
+  mustChangePassword?: boolean;
 };
 
 export type LoginResult = {
@@ -15,6 +17,9 @@ export type LoginResult = {
 export { API_BASE };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** 비밀번호 규칙 — 서버와 같다 (화면은 미리 알려 줄 뿐, 진짜 검사는 서버) */
+export const PASSWORD_RULE = "8자 이상, 영문과 숫자를 섞어 주세요.";
 
 /**
  * 로그인.

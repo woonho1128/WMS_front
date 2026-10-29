@@ -1,7 +1,10 @@
+import { INBOUND_PLANNERS, INBOUND_WORKERS, PUTAWAY_WORKERS } from "../app/permissions";
+import { roleLabels, type UserRole } from "../app/roles";
 import { useAuthStore } from "../app/store/authStore";
 import { useUiStore } from "../app/store/uiStore";
 import { MOCK_TODAY } from "../shared/appDate";
 import type { LoginResult } from "./authService";
+import { createAccountMock, type MockAccount } from "./mockAccountAdmin";
 import { createDashboardMock, regionOf } from "./mockDashboard";
 import { createItemImportMock } from "./mockItemImport";
 import { createOmsChangeMock } from "./mockOmsChange";
@@ -15,22 +18,43 @@ const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 // 시드 기준일 — 화면 날짜 필터 기본값도 같은 값을 쓴다(shared/appDate)
 const today = MOCK_TODAY;
 
-export const mockAccounts: Record<string, { password: string; user: LoginResult["user"] }> = {
-  admin: { password: "1234", user: { id: "admin", name: "관리자", role: "admin" } },
-  logistics: { password: "1234", user: { id: "logistics", name: "물류담당", role: "logistics" } },
-  inbound: { password: "1234", user: { id: "inbound", name: "입고담당", role: "inbound" } },
-  outbound: { password: "1234", user: { id: "outbound", name: "출고담당", role: "outbound" } },
-  inventory: { password: "1234", user: { id: "inventory", name: "재고담당", role: "inventory" } },
-  partner: { password: "1234", user: { id: "partner", name: "협력사", role: "partner" } }
+/** 데모 계정 — 비밀번호는 데모 값. 계정 관리 화면(목)이 이 표를 고친다 (메모리에만) */
+export const mockAccounts: Record<string, MockAccount> = {
+  admin: { password: "1234", user: { id: "admin", name: "관리자", role: "admin" }, lastLoginAt: `${MOCK_TODAY} 08:42`, createdAt: "2026-06-01 09:00" },
+  logistics: { password: "1234", user: { id: "logistics", name: "물류담당", role: "logistics" }, lastLoginAt: `${MOCK_TODAY} 08:15`, createdAt: "2026-06-01 09:00" },
+  inbound: { password: "1234", user: { id: "inbound", name: "입고담당", role: "inbound" }, lastLoginAt: `${MOCK_TODAY} 07:58`, createdAt: "2026-06-01 09:00" },
+  outbound: { password: "1234", user: { id: "outbound", name: "출고담당", role: "outbound" }, lastLoginAt: `${MOCK_TODAY} 08:03`, createdAt: "2026-06-01 09:00" },
+  inventory: { password: "1234", user: { id: "inventory", name: "재고담당", role: "inventory" }, lastLoginAt: "2026-06-16 17:20", createdAt: "2026-06-01 09:00" },
+  sourcing: { password: "1234", user: { id: "sourcing", name: "소싱담당", role: "sourcing" }, lastLoginAt: "2026-06-16 10:11", createdAt: "2026-06-10 09:00" },
+  partner: { password: "1234", user: { id: "partner", name: "협력사", role: "partner" }, lastLoginAt: "2026-06-15 14:30", createdAt: "2026-06-01 09:00" },
+  // 계정 관리 화면이 비지 않게 — 잠긴 계정 · 첫 로그인 전 계정 (가짜)
+  "temp.worker": { password: "Demo2026x", user: { id: "temp.worker", name: "단기근무", role: "inbound" }, locked: true, lockedAt: "2026-06-12 18:00", lastLoginAt: "2026-06-12 17:40", createdAt: "2026-06-02 09:00" },
+  "new.sourcing": { password: "Kq7mPx3Rt2", user: { id: "new.sourcing", name: "신규소싱", role: "sourcing", mustChangePassword: true }, createdAt: "2026-06-16 16:00" }
 };
 
 export async function mockLogin(id: string, password: string): Promise<LoginResult> {
   await delay();
-  const account = mockAccounts[id.trim()];
+  const account = mockAccounts[id.trim().toLowerCase()];
   if (!account || account.password !== password) {
     throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
   }
-  return { user: account.user, token: `mock-jwt-${account.user.id}` };
+  if (account.locked) throw new Error("잠긴 계정입니다 — 관리자에게 문의하세요.");
+  account.lastLoginAt = `${MOCK_TODAY} ${new Date().toTimeString().slice(0, 5)}`;
+  return { user: { ...account.user }, token: `mock-jwt-${account.user.id}` };
+}
+
+/* 계정 관리 · 내 비밀번호 — 서버와 같은 규칙. 관리 화면은 머리글의 역할 선택이 관리자일 때만 */
+const accountMock = createAccountMock({
+  accounts: mockAccounts,
+  role: () => useUiStore.getState().currentRole,
+  me: () => useAuthStore.getState().user?.id,
+  now: () => `${MOCK_TODAY} ${new Date().toTimeString().slice(0, 5)}`,
+  roles: Object.keys(roleLabels)
+});
+
+/** 데모의 역할 검사 — 서버 RoleCheck 와 같은 묶음 · 같은 문구 (머리글의 역할 선택을 따른다) */
+function requireRole(allowed: readonly UserRole[], message: string) {
+  if (!allowed.includes(useUiStore.getState().currentRole)) throw new Error(message);
 }
 
 const warehouses = [
@@ -172,8 +196,10 @@ let inbounds = [
   { id: 112, inboundNo: "IN-20260620-001", poNo: "PO-9018", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "운송장 별도 확인", status: "scheduled", expectedAt: "2026-06-20", qty: 660 },
   { id: 113, inboundNo: "IN-20260613-001", poNo: "PO-9014", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "긴급 입고", status: "registered", expectedAt: "2026-06-13", qty: 330 },
   { id: 111, inboundNo: "IN-20260607-001", poNo: "OPO-002", supplierCode: "OEM002", supplierName: "인천외주가공", warehouseId: 5, warehouseName: "외주공장", warehouseType: "외주", type: "외주", inTypeCode: "OEM", inTypeName: "외주입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: null, status: "located", expectedAt: "2026-06-07", qty: 120 },
-  { id: 116, inboundNo: "IN-20260606-003", poNo: "PO-9003", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "분할 납품 1차", status: "confirmed", expectedAt: "2026-06-05", qty: 420 },
-  { id: 125, inboundNo: "IN-20260530-001", poNo: "PO-9006", supplierCode: "SUP003", supplierName: "대성정밀공업", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", type: "일반", inTypeCode: "IMP", inTypeName: "수입입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "통관 완료분", status: "confirmed", expectedAt: "2026-05-30", qty: 600 },
+  // 나눠 입고 — 1차로 295 만 와서 남은 125 를 입고예정으로 기다린다 (receipts 1회차)
+  { id: 116, inboundNo: "IN-20260606-003", poNo: "PO-9003", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "분할 납품 1차", status: "scheduled", expectedAt: "2026-06-05", qty: 420 },
+  // 적게 와서 끝낸 건 — 덜 온 10 은 닫았다
+  { id: 125, inboundNo: "IN-20260530-001", poNo: "PO-9006", supplierCode: "SUP003", supplierName: "대성정밀공업", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", type: "일반", inTypeCode: "IMP", inTypeName: "수입입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "통관 완료분", status: "confirmed", expectedAt: "2026-05-30", qty: 600, closedAt: "2026-05-30 16:20", closeReason: "통관 수량 차이 — 발주 줄임" },
   // 공장 간 재고 이동 → 입고 프로세스로 처리(이동입고). 일반입고와 구분(type=이동, MVR).
   { id: 140, inboundNo: "IN-MV-20260616-001", poNo: null, moveRef: "MV-20260616-001", supplierCode: "WH-CW", supplierName: "창원공장(출발)", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "창원→제천 공장 간 재고 이동 (로케이션 지정 완료)", status: "located", expectedAt: "2026-06-16", qty: 150 },
   { id: 141, inboundNo: "IN-MV-20260617-002", poNo: null, moveRef: "MV-20260617-002", supplierCode: "WH-AS", supplierName: "안산공장(출발)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "안산→창원 공장 간 재고 이동 (입고예정)", status: "scheduled", expectedAt: today, qty: 80 }
@@ -188,13 +214,13 @@ const inboundLines: Record<number, AnyRecord[]> = {
     { id: 1003, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", consign: false, locationCode: null, locationId: null, trackingNo: "TR-IN-113-1", inspected: true, expectedQty: 330, receivedQty: 0 }
   ],
   111: [
-    { id: 1004, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", consign: true, locationCode: "OT-X-01", locationId: 501, trackingNo: "OEM-111", inspected: true, expectedQty: 120, receivedQty: 118 }
+    { id: 1004, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", consign: true, locationCode: "OT-X-01", locationId: 501, trackingNo: "OEM-111", inspected: true, expectedQty: 120, receivedQty: 0 }
   ],
   116: [
-    { id: 1005, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", consign: false, locationCode: "QC-WAIT", locationId: 900, trackingNo: "TR-IN-116", inspected: true, expectedQty: 420, receivedQty: 420 }
+    { id: 1005, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", consign: false, locationCode: "PJ-A-01", locationId: 201, trackingNo: "TR-IN-116", inspected: true, expectedQty: 420, receivedQty: 295 }
   ],
   125: [
-    { id: 1006, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", consign: false, locationCode: "PA-A-01", locationId: 301, trackingNo: "TR-IN-125", inspected: true, expectedQty: 600, receivedQty: 590 }
+    { id: 1006, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", consign: false, locationCode: "PA-A-01", locationId: 301, trackingNo: "TR-IN-125", inspected: true, expectedQty: 600, receivedQty: 590, closedQty: 10 }
   ],
   140: [
     { id: 1007, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", consign: false, locationCode: "PJ-A-01", locationId: 201, trackingNo: "MV-140", inspected: true, expectedQty: 150, receivedQty: 0 }
@@ -203,6 +229,199 @@ const inboundLines: Record<number, AnyRecord[]> = {
     { id: 1008, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", consign: false, locationCode: null, locationId: null, trackingNo: "MV-141", inspected: false, expectedQty: 80, receivedQty: 0 }
   ]
 };
+
+/* ---------- 나눠 입고 (서버 inbound_receipt 와 같은 모양) — 입고확정 한 번이 회차 하나, 회차마다 LOT ---------- */
+let receiptSeq = 100;
+const inboundReceipts: Record<number, AnyRecord[]> = {
+  116: [{ id: 1, seq: 1, lotNo: "LOT-IN-20260606-003", warehouseName: "제천공장", receivedDate: "2026-06-05", qty: 295, confirmedBy: "inbound", confirmedByName: "입고담당", createdAt: "2026-06-05 10:40",
+    lines: [{ receiptId: 1, inboundLineId: 1005, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", locationCode: "PJ-A-01", qty: 295 }] }],
+  125: [{ id: 2, seq: 1, lotNo: "LOT-IN-20260530-001", warehouseName: "안산공장", receivedDate: "2026-05-30", qty: 590, confirmedBy: "inbound", confirmedByName: "입고담당", createdAt: "2026-05-30 15:10",
+    lines: [{ receiptId: 2, inboundLineId: 1006, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", locationCode: "PA-A-01", qty: 590 }] }]
+};
+
+/** 1회차 LOT-{입고번호}, 2회차부터 LOT-{입고번호}-{회차} (서버 InboundLots) */
+const lotOf = (inboundNo: string, seq: number) => (seq <= 1 ? `LOT-${inboundNo}` : `LOT-${inboundNo}-${seq}`);
+
+/** 닫은 수량 — 칸이 없는 시드 중 확정된 건은 나눠 입고 전 방식(덜 온 수량은 확정 때 닫힘)으로 본다 (서버 DDL 과 같다) */
+const closedOf = (row: AnyRecord | undefined, ln: AnyRecord) =>
+  ln.closedQty != null ? Number(ln.closedQty) : row?.status === "confirmed" ? Math.max(0, Number(ln.expectedQty) - Number(ln.receivedQty || 0)) : 0;
+
+function inboundLineView(row: AnyRecord | undefined, ln: AnyRecord): AnyRecord {
+  const closedQty = closedOf(row, ln);
+  return { ...ln, closedQty, remainingQty: Math.max(0, Number(ln.expectedQty) - Number(ln.receivedQty || 0) - closedQty) };
+}
+
+function inboundView(row: AnyRecord) {
+  const lines = (inboundLines[row.id] ?? []).map((ln) => inboundLineView(row, ln));
+  const sum = (key: string) => lines.reduce((acc, ln) => acc + Number(ln[key] || 0), 0);
+  const receivedQty = sum("receivedQty");
+  const receiptCount = inboundReceipts[row.id]?.length ?? (receivedQty > 0 ? 1 : 0);
+  const done = row.status === "confirmed" || row.status === "closed";
+  return {
+    ...row,
+    receivedQty,
+    closedQty: sum("closedQty"),
+    remainingQty: sum("remainingQty"),
+    receiptCount,
+    nextLotNo: done ? null : lotOf(row.inboundNo, receiptCount + 1),
+    lastLotNo: receiptCount > 0 ? lotOf(row.inboundNo, receiptCount) : null,
+    closedAt: row.closedAt ?? null,
+    closeReason: row.closeReason ?? null
+  };
+}
+
+const WORKERS_ONLY = "도착 · 검수 · 입고확정은 관리자 · 물류 · 입고 담당자가 합니다.";
+const PLANNERS_ONLY = "입고예정은 관리자 · 물류 · 입고 · 소싱 담당자가 고칩니다.";
+const nowHm = () => new Date().toTimeString().slice(0, 5);
+
+/**
+ * 입고 처리 — 서버 InboundService 와 같은 규칙 (도착 → 지정 → 입고확정 = 회차 하나, 남은 수량은 입고예정으로 대기,
+ * 도착 취소, 남은 수량 닫기). 처리하지 않는 주소면 undefined.
+ */
+function inboundMutation(clean: string, body: AnyRecord): unknown {
+  const match = clean.match(/^\/inbounds\/(\d+)\/(register|assign|confirm|undo-arrival|close)$/);
+  if (!match) return undefined;
+  const id = Number(match[1]);
+  const action = match[2];
+  if (action === "close") requireRole(INBOUND_PLANNERS, PLANNERS_ONLY);
+  else requireRole(INBOUND_WORKERS, WORKERS_ONLY);
+  const row = inbounds.find((r) => r.id === id) as AnyRecord | undefined;
+  if (!row) throw new Error("입고 건을 찾을 수 없습니다.");
+  const lines = inboundLines[id] ?? [];
+  const operator = useAuthStore.getState().user;
+  const log = (actionName: string, detail: string, qty?: number) =>
+    activityLogs.push({ id: activityLogs.length + 1, refType: "INBOUND", refNo: row.inboundNo, action: actionName, detail, erpSent: false,
+      operator: operator?.id ?? "system", createdAt: `${today} ${nowHm()}`, ...(qty != null ? { qty } : {}) });
+
+  if (action === "register") {
+    if (row.status !== "scheduled") throw new Error("입고예정 상태에서만 입고등록할 수 있습니다.");
+    row.status = "registered";
+    log("입고등록", "입고예정 → 입고등록");
+    return { ok: true };
+  }
+  if (action === "assign") {
+    if (row.status !== "registered") throw new Error("입고등록 후에 창고·로케이션을 지정할 수 있습니다.");
+    const whId = Number(body.warehouseId);
+    const wh = warehouses.find((w) => w.id === whId);
+    if (!wh) throw new Error("창고를 선택하세요.");
+    const options = asWarehouseLocations(whId);
+    const given: AnyRecord[] = Array.isArray(body.lines) ? body.lines : [];
+    given.forEach((g) => {
+      const ln = lines.find((l) => l.id === Number(g.lineId));
+      if (!ln) throw new Error(`이 입고 건의 품목 줄이 아닙니다: ${g.lineId}`);
+      if (g.locationId == null) return;
+      const loc = options.find((o) => o.id === Number(g.locationId));
+      if (!loc) throw new Error("고른 창고에 없는 로케이션이 있습니다 — 창고를 바꿨다면 로케이션을 다시 고르세요.");
+      ln.locationId = loc.id;
+      ln.locationCode = loc.code;
+    });
+    Object.assign(row, { warehouseId: wh.id, warehouseName: wh.name, warehouseType: wh.type, status: "located" });
+    log("창고·로케이션 지정", "창고/로케이션 지정 완료");
+    return { ok: true };
+  }
+  if (action === "undo-arrival") {
+    if (row.status !== "registered" && row.status !== "located") throw new Error("입고등록(도착) 뒤 입고확정 전에만 도착을 취소할 수 있습니다.");
+    row.status = "scheduled";
+    log("도착 취소", "입고예정으로 되돌림 (받은 것 없음)");
+    return { ok: true };
+  }
+  if (action === "confirm") {
+    if (row.status !== "located") throw new Error("창고·로케이션 지정 후에 입고확정할 수 있습니다.");
+    const entered = new Map<number, number>();
+    (Array.isArray(body.lines) ? body.lines : []).forEach((x: AnyRecord) => {
+      if (!lines.some((l) => l.id === Number(x.lineId))) throw new Error(`이 입고 건의 품목 줄이 아닙니다: ${x.lineId}`);
+      if (x.receivedQty != null) entered.set(Number(x.lineId), Number(x.receivedQty));
+    });
+    let total = 0;
+    let over = 0;
+    let remainingAfter = 0;
+    const plan = lines.map((ln) => {
+      const remaining = inboundLineView(row, ln).remainingQty;
+      const qty = entered.get(ln.id) ?? remaining;
+      if (!Number.isFinite(qty) || qty < 0) throw new Error("실입고 수량은 0 이상이어야 합니다.");
+      if (qty > 0 && ln.locationId == null) throw new Error("로케이션이 지정되지 않은 라인이 있습니다.");
+      total += qty;
+      over += Math.max(0, qty - remaining);
+      remainingAfter += Math.max(0, remaining - qty);
+      return { ln, qty };
+    });
+    if (total === 0) throw new Error("받은 수량이 없습니다 — 아무것도 오지 않았으면 '도착 취소'로 입고예정에 되돌리세요.");
+    const receipts = (inboundReceipts[id] ??= []);
+    const seq = receipts.length + 1;
+    const lotNo = lotOf(row.inboundNo, seq);
+    const receiptId = ++receiptSeq;
+    const receiptLines: AnyRecord[] = [];
+    plan.forEach(({ ln, qty }) => {
+      if (qty <= 0) return;
+      const loc = locations.find((l) => l.id === ln.locationId);
+      const wh = warehouses.find((w) => w.id === row.warehouseId) || warehouses.find((w) => w.name === loc?.warehouseName);
+      stocks.push({
+        stockId: ++stockSeq,
+        itemCode: ln.itemCode,
+        itemName: ln.itemName,
+        warehouseId: row.warehouseId ?? wh?.id ?? 1,
+        warehouseName: row.warehouseName ?? loc?.warehouseName ?? "-",
+        warehouseType: row.warehouseType ?? wh?.type ?? "일반",
+        zoneName: loc?.zoneName ?? "-",
+        locationCode: loc?.code ?? ln.locationCode ?? "-",
+        locationType: loc?.locationType ?? "PICKING",
+        lotNo,
+        stockStatus: "PUTAWAY_WAIT",
+        receivedDate: today,
+        onHand: qty,
+        allocated: 0,
+        available: 0,
+        safetyStock: items.find((it) => it.itemCode === ln.itemCode)?.safetyStock ?? 0,
+        unit: ln.unit
+      });
+      ln.receivedQty = Number(ln.receivedQty || 0) + qty;
+      receiptLines.push({ receiptId, inboundLineId: ln.id, itemCode: ln.itemCode, itemName: ln.itemName, locationCode: ln.locationCode, qty });
+    });
+    receipts.push({ id: receiptId, seq, lotNo, warehouseName: row.warehouseName, receivedDate: today, qty: total,
+      confirmedBy: operator?.id ?? null, confirmedByName: operator?.name ?? null, createdAt: `${today} ${nowHm()}`, lines: receiptLines });
+    const status = remainingAfter > 0 ? "scheduled" : "confirmed";
+    row.status = status;
+    log("입고확정", `검수 후 입고확정 (격납대기 재고 생성, LOT=${lotNo})${seq > 1 || remainingAfter > 0 ? ` · ${seq}회차` : ""}`
+      + `${remainingAfter > 0 ? ` · 남은 수량(${remainingAfter})은 입고예정으로 대기` : ""}${over > 0 ? ` · 예정보다 ${over} 많이 받음` : ""}`, total);
+    // 대시보드 시간별 처리량 · 금일 입고확정에 반영
+    dashboardMock.record("inbound-confirm", total, row.inboundNo);
+    return { status, receiptSeq: seq, lotNo, receivedQty: total, remainingQty: remainingAfter, overQty: over };
+  }
+
+  // close — 남은 수량 닫기
+  const reason = String(body.reason ?? "").replace(/\s+/g, " ").trim();
+  if (!reason) throw new Error("닫는 이유를 넣으세요 (예: 공급사 결품 — ERP 발주 줄임).");
+  if (reason.length > 200) throw new Error("닫는 이유는 200자까지입니다.");
+  if (row.status === "registered" || row.status === "located") throw new Error("도착 처리 중입니다 — 입고확정이나 도착 취소를 먼저 하세요.");
+  if (row.status !== "scheduled") throw new Error("이미 끝난 입고입니다.");
+  const views = lines.map((ln) => ({ ln, view: inboundLineView(row, ln) }));
+  const toClose = new Map<number, number>();
+  const asked: AnyRecord[] = Array.isArray(body.lines) ? body.lines : [];
+  if (!asked.length) views.forEach(({ ln, view }) => toClose.set(ln.id, view.remainingQty));
+  asked.forEach((x) => {
+    const found = views.find(({ ln }) => ln.id === Number(x.lineId));
+    if (!found) throw new Error(`이 입고 건의 품목 줄이 아닙니다: ${x.lineId}`);
+    const qty = x.qty == null ? found.view.remainingQty : Number(x.qty);
+    const next = (toClose.get(found.ln.id) ?? 0) + qty;
+    if (!Number.isFinite(qty) || qty < 0) throw new Error("닫을 수량은 0 이상이어야 합니다.");
+    if (next > found.view.remainingQty) throw new Error(`${found.ln.itemCode} 는 남은 수량(${found.view.remainingQty})보다 많이 닫을 수 없습니다.`);
+    toClose.set(found.ln.id, next);
+  });
+  const closedNow = [...toClose.values()].reduce((a, b) => a + b, 0);
+  if (closedNow === 0) throw new Error("닫을 남은 수량이 없습니다.");
+  views.forEach(({ ln, view }) => {
+    ln.closedQty = view.closedQty + (toClose.get(ln.id) ?? 0);
+  });
+  const remainingAfter = views.reduce((a, { view }) => a + view.remainingQty, 0) - closedNow;
+  const receivedTotal = views.reduce((a, { ln }) => a + Number(ln.receivedQty || 0), 0);
+  let status = "scheduled";
+  if (remainingAfter === 0) {
+    status = receivedTotal > 0 ? "confirmed" : "closed";
+    Object.assign(row, { status, closedAt: `${today} ${nowHm()}`, closeReason: reason });
+  }
+  log("입고예정 닫기", `남은 수량 ${closedNow} 닫음 — ${reason}${remainingAfter > 0 ? ` · 아직 ${remainingAfter} 대기` : receivedTotal > 0 ? ` · 입고 끝 (받은 ${receivedTotal})` : " · 받은 것 없이 닫힘"}`);
+  return { status, closedQty: closedNow, remainingQty: remainingAfter };
+}
 
 let outbounds = [
   { id: 46, outboundNo: "DN20260601020", scheduledDate: "2026-06-19", customerCode: "051794", customerName: "대림바스(주)", outType: "A/S 출고(유상)", qty: 5, carrier: "사내차량", shipAddress: "충북 청주시 흥덕구 가경로 50", invoiceNo: null, status: "출고대기", rejectReason: null },
@@ -336,7 +555,7 @@ const DOCK_LANES = [
 ];
 const DOCK_START = 8 * 60;
 const DOCK_END = 18 * 60;
-const DOCK_PROGRESS: Record<string, number> = { scheduled: 0, registered: 25, located: 50, confirmed: 100 };
+const DOCK_PROGRESS: Record<string, number> = { scheduled: 0, registered: 25, located: 50, confirmed: 100, closed: 100 };
 /** lane = DOCK_LANES 순번 */
 const dockReservations: AnyRecord[] = [
   { inboundNo: "IN-20260530-001", date: "2026-05-30", lane: 3, from: 540, to: 580 },
@@ -353,7 +572,8 @@ const inboundStatusLabel: Record<string, string> = {
   scheduled: "입고예정",
   registered: "입고등록",
   located: "로케이션지정",
-  confirmed: "입고확정"
+  confirmed: "입고확정",
+  closed: "닫힘"
 };
 const taskTone = (status: string) => {
   if (status.includes("완료") || status.includes("확정")) return "success";
@@ -487,7 +707,7 @@ function dockScheduleOf(date: string) {
           status: row.status,
           pct: DOCK_PROGRESS[row.status] ?? 0,
           // 예약 시간이 지났는데 입고확정 전 — 지난 날짜이거나, 오늘 예약 끝 시각이 지남
-          warn: row.status !== "confirmed" && (date < today || (isToday && r.to <= nowMin))
+          warn: row.status !== "confirmed" && row.status !== "closed" && (date < today || (isToday && r.to <= nowMin))
         }];
       })
       .sort((a, b) => a.from - b.from);
@@ -721,6 +941,10 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     if (changeHandled !== undefined) return copy(changeHandled) as T;
     const itemImportHandled = itemImportMock.mutate(method, clean, body);
     if (itemImportHandled !== undefined) return copy(itemImportHandled) as T;
+    const accountHandled = accountMock.mutate(method, clean, body);
+    if (accountHandled !== undefined) return copy(accountHandled) as T;
+    const inboundHandled = inboundMutation(clean, body);
+    if (inboundHandled !== undefined) return copy(inboundHandled) as T;
     // 서버처럼 결과를 돌려주는 처리(예: 품목 제원 저장)는 그 값을, 나머지는 { ok: true }
     const result = handleMutation(clean, body);
     return copy(result ?? { ok: true }) as T;
@@ -738,11 +962,19 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   const changeData = omsChangeMock.get(clean, url.searchParams);
   if (changeData !== undefined) return copy(changeData) as T;
 
+  const accountData = accountMock.get(clean);
+  if (accountData !== undefined) return copy(accountData) as T;
+
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
-  if (clean === "/inbounds") return copy(inbounds) as T;
+  if (clean === "/inbounds") return copy(inbounds.map(inboundView)) as T;
   if (clean === "/inbounds/dock-schedule") return copy(dockScheduleOf(url.searchParams.get("date") ?? today)) as T;
-  if (clean.match(/^\/inbounds\/\d+\/lines$/)) return copy(inboundLines[Number(clean.split("/")[2])] ?? []) as T;
+  if (clean.match(/^\/inbounds\/\d+\/lines$/)) {
+    const id = Number(clean.split("/")[2]);
+    const row = inbounds.find((r) => r.id === id);
+    return copy((inboundLines[id] ?? []).map((ln) => inboundLineView(row, ln))) as T;
+  }
+  if (clean.match(/^\/inbounds\/\d+\/receipts$/)) return copy(inboundReceipts[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds.map((o) => {
     const { totalWeightKg, weightMissing } = orderTotals(o.id);
     // 사진 장수 — 출고 확정 때 "사진 없음" 경고 · 확인 대기 변경 — 출고 확정 막기 (서버 OutboundMapper.findAll 과 같은 칸)
@@ -859,52 +1091,8 @@ function changeReceiver(id: number, body: AnyRecord) {
 }
 
 function handleMutation(clean: string, body: AnyRecord) {
-  if (clean.match(/^\/inbounds\/\d+\/register$/)) {
-    const row = inbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) row.status = "registered";
-  } else if (clean.match(/^\/inbounds\/\d+\/assign$/)) {
-    const row = inbounds.find((r) => r.id === Number(clean.split("/")[2]));
-    if (row) row.status = "located";
-  } else if (clean.match(/^\/inbounds\/\d+\/confirm$/)) {
-    const id = Number(clean.split("/")[2]);
-    const row = inbounds.find((r) => r.id === id);
-    if (row) {
-      row.status = "confirmed";
-      // 입고확정 → 검수 수량만큼 격납대기(PUTAWAY_WAIT) 재고 생성 (LOT = LOT-{입고번호})
-      // 일반/외주/이동입고(공장간이동) 모두 동일하게 격납대기로 이동
-      const recvLines: AnyRecord[] = Array.isArray(body.lines) ? body.lines : [];
-      let confirmedQty = 0;
-      (inboundLines[id] ?? []).forEach((ln) => {
-        const recv = recvLines.find((x) => x.lineId === ln.id);
-        const qty = recv ? Number(recv.receivedQty) : ln.expectedQty;
-        if (!qty || qty <= 0) return;
-        confirmedQty += qty;
-        const loc = locations.find((l) => l.id === ln.locationId);
-        const wh = warehouses.find((w) => w.id === row.warehouseId) || warehouses.find((w) => w.name === loc?.warehouseName);
-        stocks.push({
-          stockId: ++stockSeq,
-          itemCode: ln.itemCode,
-          itemName: ln.itemName,
-          warehouseId: row.warehouseId ?? wh?.id ?? 1,
-          warehouseName: row.warehouseName ?? loc?.warehouseName ?? "-",
-          warehouseType: row.warehouseType ?? wh?.type ?? "일반",
-          zoneName: loc?.zoneName ?? "-",
-          locationCode: loc?.code ?? ln.locationCode ?? "-",
-          locationType: loc?.locationType ?? "PICKING",
-          lotNo: `LOT-${row.inboundNo}`,
-          stockStatus: "PUTAWAY_WAIT",
-          receivedDate: today,
-          onHand: qty,
-          allocated: 0,
-          available: 0,
-          safetyStock: items.find((it) => it.itemCode === ln.itemCode)?.safetyStock ?? 0,
-          unit: ln.unit
-        });
-      });
-      // 대시보드 시간별 처리량 · 금일 입고확정에 반영
-      dashboardMock.record("inbound-confirm", confirmedQty, row.inboundNo);
-    }
-  } else if (clean.match(/^\/outbounds\/\d+\/pick-start$/)) {
+  // 입고 처리(도착 · 지정 · 입고확정 · 도착 취소 · 닫기)는 inboundMutation 이 먼저 받는다
+  if (clean.match(/^\/outbounds\/\d+\/pick-start$/)) {
     const row = outbounds.find((r) => r.id === Number(clean.split("/")[2]));
     if (row) row.status = "피킹중";
   } else if (clean.match(/^\/outbounds\/\d+\/pick-complete$/)) {
@@ -1002,6 +1190,7 @@ function handleMutation(clean: string, body: AnyRecord) {
     }
   } else if (clean.match(/^\/stocks\/putaway\/\d+\/complete$/)) {
     // 격납 확정 — 단일 또는 다중(분할) 로케이션 배정 지원
+    requireRole(PUTAWAY_WORKERS, "격납은 관리자 · 물류 · 입고 · 재고 담당자가 합니다.");
     const stockId = Number(clean.split("/")[3]);
     const src = stocks.find((s) => s.stockId === stockId);
     if (src) {

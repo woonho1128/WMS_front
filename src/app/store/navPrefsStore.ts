@@ -329,6 +329,10 @@ export const navPrefsReady = (timeoutMs = 1500) =>
  * 화면이 한 번이라도 기본값으로 그려지면 탭형 사용자에게 목록형이 번쩍 보이고,
  * 그 사이에 목록형 작업 탭이 쌓인다(2026-09-22 새로고침에서 확인). 로그인 · 로그아웃 · 새로고침 모두 여기서 끝난다.
  */
-const syncUser = () => useNavPrefsStore.getState().loadFor(useAuthStore.getState().user?.id ?? null);
+// 임시 비밀번호로 들어온 동안은 서버가 비밀번호 바꾸기 말고는 막는다 — 바꾼 뒤에 받는다
+const syncUser = () => {
+  const user = useAuthStore.getState().user;
+  useNavPrefsStore.getState().loadFor(user && !user.mustChangePassword ? user.id : null);
+};
 syncUser();
 useAuthStore.subscribe(syncUser);

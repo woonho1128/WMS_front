@@ -31,6 +31,7 @@
 .cfm-kpi b small { font-size: 11px; font-weight: 700; color: var(--ink-faint); letter-spacing: 0; }
 .cfm-kpi b.is-bad { color: var(--c-danger-ink); }
 .cfm-kpi b.is-ok { color: var(--c-success-ink); }
+.cfm-kpi b.is-wait { color: var(--primary-ink); }
 
 /* ---------- 본문 ---------- */
 .cfm-main {
@@ -107,7 +108,11 @@
   gap: 12px; align-items: center; padding: 11px 12px;
   border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2);
 }
-.cfm-line.is-diff { border-color: var(--c-danger-line); background: var(--c-danger-bg); }
+/* 예정보다 많이 왔다(초과 — 규칙 정하기 전, 받은 그대로) · 덜 왔다(남은 수량은 입고예정으로 대기 — 모자람이 아니라 대기) */
+.cfm-line.is-diff { border-color: var(--c-warning-line); background: var(--c-warning-bg); }
+.cfm-line.is-wait { border-color: var(--primary-line); background: var(--primary-bg); }
+.cfm-chip.is-wait { background: var(--primary-bg); color: var(--primary-ink); }
+.cfm-lines-tag.is-seq { background: var(--primary-bg); color: var(--primary-ink); }
 .cfm-line-info { display: grid; gap: 5px; min-width: 0; }
 .cfm-line-sku {
   display: flex; align-items: center; gap: 7px;
@@ -175,6 +180,7 @@
 .cfm-total dd.is-ok { color: var(--c-success-ink); }
 .cfm-total dd.is-over { color: var(--primary-ink); }
 .cfm-total dd.is-short { color: var(--c-danger-ink); }
+.cfm-total dd.is-wait { color: var(--primary-ink); }
 
 .cfm-note { margin: 0 15px 12px; font-size: 12px; }
 .cfm-actions { margin-top: auto; padding: 0 15px 14px; }

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { resolveScreenPath } from "../menuConfig";
+import { homePathFor, resolveScreenPath } from "../menuConfig";
 import { FAVORITES_KEY, navPrefsReady, useNavPrefsStore } from "../store/navPrefsStore";
 import { HOME_PATH } from "../store/tabsStore";
 import { useUiStore } from "../store/uiStore";
@@ -25,7 +25,7 @@ export const HomeRedirect = () => {
       const role = useUiStore.getState().currentRole;
       const mine = navMode === "tabs" ? favorites.filter((path) => resolveScreenPath(path, role).status === "ok") : [];
       if (!mine.length) {
-        navigate(HOME_PATH, { replace: true });
+        navigate(homePathFor(role, HOME_PATH), { replace: true });
         return;
       }
       const last = lastScreenBySection[FAVORITES_KEY];

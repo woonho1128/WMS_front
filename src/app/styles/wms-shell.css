@@ -375,6 +375,10 @@
 }
 .wms-logout:hover { background: var(--c-danger); border-color: var(--c-danger); color: var(--ink-on-accent); }
 .wms-app.collapsed .wms-logout { display: none; }
+/* 비밀번호 바꾸기 — 로그아웃 옆, 같은 크기에 눌러도 위험하지 않은 색 */
+.wms-password { margin-left: auto; }
+.wms-password + .wms-logout { margin-left: 6px; }
+.wms-password:hover { background: var(--side-active-soft); border-color: var(--side-active); color: var(--ink-on-accent); }
 
 /* ============================================================
    Main column

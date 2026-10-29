@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { INBOUND_PLANNERS, INBOUND_WORKERS, can } from "../../app/permissions";
+import { useUiStore } from "../../app/store/uiStore";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { QrBox } from "../../components/ui/QrBox";
@@ -34,6 +36,15 @@ type InboundRow = {
   status: string;
   expectedAt: string | null;
   qty: number;
+  /* 나눠 입고 — 남은 수량은 입고예정(scheduled)으로 다음 도착을 기다린다 */
+  receivedQty: number;
+  closedQty: number;
+  remainingQty: number;
+  receiptCount: number;
+  nextLotNo: string | null;
+  lastLotNo: string | null;
+  closedAt: string | null;
+  closeReason: string | null;
 };
 
 type InboundLine = {
@@ -48,8 +59,25 @@ type InboundLine = {
   trackingNo: string | null;
   inspected: boolean;
   expectedQty: number;
+  /** 받은 수량 = 입고 회차를 더한 값 */
   receivedQty: number;
+  closedQty: number;
+  remainingQty: number;
 };
+
+/** 입고 회차 — 입고확정 한 번 (회차마다 LOT) */
+type Receipt = {
+  id: number;
+  seq: number;
+  lotNo: string;
+  receivedDate: string;
+  qty: number;
+  confirmedByName: string | null;
+  confirmedBy: string | null;
+  lines: Array<{ inboundLineId: number; itemCode: string; locationCode: string | null; qty: number }>;
+};
+
+type CloseResult = { status: string; closedQty: number; remainingQty: number };
 
 type WarehouseOption = { id: number; code: string; name: string; type: string };
 type LocationOption = { id: number; code: string; status: string; zoneName: string };
@@ -94,7 +122,19 @@ const STAGES: Array<{ key: StageKey; label: string; tone: string }> = [
   { key: "located", label: "로케이션 지정", tone: "warning" },
   { key: "confirmed", label: "입고확정", tone: "success" }
 ];
-const STAGE_MAP = Object.fromEntries(STAGES.map((s) => [s.key, s]));
+/** 단계 카드 · 보드 열에는 없는 끝 상태 — 받은 것 없이 닫은 입고예정 (목록 · 상세의 배지로만) */
+const CLOSED_STAGE = { key: "closed", label: "닫힘", tone: "gray" };
+const STAGE_MAP: Record<string, { key: string; label: string; tone: string }> = {
+  ...Object.fromEntries(STAGES.map((s) => [s.key, s])),
+  closed: CLOSED_STAGE
+};
+
+/** 나눠 입고 — 한 번 이상 받았고 남은 수량을 기다리는 건 */
+const isPartial = (r: Pick<InboundRow, "status" | "receivedQty" | "remainingQty">) =>
+  r.status === "scheduled" && r.receivedQty > 0 && r.remainingQty > 0;
+
+/** QR 입고라벨의 LOT — 다음 입고확정이 쓸 것, 끝난 건은 마지막 회차 */
+const labelLot = (r: InboundRow) => r.nextLotNo ?? r.lastLotNo ?? `LOT-${r.inboundNo}`;
 
 const KIND_TONE: Record<string, string> = { 일반: "gray", 외주: "consign", 이동: "teal" };
 
@@ -162,6 +202,20 @@ export const DashboardInbound = () => {
   const [assignLocs, setAssignLocs] = useState<Record<number, number | "">>({});
   const [labelTarget, setLabelTarget] = useState<InboundRow | null>(null);
 
+  // 역할 — 도착 · 지정 · 검수는 물류, 남은 수량 닫기는 소싱도 (서버가 같은 묶음으로 막는다)
+  const role = useUiStore((state) => state.currentRole);
+  const canWork = can(role, INBOUND_WORKERS);
+  const canPlan = can(role, INBOUND_PLANNERS);
+
+  // 입고 회차 (나눠 입고) — 고른 건이 받은 적이 있으면 읽는다
+  const [receiptsById, setReceiptsById] = useState<Record<number, Receipt[]>>({});
+
+  // 남은 수량 닫기 모달
+  const [closeTarget, setCloseTarget] = useState<InboundRow | null>(null);
+  const [closeReason, setCloseReason] = useState("");
+  const [closeQty, setCloseQty] = useState<Record<number, number>>({});
+  const [closeError, setCloseError] = useState<string | null>(null);
+
   const fetchLines = (id: number) => {
     if (linesById[id] || linesLoading.includes(id)) return;
     setLinesLoading((p) => [...p, id]);
@@ -205,12 +259,25 @@ export const DashboardInbound = () => {
     if (view === "dock") loadDock(dockDate);
   };
 
-  const invalidateLines = (id: number) =>
+  const invalidateLines = (id: number) => {
     setLinesById((p) => {
       const next = { ...p };
       delete next[id];
       return next;
     });
+    setReceiptsById((p) => {
+      const next = { ...p };
+      delete next[id];
+      return next;
+    });
+  };
+
+  const fetchReceipts = (id: number) => {
+    if (receiptsById[id]) return;
+    apiGet<Receipt[]>(`/inbounds/${id}/receipts`)
+      .then((list) => setReceiptsById((prev) => ({ ...prev, [id]: list })))
+      .catch(() => {});
+  };
 
   /* ---------- 필터 / 파이프라인 ---------- */
   const searched = useMemo(() => {
@@ -279,8 +346,9 @@ export const DashboardInbound = () => {
   const selected = rows.find((r) => r.id === selId) ?? null;
   useEffect(() => {
     if (selected) fetchLines(selected.id);
+    if (selected && selected.receiptCount > 0) fetchReceipts(selected.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
+  }, [selected?.id, selected?.receiptCount]);
   // 보드 뷰는 카드마다 진행률을 그리므로 현재 목록의 라인을 미리 읽는다
   useEffect(() => {
     if (view === "board") filtered.forEach((r) => fetchLines(r.id));
@@ -334,6 +402,73 @@ export const DashboardInbound = () => {
     }
   };
 
+  /** 도착 취소 — 받은 것 없이 입고예정으로 되돌린다 */
+  const doUndoArrival = async (row: InboundRow) => {
+    setBusy(true);
+    try {
+      await apiPost(`/inbounds/${row.id}/undo-arrival`, {});
+      setNotice(`${row.inboundNo} 도착을 취소했습니다 — 입고예정으로 돌아갔습니다.`);
+      load();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "도착 취소 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 남은 수량 닫기 — 줄마다 남은 수량 전부를 기본으로 */
+  const openClose = async (row: InboundRow) => {
+    let lines = linesById[row.id];
+    if (!lines) {
+      lines = await apiGet<InboundLine[]>(`/inbounds/${row.id}/lines`);
+      setLinesById((p) => ({ ...p, [row.id]: lines as InboundLine[] }));
+    }
+    const init: Record<number, number> = {};
+    lines.forEach((ln) => {
+      if (ln.remainingQty > 0) init[ln.id] = ln.remainingQty;
+    });
+    setCloseQty(init);
+    setCloseReason("");
+    setCloseError(null);
+    setCloseTarget(row);
+  };
+
+  const doClose = async () => {
+    if (!closeTarget) return;
+    if (!closeReason.trim()) {
+      setCloseError("닫는 이유를 넣으세요 (예: 공급사 결품 — ERP 발주 줄임).");
+      return;
+    }
+    const lines = (linesById[closeTarget.id] ?? []).filter((ln) => ln.remainingQty > 0);
+    const over = lines.find((ln) => (closeQty[ln.id] ?? 0) > ln.remainingQty);
+    if (over) {
+      setCloseError(`${over.itemCode} 는 남은 수량(${num(over.remainingQty)})보다 많이 닫을 수 없습니다.`);
+      return;
+    }
+    setBusy(true);
+    setCloseError(null);
+    try {
+      const result = await apiPost<CloseResult>(`/inbounds/${closeTarget.id}/close`, {
+        reason: closeReason.trim(),
+        lines: lines.map((ln) => ({ lineId: ln.id, qty: Math.max(0, closeQty[ln.id] ?? 0) }))
+      });
+      setNotice(
+        result.status === "confirmed"
+          ? `${closeTarget.inboundNo} 남은 수량(${num(result.closedQty)})을 닫았습니다 — 입고가 끝났습니다.`
+          : result.status === "closed"
+            ? `${closeTarget.inboundNo} 받은 것 없이 입고예정을 닫았습니다.`
+            : `${closeTarget.inboundNo} 남은 수량 중 ${num(result.closedQty)} 만큼 닫았습니다 — 아직 남은 수량(${num(result.remainingQty)})을 기다립니다.`
+      );
+      invalidateLines(closeTarget.id);
+      setCloseTarget(null);
+      load();
+    } catch (e) {
+      setCloseError(e instanceof Error ? e.message : "닫기 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openAssign = async (row: InboundRow) => {
     setAssignTarget(row);
     const wh = row.warehouseId ?? warehouses[0]?.id ?? null;
@@ -377,9 +512,16 @@ export const DashboardInbound = () => {
     });
   };
 
+  /** 이번 도착에 지정할 줄 — 남은 수량이 있는 줄만 (나눠 입고에서 다 받은 줄은 건너뛴다) */
+  const linesToAssign = (row: InboundRow | null) => {
+    const lines = row ? linesById[row.id] ?? [] : [];
+    const open = lines.filter((ln) => ln.remainingQty > 0);
+    return open.length ? open : lines;
+  };
+
   const doAssign = async () => {
     if (!assignTarget || assignWh == null) return;
-    const lines = linesById[assignTarget.id] ?? [];
+    const lines = linesToAssign(assignTarget);
     if (lines.some((ln) => !assignLocs[ln.id])) {
       setNotice("모든 라인의 로케이션을 선택하세요.");
       return;
@@ -404,55 +546,91 @@ export const DashboardInbound = () => {
   const exportCsv = () =>
     downloadCsv(
       `입고예정_${dateFrom}_${dateTo}`,
-      ["입고번호", "PO", "공급처", "창고", "구분", "입고형태", "구매그룹", "예정일", "예정수량", "상태"],
+      ["입고번호", "PO", "공급처", "창고", "구분", "입고형태", "구매그룹", "예정일", "예정수량", "받은수량", "닫은수량", "남은수량", "입고회차", "상태"],
       filtered.map((r) => [
         r.inboundNo, r.poNo, r.supplierName, r.warehouseName, r.type, r.inTypeName,
-        r.purchaseGroupName, r.expectedAt, r.qty, STAGE_MAP[r.status]?.label ?? r.status
+        r.purchaseGroupName, r.expectedAt, r.qty, r.receivedQty, r.closedQty, r.remainingQty, r.receiptCount,
+        STAGE_MAP[r.status]?.label ?? r.status
       ])
     );
 
   /* ---------- 선택 건 상세 ---------- */
   const selLines = selected ? linesById[selected.id] ?? [] : [];
-  const shortLine = selLines.find((l) => l.receivedQty > 0 && l.receivedQty < l.expectedQty);
-  const unlocated = selLines.filter((l) => !l.locationCode).length;
+  const unlocated = linesToAssign(selected).filter((l) => !l.locationCode).length;
+  const selReceipts = selected ? receiptsById[selected.id] ?? [] : [];
 
+  /**
+   * 상세의 다음 할 일 — 채운 단추(run) 하나 + 보조 단추(side). 역할에 없는 일은 단추 대신 안내만.
+   * 나눠 입고: 받은 뒤 남은 수량은 입고예정으로 돌아와 다음 도착을 기다린다 · 끝내 안 오면 닫는다.
+   */
   const cta = useMemo(() => {
     if (!selected) return null;
+    const partial = isPartial(selected);
+    const nextSeq = selected.receiptCount + 1;
+    const closeSide = canPlan && selected.remainingQty > 0
+      ? { label: "남은 수량 닫기", icon: "ban", run: () => void openClose(selected) }
+      : null;
+    const undoSide = canWork ? { label: "도착 취소", icon: "rotateCcw", run: () => void doUndoArrival(selected) } : null;
+    const workersOnly = "도착 · 검수 · 입고확정은 물류팀(관리자 · 물류 · 입고 담당)이 합니다.";
     switch (selected.status) {
       case "scheduled":
         return {
-          label: "입고 등록",
+          label: partial ? `남은 수량 도착 등록 (${nextSeq}회차)` : "입고 등록",
           tone: "info" as const,
-          hint: "ERP PO 수량 기준으로 수신된 예정 건입니다. 입고 등록 후 창고·로케이션을 지정하세요.",
-          run: () => doRegister(selected.id)
+          hint: partial
+            ? `${selected.receiptCount}회 받았습니다 (받음 ${num(selected.receivedQty)} / 예정 ${num(selected.qty)}). 남은 수량(${num(selected.remainingQty)})이 오면 도착을 등록하세요 — 끝내 안 오면 남은 수량을 닫습니다.`
+            : canWork
+              ? "입고예정 건입니다. 물건이 도착하면 입고 등록 후 창고·로케이션을 지정하세요."
+              : "입고예정 건입니다. 도착하면 물류팀이 입고 등록 · 검수를 합니다.",
+          run: canWork ? () => doRegister(selected.id) : null,
+          side: closeSide
         };
       case "registered":
         return {
           label: "창고 · 로케이션 지정",
           tone: unlocated ? ("warning" as const) : ("info" as const),
-          hint: unlocated
-            ? `로케이션 미지정 라인이 ${unlocated}건 있습니다. 전 라인 지정 후 검수로 넘어갑니다.`
-            : "전 라인 로케이션이 지정되었습니다. 검수로 넘어갈 수 있습니다.",
-          run: () => openAssign(selected)
+          hint: !canWork
+            ? workersOnly
+            : unlocated
+              ? `로케이션 미지정 라인이 ${unlocated}건 있습니다. 이번에 받을 라인을 모두 지정한 뒤 검수로 넘어갑니다.`
+              : "이번에 받을 라인의 로케이션이 지정되었습니다. 검수로 넘어갈 수 있습니다.",
+          run: canWork ? () => openAssign(selected) : null,
+          side: undoSide
         };
       case "located":
         return {
           label: "검수 · 입고확정",
-          tone: shortLine ? ("danger" as const) : ("info" as const),
-          hint: shortLine
-            ? `${shortLine.itemCode} 입고수량이 예정보다 ${num(shortLine.expectedQty - shortLine.receivedQty)} 부족합니다 (쇼트). 확정 시 차이내역이 ERP로 전송됩니다.`
-            : "검수 수량을 확인하고 입고확정하면 격납대기 재고가 생성됩니다.",
-          run: () => navigate("/inbound/inbound-confirm")
+          tone: "info" as const,
+          hint: !canWork
+            ? workersOnly
+            : partial || selected.receiptCount > 0
+              ? `${nextSeq}회차 검수입니다. 이번에 받은 수량만 넣으세요 — 덜 오면 남은 수량은 다시 입고예정으로 기다립니다.`
+              : "검수 수량을 확인하고 입고확정하면 격납대기 재고가 생성됩니다. 덜 오면 남은 수량은 입고예정으로 기다립니다.",
+          run: canWork ? () => navigate("/inbound/inbound-confirm") : null,
+          side: undoSide
+        };
+      case "closed":
+        return {
+          label: "",
+          tone: "info" as const,
+          hint: `받은 것 없이 닫았습니다${selected.closeReason ? ` — ${selected.closeReason}` : ""}.`,
+          run: null,
+          side: null
         };
       default:
         return {
           label: "격납 지시 생성",
           tone: "success" as const,
-          hint: "입고확정 완료 · 격납대기 재고가 생성되었습니다. 격납 대기 화면으로 넘어갑니다.",
-          run: () => navigate("/stock/putaway")
+          hint:
+            selected.closedQty > 0
+              ? `입고 끝 — 받음 ${num(selected.receivedQty)}, 덜 온 수량(${num(selected.closedQty)})은 닫았습니다${selected.closeReason ? ` (${selected.closeReason})` : ""}. 격납 대기 화면으로 넘어갑니다.`
+              : "입고확정 완료 · 격납대기 재고가 생성되었습니다. 격납 대기 화면으로 넘어갑니다.",
+          run: () => navigate("/stock/putaway"),
+          side: null
         };
     }
-  }, [selected, unlocated, shortLine, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, unlocated, navigate, canWork, canPlan]);
 
   const viewNote = VIEWS.find((v) => v.key === view)?.note ?? "";
 
@@ -582,12 +760,12 @@ export const DashboardInbound = () => {
                 </button>
                 <button
                   type="button"
-                  className="inb-btn is-primary"
+                  className="inb-btn"
                   disabled
-                  title="입고예정은 ERP PO 수신 기준입니다. WMS 직접 등록 여부는 미확정(프로세스 문서 §12-1)"
+                  title="입고예정 직접 등록 · 엑셀 가져오기는 준비 중입니다 (관리자 · 물류 · 입고 · 소싱 담당)"
                 >
                   <Icon name="plus" size={14} />
-                  입고 등록
+                  입고예정 등록
                 </button>
               </div>
             </div>
@@ -638,12 +816,24 @@ export const DashboardInbound = () => {
                             "-"
                           )}
                         </td>
-                        <td className="num">{num(r.qty)}</td>
+                        <td className="num">
+                          {num(r.qty)}
+                          {r.receivedQty > 0 && r.receivedQty !== r.qty ? (
+                            <div className="inb-sub">받음 {num(r.receivedQty)}</div>
+                          ) : null}
+                        </td>
                         <td>
                           <span className={`ds-badge ${st?.tone ?? "gray"}`}>
                             <i className="bdot" />
                             {st?.label ?? r.status}
                           </span>
+                          {isPartial(r) ? (
+                            <div className="inb-sub inb-partial">
+                              {r.receiptCount}회 받음 · 남음 {num(r.remainingQty)}
+                            </div>
+                          ) : r.closedQty > 0 && r.status !== "closed" ? (
+                            <div className="inb-sub">닫음 {num(r.closedQty)}</div>
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -720,6 +910,27 @@ export const DashboardInbound = () => {
                   </div>
                 </dl>
 
+                {selected.receivedQty > 0 || selected.closedQty > 0 ? (
+                  <div className="inb-qtys" aria-label="수량">
+                    <div>
+                      <span>예정</span>
+                      <b>{num(selected.qty)}</b>
+                    </div>
+                    <div>
+                      <span>받음</span>
+                      <b className="is-ok">{num(selected.receivedQty)}</b>
+                    </div>
+                    <div>
+                      <span>닫음</span>
+                      <b className={selected.closedQty ? "is-closed" : ""}>{num(selected.closedQty)}</b>
+                    </div>
+                    <div>
+                      <span>남음</span>
+                      <b className={selected.remainingQty ? "is-wait" : ""}>{num(selected.remainingQty)}</b>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="inb-lines-head">
                   <span>품목 {selLines.length}건</span>
                   <b>예정 {num(selected.qty)} EA</b>
@@ -728,13 +939,13 @@ export const DashboardInbound = () => {
                 <div className="inb-lines">
                   {selLines.map((ln) => {
                     const pct = ln.expectedQty ? Math.round((ln.receivedQty / ln.expectedQty) * 100) : 0;
-                    const short = ln.receivedQty > 0 && ln.receivedQty < ln.expectedQty;
+                    const waiting = ln.receivedQty > 0 && ln.remainingQty > 0;
                     const none = ln.receivedQty === 0;
                     return (
-                      <article key={ln.id} className={`inb-line${short ? " is-short" : ""}`}>
+                      <article key={ln.id} className="inb-line">
                         <div className="inb-line-top">
                           <span className="inb-line-sku">{ln.itemCode}</span>
-                          <span className={`inb-line-qty${short ? " is-short" : none ? " is-none" : " is-done"}`}>
+                          <span className={`inb-line-qty${waiting ? " is-wait" : none ? " is-none" : " is-done"}`}>
                             {num(ln.receivedQty)} / {num(ln.expectedQty)}
                           </span>
                         </div>
@@ -745,10 +956,12 @@ export const DashboardInbound = () => {
                             {ln.locationCode ?? "로케이션 미지정"}
                           </span>
                           {ln.trackingNo ? <span className="inb-chip is-mono">{ln.trackingNo}</span> : null}
+                          {waiting ? <span className="inb-chip is-wait">남음 {num(ln.remainingQty)}</span> : null}
+                          {ln.closedQty > 0 ? <span className="inb-chip">닫음 {num(ln.closedQty)}</span> : null}
                           {ln.consign ? <span className="ds-badge consign">외주</span> : null}
                           {ln.inspected ? <span className="ds-badge info">검사</span> : null}
                         </div>
-                        <div className={`nx-bar ${short ? "is-danger" : none ? "" : "is-ok"} inb-line-bar`}>
+                        <div className={`nx-bar ${waiting ? "is-info" : none ? "" : "is-ok"} inb-line-bar`}>
                           <i style={{ width: `${Math.min(pct, 100)}%` }} />
                         </div>
                       </article>
@@ -757,10 +970,30 @@ export const DashboardInbound = () => {
                   {!selLines.length ? <div className="nx-empty">품목 라인을 불러오는 중…</div> : null}
                 </div>
 
+                {selReceipts.length ? (
+                  <div className="inb-receipts">
+                    <div className="inb-lines-head">
+                      <span>입고 회차</span>
+                      <b>{selReceipts.length}번</b>
+                    </div>
+                    <ol>
+                      {selReceipts.map((rc) => (
+                        <li key={rc.id}>
+                          <span className="inb-rc-seq">{rc.seq}회차</span>
+                          <span className="inb-rc-date">{rc.receivedDate.slice(5)}</span>
+                          <span className="inb-chip is-mono">{rc.lotNo}</span>
+                          <b>{num(rc.qty)}</b>
+                          <span className="inb-rc-by">{rc.confirmedByName ?? rc.confirmedBy ?? "-"}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
                 {cta ? (
                   <>
                     <div className={`ds-callout ${cta.tone} inb-hint`}>
-                      <Icon name={cta.tone === "danger" ? "alert" : "check"} size={16} />
+                      <Icon name={cta.tone === "warning" ? "alert" : "check"} size={16} />
                       <span>{cta.hint}</span>
                     </div>
                     <div className="inb-detail-actions">
@@ -768,10 +1001,18 @@ export const DashboardInbound = () => {
                         <Icon name="grid" size={14} />
                         QR 라벨
                       </button>
-                      <button type="button" className="btn-primary inb-cta" disabled={busy} onClick={cta.run}>
-                        {cta.label}
-                        <Icon name="arrowR" size={15} />
-                      </button>
+                      {cta.side ? (
+                        <button type="button" className="inb-btn" disabled={busy} onClick={cta.side.run}>
+                          <Icon name={cta.side.icon} size={14} />
+                          {cta.side.label}
+                        </button>
+                      ) : null}
+                      {cta.run ? (
+                        <button type="button" className="btn-primary inb-cta" disabled={busy} onClick={cta.run}>
+                          {cta.label}
+                          <Icon name="arrowR" size={15} />
+                        </button>
+                      ) : null}
                     </div>
                   </>
                 ) : null}
@@ -800,14 +1041,14 @@ export const DashboardInbound = () => {
                 <div className="inb-col-body">
                   {list.map((r) => {
                     const lines = linesById[r.id] ?? [];
-                    const done = lines.filter((l) => l.expectedQty > 0 && l.receivedQty === l.expectedQty).length;
-                    const short = lines.find((l) => l.receivedQty > 0 && l.receivedQty < l.expectedQty);
-                    const pct = lines.length ? Math.round((done / lines.length) * 100) : 0;
+                    // 받은 비율 — 나눠 입고면 남은 수량을 기다리는 중 (모자람이 아니라 대기)
+                    const pct = r.qty ? Math.min(100, Math.round((r.receivedQty / r.qty) * 100)) : 0;
+                    const partial = isPartial(r);
                     return (
                       <button
                         key={r.id}
                         type="button"
-                        className={`inb-card${short ? " is-short" : ""}${selId === r.id ? " is-sel" : ""}`}
+                        className={`inb-card${selId === r.id ? " is-sel" : ""}`}
                         onClick={() => revealRow(r)}
                       >
                         <span className="inb-card-top">
@@ -816,16 +1057,16 @@ export const DashboardInbound = () => {
                         </span>
                         <span className="inb-sub">{r.supplierName}</span>
                         <span className="inb-card-foot">
-                          <span>품목 {lines.length}건</span>
+                          <span>품목 {lines.length || "-"}건</span>
                           <b>{num(r.qty)} EA</b>
                         </span>
-                        <span className={`nx-bar ${short ? "is-danger" : pct === 100 ? "is-ok" : "is-info"}`}>
-                          <i style={{ width: `${short ? 100 : pct}%` }} />
+                        <span className={`nx-bar ${partial ? "is-info" : pct >= 100 || r.status === "confirmed" ? "is-ok" : "is-info"}`}>
+                          <i style={{ width: `${r.status === "confirmed" ? 100 : pct}%` }} />
                         </span>
-                        {short ? (
-                          <span className="inb-card-warn">
-                            <Icon name="alert" size={13} />
-                            {short.itemCode} 쇼트 −{num(short.expectedQty - short.receivedQty)}
+                        {partial ? (
+                          <span className="inb-card-wait">
+                            <Icon name="clock" size={13} />
+                            {r.receiptCount}회 받음 · 남음 {num(r.remainingQty)} 대기
                           </span>
                         ) : null}
                       </button>
@@ -1042,10 +1283,19 @@ export const DashboardInbound = () => {
             ))}
           </select>
         </label>
-        {(assignTarget ? linesById[assignTarget.id] ?? [] : []).map((ln) => (
+        {assignTarget && assignTarget.receiptCount > 0 ? (
+          <div className="ds-callout info" style={{ marginBottom: 10 }}>
+            <Icon name="clock" size={16} />
+            <span>
+              {assignTarget.receiptCount + 1}회차 — 남은 수량이 있는 줄만 지정합니다 (남음 {num(assignTarget.remainingQty)}).
+            </span>
+          </div>
+        ) : null}
+        {linesToAssign(assignTarget).map((ln) => (
           <label key={ln.id} className="ds-field">
             <span>
               {ln.itemCode} · {ln.itemName}
+              {ln.receivedQty > 0 ? ` (남음 ${num(ln.remainingQty)})` : ""}
             </span>
             <select
               value={assignLocs[ln.id] ?? ""}
@@ -1065,10 +1315,75 @@ export const DashboardInbound = () => {
       </Modal>
 
       {/* ---------- QR 입고라벨 ---------- */}
+      {/* ---------- 남은 수량 닫기 ---------- */}
+      <Modal
+        open={closeTarget !== null}
+        title="남은 수량 닫기"
+        desc={closeTarget ? `${closeTarget.inboundNo} · 남음 ${num(closeTarget.remainingQty)}` : ""}
+        icon="ban"
+        iconBg="var(--c-warning-bg)"
+        iconColor="var(--c-warning-ink)"
+        onClose={() => setCloseTarget(null)}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setCloseTarget(null)}>
+              취소
+            </button>
+            <button type="button" className="btn-primary" disabled={busy} onClick={doClose}>
+              닫기
+            </button>
+          </>
+        }
+      >
+        <div className="ds-callout info" style={{ marginBottom: 12 }}>
+          <Icon name="alert" size={16} />
+          <span>
+            끝내 안 오는 수량을 닫습니다 — ERP 발주를 줄이거나 닫은 만큼. 닫은 수량은 더 기다리지 않고, 남은 것이 없으면 입고가
+            끝납니다(받은 것이 없으면 '닫힘').
+          </span>
+        </div>
+        <label className="ds-field">
+          <span>닫는 이유</span>
+          <input
+            value={closeReason}
+            maxLength={200}
+            onChange={(e) => setCloseReason(e.target.value)}
+            placeholder="예: 공급사 결품 — ERP 발주 줄임"
+            autoFocus
+          />
+        </label>
+        {(closeTarget ? linesById[closeTarget.id] ?? [] : [])
+          .filter((ln) => ln.remainingQty > 0)
+          .map((ln) => (
+            <label key={ln.id} className="ds-field inb-close-line">
+              <span>
+                {ln.itemCode} · {ln.itemName}
+                <small>남음 {num(ln.remainingQty)}</small>
+              </span>
+              <input
+                type="number"
+                min={0}
+                max={ln.remainingQty}
+                value={closeQty[ln.id] ?? 0}
+                onChange={(e) =>
+                  setCloseQty((p) => ({ ...p, [ln.id]: Math.max(0, Math.floor(Number(e.target.value) || 0)) }))
+                }
+                aria-label={`${ln.itemCode} 닫을 수량`}
+              />
+            </label>
+          ))}
+        {closeError ? (
+          <div className="ds-callout danger" style={{ marginTop: 10 }}>
+            <Icon name="alert" size={16} />
+            <span>{closeError}</span>
+          </div>
+        ) : null}
+      </Modal>
+
       <Modal
         open={labelTarget !== null}
         title="QR 입고라벨"
-        desc={labelTarget ? `${labelTarget.inboundNo} · LOT-${labelTarget.inboundNo}` : ""}
+        desc={labelTarget ? `${labelTarget.inboundNo} · ${labelLot(labelTarget)}` : ""}
         icon="grid"
         iconBg="var(--primary-bg)"
         iconColor="var(--primary-ink)"
@@ -1082,7 +1397,7 @@ export const DashboardInbound = () => {
         {labelTarget ? (
           <div className="inb-label">
             <div className="inb-label-qr">
-              <QrBox value={`WMS-IN|${labelTarget.inboundNo}|LOT-${labelTarget.inboundNo}`} />
+              <QrBox value={`WMS-IN|${labelTarget.inboundNo}|${labelLot(labelTarget)}`} />
               <span>스캔용 QR</span>
             </div>
             <dl className="inb-meta">
@@ -1092,7 +1407,7 @@ export const DashboardInbound = () => {
               </div>
               <div>
                 <dt>LOT</dt>
-                <dd>LOT-{labelTarget.inboundNo}</dd>
+                <dd>{labelLot(labelTarget)}</dd>
               </div>
               <div>
                 <dt>공급처</dt>

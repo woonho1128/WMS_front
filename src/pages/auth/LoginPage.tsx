@@ -97,7 +97,7 @@ export const LoginPage = () => {
             데모 계정 · 비밀번호 <b>1234</b>
             <br />
             <code>admin</code> / <code>logistics</code> / <code>inbound</code> / <code>outbound</code> /{" "}
-            <code>inventory</code> / <code>partner</code>
+            <code>inventory</code> / <code>sourcing</code> / <code>partner</code>
           </div>
         ) : null}
       </form>

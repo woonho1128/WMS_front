@@ -342,6 +342,48 @@
 .inb-block-sub { font-size: 10px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inb-block .nx-bar { height: 3px; }
 
+/* ---------- 나눠 입고 (2026-10-28) — 남은 수량은 모자람이 아니라 대기: 경고색 대신 정보색 ---------- */
+.inb-partial { color: var(--primary-ink); font-weight: 700; }
+.inb-qtys {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0; padding: 10px 15px; gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.inb-qtys > div {
+  display: grid; gap: 2px; padding: 8px 10px;
+  border-radius: var(--r-sm); background: var(--surface-2); text-align: center;
+}
+.inb-qtys span { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); }
+.inb-qtys b { font-size: 15px; font-weight: 800; color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.inb-qtys b.is-ok { color: var(--c-success-ink); }
+.inb-qtys b.is-wait { color: var(--primary-ink); }
+.inb-qtys b.is-closed { color: var(--ink-muted); }
+.inb-line-qty.is-wait { color: var(--primary-ink); }
+.inb-chip.is-wait { background: var(--primary-bg); color: var(--primary-ink); }
+.inb-card-wait {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; color: var(--primary-ink);
+}
+
+.inb-receipts { padding: 0 0 6px; }
+.inb-receipts ol { list-style: none; margin: 0; padding: 0 15px 8px; display: grid; gap: 6px; }
+.inb-receipts li {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center; gap: 8px; padding: 7px 10px;
+  border: 1px solid var(--border-soft); border-radius: var(--r-sm);
+  font-size: 12px; color: var(--ink-muted);
+}
+.inb-receipts li b { color: var(--ink-strong); font-variant-numeric: tabular-nums; }
+.inb-receipts .inb-chip { justify-self: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.inb-rc-seq { font-weight: 800; color: var(--ink-strong); }
+.inb-rc-date { font-variant-numeric: tabular-nums; }
+.inb-rc-by { font-size: 11px; color: var(--ink-faint); }
+
+.inb-close-line { display: grid; grid-template-columns: minmax(0, 1fr) 110px; align-items: center; gap: 10px; margin-bottom: 10px; }
+.inb-close-line > span { display: flex; flex-direction: column; gap: 2px; }
+.inb-close-line small { font-size: 11px; color: var(--ink-faint); font-weight: 600; }
+.inb-close-line input { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* ---------- QR 라벨 모달 ---------- */
 .inb-label { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
 .inb-label-qr {

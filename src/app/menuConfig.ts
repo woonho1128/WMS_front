@@ -96,12 +96,14 @@ export const menuSections: MenuSection[] = [
     label: "기준정보관리",
     group: "SETTINGS",
     iconPath: "M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z",
-    description: "품목·로케이션·배송사·재고정책 기준정보를 관리합니다.",
+    description: "품목·로케이션·배송사·재고정책 기준정보와 계정을 관리합니다.",
     features: [
       { slug: "item-master", label: "품목 마스터", description: "품목 등록·수정과 TI/HI·중량·부피·안전재고를 관리합니다." },
       { slug: "location-master", label: "로케이션 관리", description: "로케이션 생성·수정과 유형(피킹/보충/직출/불량/파손)을 관리합니다." },
       { slug: "carrier-master", label: "배송사 관리", description: "배송사 등록·수정·삭제와 계정 권한을 관리합니다." },
-      { slug: "stock-policy", label: "가용재고 정책관리", description: "예약·불량·이동중 재고 반영 설정과 계산식을 관리합니다." }
+      { slug: "stock-policy", label: "가용재고 정책관리", description: "예약·불량·이동중 재고 반영 설정과 계산식을 관리합니다." },
+      // 관리자만 — 다른 역할은 기준정보관리의 화면을 골라서 받으므로 여기 더해도 보이지 않는다
+      { slug: "user-admin", label: "계정 관리", description: "계정 만들기·역할·잠그기와 비밀번호 초기화를 관리합니다." }
     ]
   },
   {
@@ -194,6 +196,16 @@ export const roleMenuConfig: MenuConfigByRole = {
     { section: "history", features: ["transfer-history"] },
     { section: "communication", features: ["notice"] }
   ],
+  // 소싱 — 입고예정(언제 · 무엇이 · 얼마나)을 넣고 고치고, 끝내 안 오는 수량을 닫는다. 도착 · 검수 · 격납은 물류
+  sourcing: [
+    { section: "dashboard", features: ["inbound-status"] },
+    { section: "inbound", features: ["inbound-schedule"] },
+    { section: "stock", features: ["stock-realtime", "stock-available"] },
+    { section: "master", features: ["item-master"] },
+    { section: "analytics", features: ["inbound-summary", "shortage"] },
+    { section: "history", features: ["inbound-history"] },
+    { section: "communication", features: ["notice"] }
+  ],
   partner: [
     { section: "dashboard", features: ["outbound-status"] },
     { section: "outbound", features: ["delivery-note"] },
@@ -210,6 +222,7 @@ export const RECOMMENDED_FAVORITES: Record<string, string[]> = {
   inbound: ["/inbound/inbound-schedule", "/inbound/inbound-confirm", "/stock/putaway", "/stock/stock-realtime", "/stock/barcode-lookup"],
   outbound: ["/outbound/outbound-order", "/outbound/picking", "/outbound/outbound-confirm", "/outbound/outbound-photo", "/dispatch/dispatch-metro"],
   inventory: ["/stock/stock-realtime", "/stock/replenishment", "/stock/stocktaking", "/stock/erp-compare", "/stock/fifo-status"],
+  sourcing: ["/inbound/inbound-schedule", "/dashboard/inbound-status", "/analytics/shortage", "/stock/stock-realtime", "/history/inbound-history"],
   logistics: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/dashboard/floor-board"],
   admin: ["/dashboard/logistics-status", "/dashboard/inbound-status", "/dashboard/outbound-status", "/dashboard/work-alerts", "/dashboard/floor-board"],
   partner: ["/dashboard/outbound-status", "/outbound/delivery-note", "/dispatch/dispatch-regional"]
@@ -232,6 +245,16 @@ export const getMenuSectionsForRole = (role: string) => {
     })
     .filter((section): section is MenuSection => Boolean(section))
     .filter((section) => section.features.length > 0);
+};
+
+/**
+ * 이 역할의 첫 화면 — 보통은 preferred(물류 현황). 그 화면이 메뉴에 없는 역할(소싱 · 거래처)은 메뉴의 첫 화면으로
+ * ("접근 권한이 없습니다" 로 시작하지 않게).
+ */
+export const homePathFor = (role: string, preferred: string) => {
+  if (resolveScreenPath(preferred, role).status === "ok") return preferred;
+  const first = getMenuSectionsForRole(role)[0];
+  return first?.features[0] ? `/${first.slug}/${first.features[0].slug}` : preferred;
 };
 
 /** 경로 하나가 어떤 화면인가 — 메뉴에 있는지, 이 역할이 볼 수 있는지까지 본다 */
