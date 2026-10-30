@@ -112,7 +112,8 @@ export const StockStatusPage = () => {
                           <i style={{ width: `${Math.min(cover, 100)}%` }} />
                         </span>
                         <small>
-                          <span className="sd-code">{row.itemCode}</span> · 가용 {fmt(row.available)} / 안전 {fmt(row.safetyStock)} {row.unit} · {row.daysOfStock}일분
+                          <span className="sd-code">{row.itemCode}</span> · 가용 {fmt(row.available)} / 안전 {fmt(row.safetyStock)} {row.unit} ·{" "}
+                          {row.daysOfStock == null ? "최근 출고 없음" : `${row.daysOfStock}일분`}
                           {row.shortageEta ? ` · 쇼트 예상 ${row.shortageEta.slice(5)}` : ""}
                         </small>
                       </li>

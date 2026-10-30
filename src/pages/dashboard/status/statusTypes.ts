@@ -11,7 +11,8 @@ export type KpiTrend = { kind: "line" | "bars"; values: number[] };
 export type Kpi = {
   key: string;
   label: string;
-  value: number;
+  /** null(또는 없음) = 아직 셀 수 없다 — 화면은 '—' (예: ERP 재고 비교가 생기기 전의 ERP 재고 일치율) */
+  value: number | null;
   unit?: string;
   /** 소수 자리 (비율 등) */
   digits?: number;
@@ -130,7 +131,8 @@ export type StockDashboard = {
     unit: string;
     available: number;
     safetyStock: number;
-    daysOfStock: number;
+    /** 남은 일수 — 최근 30일 출고가 없으면 null */
+    daysOfStock: number | null;
     shortageEta: string | null;
     risk: string;
   }>;

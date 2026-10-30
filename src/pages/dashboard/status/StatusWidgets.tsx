@@ -217,8 +217,15 @@ export const KpiCard = ({ kpi }: { kpi: Kpi }) => {
         {kpi.badge ? <span className={`ds-badge ${kpi.badge.tone}`}>{kpi.badge.text}</span> : null}
       </span>
       <span className="sd-kpi-value">
-        {fmt(kpi.value, kpi.digits ?? 0)}
-        {kpi.unit ? <small>{kpi.unit}</small> : null}
+        {kpi.value == null ? (
+          // 아직 셀 수 없는 지표 — 0 으로 보이면 틀린 숫자가 된다
+          <span className="sd-cell-muted">—</span>
+        ) : (
+          <>
+            {fmt(kpi.value, kpi.digits ?? 0)}
+            {kpi.unit ? <small>{kpi.unit}</small> : null}
+          </>
+        )}
       </span>
       {kpi.sub ? <span className="sd-kpi-sub">{kpi.sub}</span> : null}
       <span className="sd-kpi-foot">
