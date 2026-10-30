@@ -691,15 +691,22 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
 
     ctx
       .outbounds()
-      .filter((row) => (row.status === "피킹완료" || row.status === "출고완료") && String(row.scheduledDate) <= ctx.today && !dispatchedNos.has(row.outboundNo))
+      // 나간 것(출고완료)은 끝난 일이라 지울 방법이 없다 — 최근 7일 예정분만 (서버와 같다)
+      .filter(
+        (row) =>
+          (row.status === "피킹완료" || (row.status === "출고완료" && daysBetween(String(row.scheduledDate), ctx.today) < 7)) &&
+          String(row.scheduledDate) <= ctx.today &&
+          !dispatchedNos.has(row.outboundNo)
+      )
       .forEach((row) => {
         const region = regionOf(row.shipAddress);
+        const when = row.scheduledDate === ctx.today ? "오늘 나가야 합니다" : `예정일 ${mmdd(String(row.scheduledDate))}, 배차 기록 없음`;
         push({
           id: `out-dispatch-${row.id}`,
           severity: "warning",
           category: "출고",
           title: "배차 전",
-          message: `${row.outboundNo} ${row.customerName} · ${region} · ${row.carrier} — 오늘 나가야 합니다`,
+          message: `${row.outboundNo} ${row.customerName} · ${region}${row.carrier ? ` · ${row.carrier}` : ""} — ${when}`,
           refs: [String(row.outboundNo)],
           action: { label: region === "수도권" ? "수도권 배차" : "지방권 배차", to: region === "수도권" ? "/dispatch/dispatch-metro" : "/dispatch/dispatch-regional" }
         });
@@ -708,7 +715,8 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     /* 연동 */
     ctx
       .interfaces()
-      .filter((row) => row.state === "fail")
+      // 보낸 메시지가 실패한 것만 — 받은 쪽 거절은 상대가 고칠 일 (서버와 같다)
+      .filter((row) => row.state === "fail" && row.direction !== "RECV")
       .forEach((row) =>
         push({
           id: `if-${row.id}`,
@@ -870,6 +878,8 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     const shippedToday = new Set(todays("outbound-confirm").map((event) => event.ref));
     const rows = ctx
       .outbounds()
+      // 취소 · 시범은 나가지 않으니 어디에도 넣지 않는다 (서버와 같다)
+      .filter((row) => row.status !== "취소" && row.status !== "시범")
       // 끝난·보류 건은 오늘 것만, 피킹 전 건은 출고예정일이 오늘까지인 것만
       .filter((row) =>
         row.status === "출고완료" ? row.scheduledDate === ctx.today || shippedToday.has(row.outboundNo)
