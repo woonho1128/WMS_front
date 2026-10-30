@@ -441,13 +441,21 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     };
   };
 
+  /** 입고 회차의 LOT 인가 — 1회차 LOT-{입고번호}, 2회차부터 LOT-{입고번호}-{회차} (나눠 입고) */
+  const isInboundLot = (lotNo: unknown, inboundNo: unknown) =>
+    lotNo === `LOT-${inboundNo}` || String(lotNo).startsWith(`LOT-${inboundNo}-`);
+
   const inboundStage = (row: AnyRecord) => {
     if (row.status !== "confirmed") return String(row.status);
     const waiting = ctx
       .stocks()
-      .some((stock) => stock.stockStatus === "PUTAWAY_WAIT" && stock.lotNo === `LOT-${row.inboundNo}` && Number(stock.onHand) > 0);
+      .some((stock) => stock.stockStatus === "PUTAWAY_WAIT" && isInboundLot(stock.lotNo, row.inboundNo) && Number(stock.onHand) > 0);
     return waiting ? "putaway" : "done";
   };
+
+  /** 반려는 끝난 일이라 지울 방법이 없다 — 최근 7일만 알림 · 배지에 (서버와 같다) */
+  const recentlyRejected = () =>
+    ctx.returns().filter((row) => row.status === "rejected" && daysBetween(String(row.processedAt ?? ctx.today).slice(0, 10), ctx.today) < 7);
 
   const liveStocks = () => ctx.stocks().filter((stock) => Number(stock.onHand) > 0);
 
@@ -565,9 +573,10 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
         });
       });
 
+    // 끝난 건만 — 처리 중인 회차의 줄은 받은 수량이 지난 회차의 합이라 예정과 다른 게 정상 (나눠 입고)
     ctx
       .inbounds()
-      .filter((row) => row.status === "located" || row.status === "confirmed")
+      .filter((row) => row.status === "confirmed")
       .forEach((row) => {
         (ctx.inboundLines[row.id] ?? [])
           .filter((line) => Number(line.receivedQty) > 0 && Number(line.receivedQty) !== Number(line.expectedQty))
@@ -615,9 +624,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
           action: { label: "반품 확정", to: "/inbound/return-confirm" }
         })
       );
-    ctx
-      .returns()
-      .filter((row) => row.status === "rejected")
+    recentlyRejected()
       .forEach((row) =>
         push({
           id: `rt-rej-${row.id}`,
@@ -723,8 +730,12 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
   /* ---------------- 입고 현황 ---------------- */
   const inboundDashboard = () => {
     const handledToday = new Set([...todays("inbound-confirm"), ...todays("putaway")].map((event) => event.ref));
+    const handled = (inboundNo: unknown) =>
+      handledToday.has(String(inboundNo)) || [...handledToday].some((ref) => isInboundLot(ref, inboundNo));
     const rows = ctx
       .inbounds()
+      // 받은 것 없이 닫힌 입고는 진행도 완료도 아니다
+      .filter((row) => row.status !== "closed")
       .map((row) => {
         const stageKey = inboundStage(row);
         const stage = INBOUND_STAGES.find((item) => item.key === stageKey) ?? INBOUND_STAGES[0];
@@ -749,7 +760,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
       })
       // 끝난 건은 오늘 처리했거나 오늘 예정이던 것만, 손대기 전 건은 예정일이 오늘까지인 것만
       .filter((row) =>
-        row.stage === "done" ? row.expectedAt === ctx.today || handledToday.has(row.inboundNo) || handledToday.has(`LOT-${row.inboundNo}`)
+        row.stage === "done" ? row.expectedAt === ctx.today || handled(row.inboundNo)
         : row.stage !== "scheduled" || String(row.expectedAt) <= ctx.today
       )
       .sort(
@@ -772,7 +783,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     const waitingQty = sumOf(waiting, (stock) => stock.onHand);
     const oldestWait = waiting.reduce((max, stock) => Math.max(max, daysBetween(stock.receivedDate, ctx.today)), 0);
     const returnsWaiting = ctx.returns().filter((row) => row.status === "received");
-    const returnsRejected = ctx.returns().filter((row) => row.status === "rejected");
+    const returnsRejected = recentlyRejected();
 
     const kpis = [
       {
@@ -825,7 +836,7 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
         delta: delta(returnsWaiting.length, HISTORY.returnsWaiting[5], "건", false),
         trend: trend(HISTORY.returnsWaiting, returnsWaiting.length, "bars"),
         to: "/inbound/return-confirm",
-        hint: "OMS 에서 수신해 승인·반려를 기다리는 반품"
+        hint: "OMS 에서 수신해 승인·반려를 기다리는 반품 (반려 배지는 최근 7일)"
       }
     ];
 
