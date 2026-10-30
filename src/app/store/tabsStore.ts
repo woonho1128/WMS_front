@@ -116,6 +116,8 @@ const restoreTabs = (saved: OpenTab[]) => {
 
 type TabsState = {
   tabs: OpenTab[];
+  /** 이 탭들을 연 사람(아이디) — 다른 사람이 같은 창에서 로그인하면 앞 사람 탭을 비운다 */
+  owner: string | null;
   /** 한도를 넘어 자동으로 닫힌 탭 — 탭 바가 "다시 열기" 알림을 띄운다 (저장하지 않음) */
   evicted: OpenTab | null;
   /** 오른쪽 패널에 나란히 띄운 화면 경로 — null 이면 한 화면만 */
@@ -132,12 +134,17 @@ type TabsState = {
   openSplit: (path: string) => void;
   closeSplit: () => void;
   setSplitRatio: (ratio: number) => void;
+  /** 로그아웃 — 연 탭 · 분할 보기를 비운다 (공용 PC 에서 다음 사람에게 앞 사람 화면이 남지 않게) */
+  reset: () => void;
+  /** 로그인한 사람 — 탭을 연 사람과 다르면 비우고 주인을 바꾼다 (시간이 지나 끊긴 뒤 같은 사람이 다시 들어오면 그대로) */
+  claim: (userId: string) => void;
 };
 
 export const useTabsStore = create<TabsState>()(
   persist(
     (set, get) => ({
       tabs: [],
+      owner: null,
       evicted: null,
       splitPath: null,
       splitRatio: SPLIT_DEFAULT_RATIO,
@@ -190,19 +197,25 @@ export const useTabsStore = create<TabsState>()(
         if (isMenuPath(path)) set({ splitPath: path });
       },
       closeSplit: () => set({ splitPath: null }),
-      setSplitRatio: (ratio) => set({ splitRatio: clampSplitRatio(ratio) })
+      setSplitRatio: (ratio) => set({ splitRatio: clampSplitRatio(ratio) }),
+      reset: () => set({ tabs: [], owner: null, evicted: null, splitPath: null }),
+      claim: (userId) => {
+        if (get().owner === userId) return;
+        set({ tabs: [], owner: userId, evicted: null, splitPath: null });
+      }
     }),
     {
       name: "wms-open-tabs",
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (state) => ({ tabs: state.tabs, splitPath: state.splitPath, splitRatio: state.splitRatio }),
+      partialize: (state) => ({ tabs: state.tabs, owner: state.owner, splitPath: state.splitPath, splitRatio: state.splitRatio }),
       merge: (persisted, current) => {
-        const saved = persisted as Partial<Pick<TabsState, "tabs" | "splitPath" | "splitRatio">> | undefined;
+        const saved = persisted as Partial<Pick<TabsState, "tabs" | "owner" | "splitPath" | "splitRatio">> | undefined;
         if (!saved?.tabs) return current;
         const tabs = restoreTabs(saved.tabs);
         return {
           ...current,
           tabs,
+          owner: saved.owner ?? null,
           // 메뉴에서 빠진 화면은 패널에도 띄우지 않는다. 탭이 있는지는 보지 않는다 —
           // 탭형(DOCS/WMS_메뉴방식_즐겨찾기_설계.md)은 작업 탭 없이 나란히 본다
           splitPath: saved.splitPath && isMenuPath(saved.splitPath) ? saved.splitPath : null,

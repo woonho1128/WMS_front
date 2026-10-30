@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useCanOpen } from "../../../app/access";
 import { ResponsiveTable } from "../../../components/ui/ResponsiveTable/ResponsiveTable";
 import {
   AlertList,
@@ -22,6 +23,10 @@ import type { StockDashboard } from "./statusTypes";
 
 export const StockStatusPage = () => {
   const navigate = useNavigate();
+  const canOpen = useCanOpen();
+  // 행이 보내는 화면 — 못 여는 사람에겐 보기만
+  const toRealtime = canOpen("/stock/stock-realtime") ? () => navigate("/stock/stock-realtime") : undefined;
+  const toShortage = canOpen("/analytics/shortage") ? () => navigate("/analytics/shortage") : undefined;
   const { data, error, ts, reload } = useStatusData<StockDashboard>("/dashboard/stock");
 
   return (
@@ -60,7 +65,7 @@ export const StockStatusPage = () => {
                   </thead>
                   <tbody>
                     {data.warehouses.map((row) => (
-                      <tr key={row.name} onClick={() => navigate("/stock/stock-realtime")}>
+                      <tr key={row.name} className={toRealtime ? undefined : "is-static"} onClick={toRealtime}>
                         <td>
                           <b className="sd-strong">{row.name}</b>
                           {row.type === "외주" ? <span className="ds-badge consign sd-inline-badge">외주</span> : null}
@@ -103,7 +108,11 @@ export const StockStatusPage = () => {
                     const cover = row.safetyStock ? Math.round((row.available / row.safetyStock) * 100) : 100;
                     const danger = row.risk === "위험";
                     return (
-                      <li key={row.itemCode} className={`sd-risk sd-tone-${danger ? "danger" : "warning"}`} onClick={() => navigate("/analytics/shortage")}>
+                      <li
+                        key={row.itemCode}
+                        className={`sd-risk sd-tone-${danger ? "danger" : "warning"}${toShortage ? "" : " is-static"}`}
+                        onClick={toShortage}
+                      >
                         <span className="sd-risk-top">
                           <b>{row.itemName}</b>
                           <span className={`ds-badge ${danger ? "danger" : "warning"}`}>{row.risk}</span>

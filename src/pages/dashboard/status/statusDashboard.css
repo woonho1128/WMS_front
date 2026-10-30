@@ -124,6 +124,8 @@
 .sd-table { width: 100%; border-collapse: collapse; }
 .sd-table thead th { position: sticky; top: 0; z-index: 1; padding: 10px 12px; }
 .sd-table tbody tr { cursor: pointer; }
+/* 처리 화면을 못 여는 사람에겐 보기만 — 누르는 모양을 빼고 */
+.sd-table tbody tr.is-static, .sd-risk.is-static { cursor: default; }
 .sd-table td { vertical-align: middle; padding: 10px 12px; white-space: nowrap; }
 .sd-table th.num, .sd-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sd-code { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--primary-ink); white-space: nowrap; }

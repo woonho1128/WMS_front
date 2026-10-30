@@ -4,7 +4,7 @@ import { apiGet } from "../../services/http";
 import { appToday } from "../../shared/appDate";
 import { useUiStore } from "../../app/store/uiStore";
 import { useAuthStore } from "../../app/store/authStore";
-import { useCan } from "../../app/access";
+import { useCan, useCanOpen } from "../../app/access";
 import { Icon } from "../../components/ui/Icon";
 import { Modal } from "../../components/ui/Modal";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveTable";
@@ -96,6 +96,9 @@ const nowTime = () => {
 export const ControlTowerPage = () => {
   const navigate = useNavigate();
   const theme = useUiStore((state) => state.theme);
+  // 카드 · 행 · 링크가 보내는 화면 — 못 여는 사람에겐 누르지 않는 모양 (누르면 '권한이 없습니다'만 나왔다)
+  const canOpen = useCanOpen();
+  const go = (to: string) => (canOpen(to) ? () => navigate(to) : undefined);
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
@@ -293,21 +296,33 @@ export const ControlTowerPage = () => {
 
       {/* ---------- KPI 스트립 ---------- */}
       <div className="ct-kpis">
-        {kpis.map((kpi) => (
-          <button key={kpi.key} type="button" className="ct-kpi" onClick={() => navigate(kpi.to)}>
-            <span className={`nx-ico ${kpi.tone}`}>
-              <Icon name={kpi.icon} size={19} />
-            </span>
-            <span className="ct-kpi-body">
-              <span className="ct-kpi-label">{kpi.label}</span>
-              <span className="ct-kpi-value">
-                {loading ? "—" : kpi.value.toLocaleString()}
-                <small>{kpi.unit}</small>
+        {kpis.map((kpi) => {
+          const body = (
+            <>
+              <span className={`nx-ico ${kpi.tone}`}>
+                <Icon name={kpi.icon} size={19} />
               </span>
-            </span>
-            <span className="ct-kpi-foot">{kpi.foot ?? ""}</span>
-          </button>
-        ))}
+              <span className="ct-kpi-body">
+                <span className="ct-kpi-label">{kpi.label}</span>
+                <span className="ct-kpi-value">
+                  {loading ? "—" : kpi.value.toLocaleString()}
+                  <small>{kpi.unit}</small>
+                </span>
+              </span>
+              <span className="ct-kpi-foot">{kpi.foot ?? ""}</span>
+            </>
+          );
+          const open = go(kpi.to);
+          return open ? (
+            <button key={kpi.key} type="button" className="ct-kpi" onClick={open}>
+              {body}
+            </button>
+          ) : (
+            <div key={kpi.key} className="ct-kpi is-static">
+              {body}
+            </div>
+          );
+        })}
       </div>
 
       {/* ---------- 3D 맵 + 로케이션 현황 ---------- */}
@@ -454,10 +469,12 @@ export const ControlTowerPage = () => {
             if (slot) setSlotMenu({ slot, point: { x: 100000, y: 56 } });
           }}
           headAction={
-            <button type="button" className="ct-link" onClick={() => navigate("/master/location-master")}>
-              로케이션 관리
-              <Icon name="chevR" size={13} />
-            </button>
+            canOpen("/master/location-master") ? (
+              <button type="button" className="ct-link" onClick={() => navigate("/master/location-master")}>
+                로케이션 관리
+                <Icon name="chevR" size={13} />
+              </button>
+            ) : null
           }
           zoneFooter={
             map.selectedZone ? (
@@ -473,13 +490,17 @@ export const ControlTowerPage = () => {
           }
           locationFooter={
             <>
-              <button type="button" className="btn-secondary wmp-cta" onClick={() => navigate("/stock/stock-realtime")}>
-                실시간 재고
-              </button>
-              <button type="button" className="btn-primary wmp-cta" onClick={() => navigate("/stock/transfer")}>
-                재고 이동
-                <Icon name="arrowR" size={15} />
-              </button>
+              {canOpen("/stock/stock-realtime") ? (
+                <button type="button" className="btn-secondary wmp-cta" onClick={() => navigate("/stock/stock-realtime")}>
+                  실시간 재고
+                </button>
+              ) : null}
+              {canOpen("/stock/transfer") ? (
+                <button type="button" className="btn-primary wmp-cta" onClick={() => navigate("/stock/transfer")}>
+                  재고 이동
+                  <Icon name="arrowR" size={15} />
+                </button>
+              ) : null}
             </>
           }
         />
@@ -575,10 +596,12 @@ export const ControlTowerPage = () => {
               <span className="nx-sect-sub">실시간 배정 작업</span>
             </div>
             <div className="ct-panel-tools">
-              <button type="button" className="btn-primary ct-mini-btn" onClick={() => navigate("/outbound/manual-order")}>
-                <Icon name="plus" size={14} />
-                작업 등록
-              </button>
+              {canOpen("/outbound/manual-order") ? (
+                <button type="button" className="btn-primary ct-mini-btn" onClick={() => navigate("/outbound/manual-order")}>
+                  <Icon name="plus" size={14} />
+                  작업 등록
+                </button>
+              ) : null}
               <select
                 className="ct-select"
                 value={taskKind}
@@ -606,7 +629,7 @@ export const ControlTowerPage = () => {
               </thead>
               <tbody>
                 {visibleTasks.map((task) => (
-                  <tr key={task.taskNo} onClick={() => navigate(task.to)}>
+                  <tr key={task.taskNo} className={canOpen(task.to) ? undefined : "is-static"} onClick={go(task.to)}>
                     <td className="ct-mono">{task.taskNo}</td>
                     <td>{task.kind}</td>
                     <td>
@@ -638,10 +661,12 @@ export const ControlTowerPage = () => {
               <span className="nx-sect-title">재고 현황</span>
               <span className="nx-sect-sub">보관 구분별 수량</span>
             </div>
-            <button type="button" className="ct-link" onClick={() => navigate("/stock/stock-realtime")}>
-              전체보기
-              <Icon name="chevR" size={13} />
-            </button>
+            {canOpen("/stock/stock-realtime") ? (
+              <button type="button" className="ct-link" onClick={() => navigate("/stock/stock-realtime")}>
+                전체보기
+                <Icon name="chevR" size={13} />
+              </button>
+            ) : null}
           </div>
 
           <div className="ct-donut-wrap">

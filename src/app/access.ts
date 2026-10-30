@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { resolveScreenPath } from "./menuConfig";
 import { useAuthStore } from "./store/authStore";
 
 /* ============================================================
@@ -69,6 +70,19 @@ export const useCan = (...features: string[]): boolean => {
   const access = useAccess();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => hasFeature(access, ...features), [access, ...features]);
+};
+
+/**
+ * 이 주소의 화면을 열 수 있나 — 대시보드 카드 · 행 · 알림이 권한 없는 화면으로 보내지 않게 (2026-10-30 입고 점검).
+ * 화면이 쓰는 판정(FeaturePage · 분할 보기)과 같다. 주소 뒤 ?… #… 는 떼고 본다.
+ *   const canOpen = useCanOpen(); canOpen("/stock/putaway")
+ */
+export const useCanOpen = () => {
+  const access = useAccess();
+  return useCallback(
+    (to: string | null | undefined) => Boolean(to) && resolveScreenPath((to as string).split(/[?#]/)[0], access).status === "ok",
+    [access]
+  );
 };
 
 /** 화면 주소(경로)의 보기 기능 — "/outbound/picking" → "outbound/picking:view" */

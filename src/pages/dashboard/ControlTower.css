@@ -52,6 +52,9 @@
   transition: transform var(--dur-1) var(--ease), border-color var(--dur-1), box-shadow var(--dur-1);
 }
 .ct-kpi:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: var(--sh-pop); }
+/* 그 화면을 못 여는 사람 — 숫자만 보여 주고 누르는 모양은 뺀다 */
+.ct-kpi.is-static { cursor: default; }
+.ct-kpi.is-static:hover { transform: none; border-color: var(--border); box-shadow: var(--sh-card), var(--hairline-top); }
 .ct-kpi-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ct-kpi-label { font-size: 12px; font-weight: 700; color: var(--ink-muted); white-space: nowrap; }
 .ct-kpi-value {
@@ -131,6 +134,8 @@
 .ct-table { width: 100%; border-collapse: collapse; }
 .ct-table thead th { position: sticky; top: 0; z-index: 1; }
 .ct-table tbody tr { cursor: pointer; }
+/* 그 화면을 못 여는 사람에겐 보기만 */
+.ct-table tbody tr.is-static { cursor: default; }
 .ct-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ct-time { color: var(--ink-muted); }
 .ct-mono { font-family: var(--font-mono); font-size: 12px; color: var(--ink-strong); }

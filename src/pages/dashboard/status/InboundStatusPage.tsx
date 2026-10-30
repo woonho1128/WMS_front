@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCanOpen } from "../../../app/access";
 import { ResponsiveTable } from "../../../components/ui/ResponsiveTable/ResponsiveTable";
 import {
   AlertList,
@@ -29,6 +30,7 @@ const daysLate = (expectedAt: string, today: string) => Math.max(1, Math.round((
 
 export const InboundStatusPage = () => {
   const navigate = useNavigate();
+  const canOpen = useCanOpen();
   const { data, error, ts, reload } = useStatusData<InboundDashboard>("/dashboard/inbound");
   const [stage, setStage] = useState<string | null>(null);
 
@@ -83,7 +85,13 @@ export const InboundStatusPage = () => {
                       </tr>
                     ) : (
                       rows.map((row) => (
-                        <tr key={row.id} onClick={() => navigate(row.to)} title={`${row.stageLabel} — 누르면 처리 화면으로 갑니다`}>
+                        <tr
+                          key={row.id}
+                          // 처리 화면을 못 여는 사람(예: 소싱 → 격납 대기)에겐 보기만
+                          className={canOpen(row.to) ? undefined : "is-static"}
+                          onClick={canOpen(row.to) ? () => navigate(row.to) : undefined}
+                          title={canOpen(row.to) ? `${row.stageLabel} — 누르면 처리 화면으로 갑니다` : row.stageLabel}
+                        >
                           <td>
                             <span className="sd-code">{row.inboundNo}</span>
                             <span className={`sd-cell-sub${KIND_TONE[row.kind] ? ` is-tone sd-tone-${KIND_TONE[row.kind]}` : ""}`}>{row.kind} 입고</span>

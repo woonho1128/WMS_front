@@ -8,6 +8,7 @@ import {
   type AuthUser,
   type LoginResult
 } from "../../services/authService";
+import { useTabsStore } from "./tabsStore";
 
 type AuthState = {
   user: AuthUser | null;
@@ -50,6 +51,8 @@ export const useAuthStore = create<AuthState>()(
         set({ status: "loading", error: null });
         try {
           const { user, token } = await loginRequest(id, password);
+          // 다른 사람이 같은 창에서 들어오면 앞 사람이 연 탭을 비운다 — 화면을 그리기 전에
+          useTabsStore.getState().claim(user.id);
           set({ user: normalize(user), token, status: "idle", error: null });
           return true;
         } catch (error) {
@@ -64,6 +67,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           await logoutRequest();
         } finally {
+          // 연 탭도 비운다 — 공용 PC 에서 다음 사람에게 앞 사람 화면이 남지 않게 (시간이 지나 끊긴 것은 그대로 둔다)
+          useTabsStore.getState().reset();
           set({ user: null, token: null, status: "idle", error: null });
         }
       },

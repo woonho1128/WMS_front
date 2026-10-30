@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCanOpen } from "../../../app/access";
 import { Icon } from "../../../components/ui/Icon";
 import { apiGet } from "../../../services/http";
 import type { AlertCategory, AlertItem, BreakdownRow, FlowStage, Hourly, Kpi, KpiTrend, Tone } from "./statusTypes";
@@ -135,8 +136,11 @@ export const Panel = ({
   </section>
 );
 
+/** 다른 화면으로 가는 글자 단추 — 그 화면을 못 여는 사람에겐 그리지 않는다 */
 export const LinkButton = ({ label, to }: { label: string; to: string }) => {
   const navigate = useNavigate();
+  const canOpen = useCanOpen();
+  if (!canOpen(to)) return null;
   return (
     <button type="button" className="sd-link" onClick={() => navigate(to)}>
       {label}
@@ -208,6 +212,7 @@ const MiniTrend = ({ trend }: { trend: KpiTrend }) => {
 
 export const KpiCard = ({ kpi }: { kpi: Kpi }) => {
   const navigate = useNavigate();
+  const canOpen = useCanOpen();
   const delta = kpi.delta;
   const deltaClass = !delta || delta.value === 0 || delta.good === null ? "is-flat" : delta.good ? "is-good" : "is-bad";
   const body = (
@@ -241,7 +246,8 @@ export const KpiCard = ({ kpi }: { kpi: Kpi }) => {
       </span>
     </>
   );
-  if (!kpi.to) {
+  // 갈 화면이 없거나 못 여는 화면이면 누르는 카드가 아니다 (누르면 '권한이 없습니다'만 나왔다)
+  if (!kpi.to || !canOpen(kpi.to)) {
     return (
       <div className={`sd-kpi sd-tone-${kpi.tone}`} title={kpi.hint}>
         {body}
@@ -467,6 +473,7 @@ const Highlight = ({ text, refs }: { text: string; refs: string[] }) => {
 
 export const AlertList = ({ alerts, empty, limit }: { alerts: AlertItem[]; empty: string; limit?: number }) => {
   const navigate = useNavigate();
+  const canOpen = useCanOpen();
   if (!alerts.length) {
     return (
       <div className="sd-alerts-box">
@@ -495,7 +502,7 @@ export const AlertList = ({ alerts, empty, limit }: { alerts: AlertItem[]; empty
                 {alert.at ? ` · ${alert.at}` : ""}
               </small>
             </div>
-            {alert.action ? (
+            {alert.action && canOpen(alert.action.to) ? (
               <button type="button" className="sd-alert-go" onClick={() => navigate(alert.action!.to)}>
                 {alert.action.label}
                 <Icon name="chevR" size={13} />
