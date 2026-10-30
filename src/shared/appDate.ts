@@ -33,6 +33,16 @@ export const shiftDays = (n: number) => {
 /** 화면 기준 "이번 달" yyyy-MM */
 export const currentMonth = () => todayStr().slice(0, 7);
 
+/**
+ * yyyy-MM-dd 부터 화면 기준 오늘까지 지난 날 수 — 달력 날짜로 센다(오늘 들어온 것은 0일, 미래는 음수).
+ * 지금 시각과의 차이를 반올림하면 오후엔 하루가 더 붙는다 (2026-10-30 입고 점검).
+ */
+export const daysSince = (ymd: string) => {
+  const today = appToday();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((start.getTime() - new Date(`${ymd}T00:00:00`).getTime()) / 86_400_000);
+};
+
 /** yyyy-MM-dd 에서 n일 이동한 yyyy-MM-dd */
 export const addDays = (ymd: string, n: number) => {
   const d = new Date(`${ymd}T00:00:00`);

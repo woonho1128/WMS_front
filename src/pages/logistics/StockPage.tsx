@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
-import { appToday } from "../../shared/appDate";
+import { daysSince } from "../../shared/appDate";
 import "./StockPage.css";
 
 /* ============================================================
@@ -93,11 +93,10 @@ const bucketOf = (util: number) =>
 const ageTone = (age: number) => (age >= 60 ? "danger" : age >= 30 ? "warning" : "gray");
 
 const num = (n: number) => n.toLocaleString("ko-KR");
-const daysBetween = (from: string | null) => {
-  if (!from) return 0;
-  const ms = appToday().getTime() - new Date(`${from}T00:00:00`).getTime();
-  return Math.max(0, Math.round(ms / 86400000));
-};
+/** 입고일부터 지난 날 — 달력 기준 (오늘 들어온 것은 0일) */
+const daysBetween = (from: string | null) => (from ? Math.max(0, daysSince(from)) : 0);
+/** LOT 번호 수 — 한 LOT 이 품목 · 칸마다 줄이 나뉘어도 하나로 센다 */
+const lotCount = (rows: Array<{ lot: string }>) => new Set(rows.map((row) => row.lot)).size;
 
 export const StockPage = () => {
   const navigate = useNavigate();
@@ -231,7 +230,7 @@ export const StockPage = () => {
 
   const meta = useMemo(() => {
     const skus = new Set(locAggs.flatMap((l) => l.lots.map((x) => x.sku)));
-    const lots = locAggs.reduce((a, l) => a + l.lots.length, 0);
+    const lots = lotCount(locAggs.flatMap((l) => l.lots));
     return `${locAggs.length} 로케이션 · ${skus.size} SKU · ${lots} LOT`;
   }, [locAggs]);
 
@@ -242,7 +241,7 @@ export const StockPage = () => {
       !kw || `${l.code} ${x.sku} ${x.name} ${x.lot}`.toLowerCase().includes(kw);
 
     if (group === "item") {
-      const by = new Map<string, { title: string; sub: string; places: Set<string>; qty: number; avail: number; alloc: number; putaway: number; defect: number; rows: Array<{ c1: string; c2: string; badge: string; tone: string; lot: string; date: string; age: number; qty: number; avail: number }> }>();
+      const by = new Map<string, { title: string; sub: string; places: Set<string>; qty: number; avail: number; alloc: number; putaway: number; defect: number; rows: Array<{ c1: string; c2: string; badge: string; tone: string; status?: { label: string; tone: string }; lot: string; date: string; age: number; qty: number; avail: number }> }>();
       locAggs.forEach((l) =>
         l.lots.forEach((x) => {
           if (!match(l, x)) return;
@@ -262,6 +261,8 @@ export const StockPage = () => {
             c2: `${l.zoneName} · 적재율 ${l.util}%`,
             badge: LOC_TYPE[l.locationType]?.label ?? l.locationType,
             tone: LOC_TYPE[l.locationType]?.tone ?? "gray",
+            // 가용이 아닌 줄(격납대기 · 불량 …)은 상태도 붙인다 — '가용 0' 만으로는 왜 못 쓰는지 모른다
+            status: x.status === "AVAILABLE" ? undefined : STOCK_STATUS[x.status] ?? { label: x.status, tone: "gray" },
             lot: x.lot, date: x.date, age: x.age,
             qty: x.qty,
             avail: x.status === "AVAILABLE" ? x.qty - x.alloc : 0
@@ -271,7 +272,7 @@ export const StockPage = () => {
       );
       return Array.from(by.values())
         .sort((a, b) => b.qty - a.qty)
-        .map((g) => ({ ...g, meta: `${g.places.size} 로케이션 · ${g.rows.length} LOT` }));
+        .map((g) => ({ ...g, meta: `${g.places.size} 로케이션 · ${lotCount(g.rows)} LOT` }));
     }
 
     return locAggs
@@ -279,13 +280,15 @@ export const StockPage = () => {
       .map((l) => ({
         title: l.code,
         sub: l.zoneName,
-        meta: `적재율 ${l.util}% · ${l.lots.length} LOT`,
+        meta: `적재율 ${l.util}% · ${lotCount(l.lots)} LOT`,
         qty: l.qty, avail: l.avail, alloc: l.alloc, putaway: l.putaway, defect: l.defect,
         rows: l.lots.filter((x) => match(l, x)).map((x) => ({
           c1: x.sku,
           c2: x.name,
+          // 로케이션별 보기는 둘째 칸이 이미 재고상태다
           badge: STOCK_STATUS[x.status]?.label ?? x.status,
           tone: STOCK_STATUS[x.status]?.tone ?? "gray",
+          status: undefined as { label: string; tone: string } | undefined,
           lot: x.lot, date: x.date, age: x.age,
           qty: x.qty,
           avail: x.status === "AVAILABLE" ? x.qty - x.alloc : 0
@@ -471,7 +474,7 @@ export const StockPage = () => {
                   <div className="stk-break-head">
                     <span>재고 구성</span>
                     <b>
-                      {num(selected.qty)} EA · {selected.lots.length} LOT
+                      {num(selected.qty)} EA · {lotCount(selected.lots)} LOT
                     </b>
                   </div>
                   <div className="stk-stack">
@@ -583,6 +586,7 @@ export const StockPage = () => {
                         </td>
                         <td>
                           <span className={`ds-badge ${r.tone}`}>{r.badge}</span>
+                          {r.status ? <span className={`ds-badge ${r.status.tone} stk-status-tag`}>{r.status.label}</span> : null}
                         </td>
                         <td className="stk-mono">{r.lot}</td>
                         <td className="stk-mono">{r.date}</td>

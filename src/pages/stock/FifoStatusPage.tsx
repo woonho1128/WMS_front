@@ -5,6 +5,7 @@ import { Icon } from "../../components/ui/Icon";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
+import { daysSince as daysSinceDate } from "../../shared/appDate";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
 
 type FifoRow = {
@@ -22,11 +23,8 @@ type FifoRow = {
   priorityOut: boolean;
 };
 
-const daysSince = (d: string | null) => {
-  if (!d) return null;
-  const ms = Date.now() - new Date(d + "T00:00:00").getTime();
-  return Math.max(0, Math.floor(ms / 86400000));
-};
+/** 입고일부터 지난 날 — 실시간 재고와 같은 계산 (달력 기준, 목 모드면 목 기준일부터) */
+const daysSince = (d: string | null) => (d ? Math.max(0, daysSinceDate(d)) : null);
 
 /** 선입선출(FIFO) 현황 — 파레트 단위 관리용. 강제 출고가 아닌 우선출고 기준 정보 제공 */
 export const FifoStatusPage = () => {
