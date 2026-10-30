@@ -7,6 +7,7 @@ import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { zoneHoldsRacks, type LayoutRack, type LayoutSummaryRow } from "../../components/warehouse3d/types";
+import { WAREHOUSE_MAP_READY } from "../../components/warehouse3d/mapReady";
 import { LocationCapaView } from "./LocationCapaView";
 import { LocationLabelDialog, type LabelTarget } from "./LocationLabels";
 import { LayoutEditor } from "./layoutEditor/LayoutEditor";
@@ -143,7 +144,8 @@ export const InventoryLocationPage = () => {
     Promise.all([
       apiGet<LocationRow[]>("/locations"),
       apiGet<ZoneOption[]>("/zones"),
-      apiGet<LayoutSummaryRow[]>("/warehouse/layout-summary")
+      // 3D 배치 요약은 서버에 지도 API 가 생긴 뒤에만(mapReady.ts) — 없는 API 를 같이 부르면 목록까지 실패한다
+      WAREHOUSE_MAP_READY ? apiGet<LayoutSummaryRow[]>("/warehouse/layout-summary") : Promise.resolve<LayoutSummaryRow[]>([])
     ])
       .then(([l, z, s]) => { setRows(l); setZones(z); setLayoutSummary(s); })
       .catch((e) => setError(e instanceof Error ? e.message : "조회 실패"))
@@ -155,7 +157,8 @@ export const InventoryLocationPage = () => {
   useEffect(() => {
     setNewRackId("");
     setNewCell("");
-    if (newZone === "") {
+    // 랙은 3D 배치와 함께 생긴다 — 그 전에는 미배치로만 등록한다
+    if (newZone === "" || !WAREHOUSE_MAP_READY) {
       setZoneRacks([]);
       return;
     }
@@ -238,7 +241,13 @@ export const InventoryLocationPage = () => {
         // 배치를 고르면 3D 에 바로 나타나고, 비워 두면 배치 탭의 미배치 트레이로 간다
         ...(newRackId !== "" && newCell ? { rackId: newRackId, bay, level } : {})
       });
-      setNotice(`로케이션 ${newCode} 생성 완료${newRackId !== "" && newCell ? " — 3D 에 바로 나타납니다" : " — 미배치 상태입니다 (배치 탭에서 랙 칸에 놓으세요)"}`);
+      setNotice(
+        `로케이션 ${newCode} 생성 완료${
+          newRackId !== "" && newCell ? " — 3D 에 바로 나타납니다"
+          : WAREHOUSE_MAP_READY ? " — 미배치 상태입니다 (배치 탭에서 랙 칸에 놓으세요)"
+          : " — 미배치 상태입니다"
+        }`
+      );
       setCreateOpen(false);
       setNewCode(""); setNewMaxQty(""); setNewMaxWeight(""); setNewRackId(""); setNewCell("");
       await load();
@@ -606,7 +615,12 @@ export const InventoryLocationPage = () => {
               disabled={newZone === "" || zoneRacks.length === 0}
               onChange={(e) => { setNewRackId(e.target.value === "" ? "" : Number(e.target.value)); setNewCell(""); }}
             >
-              <option value="">{newZone === "" ? "Zone 먼저 선택" : zoneRacks.length ? "미배치로 등록" : "이 Zone 에 랙 없음"}</option>
+              <option value="">
+                {!WAREHOUSE_MAP_READY ? "미배치로 등록 (배치는 3D 와 함께 준비 중)"
+                  : newZone === "" ? "Zone 먼저 선택"
+                  : zoneRacks.length ? "미배치로 등록"
+                  : "이 Zone 에 랙 없음"}
+              </option>
               {zoneRacks.map((rack) => <option key={rack.id} value={rack.id}>{rack.code} ({rack.bays}연×{rack.levels}단)</option>)}
             </select>
           </label>
