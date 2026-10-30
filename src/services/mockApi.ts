@@ -285,6 +285,11 @@ function inboundView(row: AnyRecord) {
   const receivedQty = sum("receivedQty");
   const receiptCount = inboundReceipts[row.id]?.length ?? (receivedQty > 0 ? 1 : 0);
   const done = row.status === "confirmed" || row.status === "closed";
+  // 아직 격납 안 한 수량 — 회차 LOT 의 격납대기 재고 (서버 InboundMapper.findAll 과 같다)
+  const lots = new Set(Array.from({ length: receiptCount }, (_, i) => lotOf(row.inboundNo, i + 1)));
+  const putawayWaitQty = stocks
+    .filter((s) => s.stockStatus === "PUTAWAY_WAIT" && lots.has(s.lotNo) && Number(s.onHand) > 0)
+    .reduce((acc, s) => acc + Number(s.onHand), 0);
   return {
     ...row,
     receivedQty,
@@ -294,7 +299,8 @@ function inboundView(row: AnyRecord) {
     nextLotNo: done ? null : lotOf(row.inboundNo, receiptCount + 1),
     lastLotNo: receiptCount > 0 ? lotOf(row.inboundNo, receiptCount) : null,
     closedAt: row.closedAt ?? null,
-    closeReason: row.closeReason ?? null
+    closeReason: row.closeReason ?? null,
+    putawayWaitQty
   };
 }
 
@@ -409,7 +415,11 @@ function inboundMutation(clean: string, body: AnyRecord): unknown {
       confirmedBy: operator?.id ?? null, confirmedByName: operator?.name ?? null, createdAt: `${today} ${nowHm()}`, lines: receiptLines });
     const status = remainingAfter > 0 ? "scheduled" : "confirmed";
     row.status = status;
-    log("입고확정", `검수 후 입고확정 (격납대기 재고 생성, LOT=${lotNo})${seq > 1 || remainingAfter > 0 ? ` · ${seq}회차` : ""}`
+    // ERP 쪽 — 서버 InboundService 와 같은 문구 (ERP 입고결과 자동 전송은 아직 없다 — ERP 담당 답을 받은 뒤)
+    const moveInbound = row.inTypeCode === "MVR" || row.type === "이동";
+    const consign = row.type === "외주" || row.warehouseType === "외주";
+    const erpNote = moveInbound ? ", 공장간이동 · ERP 미전송" : consign ? ", 외주 · ERP 미연동" : ", ERP 자동 전송 전 — ERP 입고 등록은 지금 방식대로";
+    log("입고확정", `검수 후 입고확정 (격납대기 재고 생성, LOT=${lotNo}${erpNote})${seq > 1 || remainingAfter > 0 ? ` · ${seq}회차` : ""}`
       + `${remainingAfter > 0 ? ` · 남은 수량(${remainingAfter})은 입고예정으로 대기` : ""}${over > 0 ? ` · 예정보다 ${over} 많이 받음` : ""}`, total);
     // 대시보드 시간별 처리량 · 금일 입고확정에 반영
     dashboardMock.record("inbound-confirm", total, row.inboundNo);
@@ -697,7 +707,7 @@ function asWarehouseLocations(warehouseId: number) {
       // 지금 든 재고 — 격납할 칸을 고를 때 무엇과 섞이는지 보여 준다 (서버 LocationService.optionsFor 와 같은 모양)
       const inside = stocks
         .filter((s) => s.locationCode === l.code && Number(s.onHand) > 0)
-        .map((s) => ({ itemCode: s.itemCode, itemName: s.itemName, lotNo: s.lotNo, onHand: Number(s.onHand), unit: s.unit }));
+        .map((s) => ({ itemCode: s.itemCode, itemName: s.itemName, lotNo: s.lotNo, onHand: Number(s.onHand), unit: s.unit, stockStatus: s.stockStatus }));
       return {
         id: l.id,
         code: l.code,
@@ -1263,7 +1273,12 @@ function handleMutation(clean: string, body: AnyRecord) {
         const qty = Number(a.qty) || 0;
         if (qty > 0) perLocation.set(Number(a.toLocationId), (perLocation.get(Number(a.toLocationId)) ?? 0) + qty);
       });
-      perLocation.forEach((qty, locationId) => warehouseMock.assertLoad(locationId, src.itemCode, qty));
+      perLocation.forEach((qty, locationId) => {
+        // 입고 때 지정한 칸 그대로면 이미 그 칸에 격납대기로 실려 있다 — 늘어나는 하중만 본다 (2026-10-30)
+        const sameSpot = locations.find((l) => l.id === locationId)?.code === src.locationCode;
+        const extra = sameSpot ? qty - Number(src.onHand) : qty;
+        if (extra > 0) warehouseMock.assertLoad(locationId, src.itemCode, extra);
+      });
       let moved = 0;
       const placed = rawAssigns.filter((a) => (Number(a.qty) || 0) > 0 && locations.some((l) => l.id === Number(a.toLocationId)));
       rawAssigns.forEach((a) => {

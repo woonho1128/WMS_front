@@ -44,7 +44,12 @@ type InboundRow = {
   lastLotNo: string | null;
   closedAt: string | null;
   closeReason: string | null;
+  /** 받은 것 중 아직 격납 안 한 수량 — 회차 LOT 의 격납대기 재고 (0 이면 격납까지 끝) */
+  putawayWaitQty?: number;
 };
+
+/** 상세의 보조 단추 */
+type SideAction = { label: string; icon: string; run: () => void };
 
 type InboundLine = {
   id: number;
@@ -204,6 +209,8 @@ export const DashboardInbound = () => {
   // 기능 — 도착 · 지정 · 검수 = 입고 확정 · 처리, 남은 수량 닫기 = 입고 예정 · 남은 수량 닫기 (서버가 같은 기능으로 막는다)
   const canWork = useCan("inbound/inbound-confirm:work");
   const canPlan = useCan("inbound/inbound-schedule:close");
+  // 격납 대기 화면을 열 수 있는 사람에게만 그리로 가는 단추 (소싱은 못 연다)
+  const canOpenPutaway = useCan("stock/putaway:view");
 
   // 입고 회차 (나눠 입고) — 고른 건이 받은 적이 있으면 읽는다
   const [receiptsById, setReceiptsById] = useState<Record<number, Receipt[]>>({});
@@ -257,17 +264,19 @@ export const DashboardInbound = () => {
     if (view === "dock") loadDock(dockDate);
   };
 
-  const invalidateLines = (id: number) => {
-    setLinesById((p) => {
-      const next = { ...p };
-      delete next[id];
-      return next;
-    });
-    setReceiptsById((p) => {
-      const next = { ...p };
-      delete next[id];
-      return next;
-    });
+  /**
+   * 처리 뒤 — 그 건의 품목 줄 · 회차를 다시 읽는다. 읽는 동안은 지난 내용을 그대로 보여 준다.
+   * (예전엔 저장해 둔 것을 지우기만 해서, 같은 건이 골라진 채면 다시 읽지 않고 '불러오는 중'에 멈췄다)
+   */
+  const reloadDetail = (id: number) => {
+    setLinesLoading((p) => (p.includes(id) ? p : [...p, id]));
+    apiGet<InboundLine[]>(`/inbounds/${id}/lines`)
+      .then((lines) => setLinesById((prev) => ({ ...prev, [id]: lines })))
+      .catch((e) => setError(e instanceof Error ? e.message : "품목 정보 불러오기 실패"))
+      .finally(() => setLinesLoading((p) => p.filter((x) => x !== id)));
+    apiGet<Receipt[]>(`/inbounds/${id}/receipts`)
+      .then((list) => setReceiptsById((prev) => ({ ...prev, [id]: list })))
+      .catch(() => {});
   };
 
   const fetchReceipts = (id: number) => {
@@ -457,7 +466,7 @@ export const DashboardInbound = () => {
             ? `${closeTarget.inboundNo} 받은 것 없이 입고예정을 닫았습니다.`
             : `${closeTarget.inboundNo} 남은 수량 중 ${num(result.closedQty)} 만큼 닫았습니다 — 아직 남은 수량(${num(result.remainingQty)})을 기다립니다.`
       );
-      invalidateLines(closeTarget.id);
+      reloadDetail(closeTarget.id);
       setCloseTarget(null);
       load();
     } catch (e) {
@@ -531,8 +540,34 @@ export const DashboardInbound = () => {
         lines: lines.map((ln) => ({ lineId: ln.id, locationId: assignLocs[ln.id] }))
       });
       setNotice("창고·로케이션 지정 완료 — 입고 확정 화면에서 검수 후 확정하세요.");
-      invalidateLines(assignTarget.id);
+      reloadDetail(assignTarget.id);
       setAssignTarget(null);
+      load();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "지정 실패");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * 이번에 받을 줄이 모두 로케이션을 가졌으면 창을 열지 않고 그대로 지정한다 —
+   * 나눠 입고 2회차(지난 회차 로케이션)나 미리 정해 온 로케이션. 바꾸려면 '로케이션 바꾸기'로 창을 연다.
+   */
+  const doAssignAsIs = async (row: InboundRow) => {
+    const lines = linesToAssign(row);
+    if (row.warehouseId == null || !lines.length || lines.some((ln) => ln.locationId == null)) {
+      void openAssign(row);
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiPut(`/inbounds/${row.id}/assign`, {
+        warehouseId: row.warehouseId,
+        lines: lines.map((ln) => ({ lineId: ln.id, locationId: ln.locationId }))
+      });
+      setNotice(`${row.inboundNo} 로케이션 그대로 지정 — 입고 확정 화면에서 검수 후 확정하세요.`);
+      reloadDetail(row.id);
       load();
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "지정 실패");
@@ -554,21 +589,23 @@ export const DashboardInbound = () => {
 
   /* ---------- 선택 건 상세 ---------- */
   const selLines = selected ? linesById[selected.id] ?? [] : [];
+  /** 고른 건의 품목 줄을 받았나 — 받기 전에는 '로케이션이 다 있다'고 넘겨짚지 않는다 */
+  const linesReady = selected ? linesById[selected.id] != null : false;
   const unlocated = linesToAssign(selected).filter((l) => !l.locationCode).length;
   const selReceipts = selected ? receiptsById[selected.id] ?? [] : [];
 
   /**
-   * 상세의 다음 할 일 — 채운 단추(run) 하나 + 보조 단추(side). 역할에 없는 일은 단추 대신 안내만.
+   * 상세의 다음 할 일 — 채운 단추(run) 하나 + 보조 단추(sides). 역할에 없는 일은 단추 대신 안내만.
    * 나눠 입고: 받은 뒤 남은 수량은 입고예정으로 돌아와 다음 도착을 기다린다 · 끝내 안 오면 닫는다.
    */
   const cta = useMemo(() => {
     if (!selected) return null;
     const partial = isPartial(selected);
     const nextSeq = selected.receiptCount + 1;
-    const closeSide = canPlan && selected.remainingQty > 0
+    const closeSide: SideAction | null = canPlan && selected.remainingQty > 0
       ? { label: "남은 수량 닫기", icon: "ban", run: () => void openClose(selected) }
       : null;
-    const undoSide = canWork ? { label: "도착 취소", icon: "rotateCcw", run: () => void doUndoArrival(selected) } : null;
+    const undoSide: SideAction | null = canWork ? { label: "도착 취소", icon: "rotateCcw", run: () => void doUndoArrival(selected) } : null;
     const workersOnly = "도착 · 검수 · 입고확정은 물류팀(관리자 · 물류 · 입고 담당)이 합니다.";
     switch (selected.status) {
       case "scheduled":
@@ -581,20 +618,27 @@ export const DashboardInbound = () => {
               ? "입고예정 건입니다. 물건이 도착하면 입고 등록 후 창고·로케이션을 지정하세요."
               : "입고예정 건입니다. 도착하면 물류팀이 입고 등록 · 검수를 합니다.",
           run: canWork ? () => doRegister(selected.id) : null,
-          side: closeSide
+          sides: [closeSide]
         };
-      case "registered":
+      case "registered": {
+        // 이번에 받을 줄의 로케이션이 다 있으면(2회차 · 미리 정해 온 칸) 창 없이 그대로 지정 — 바꿀 때만 창을 연다
+        const asIs = canWork && linesReady && !unlocated && selected.warehouseId != null;
         return {
-          label: "창고 · 로케이션 지정",
+          label: asIs ? "로케이션 그대로 · 검수로" : "창고 · 로케이션 지정",
           tone: unlocated ? ("warning" as const) : ("info" as const),
           hint: !canWork
             ? workersOnly
             : unlocated
               ? `로케이션 미지정 라인이 ${unlocated}건 있습니다. 이번에 받을 라인을 모두 지정한 뒤 검수로 넘어갑니다.`
-              : "이번에 받을 라인의 로케이션이 지정되었습니다. 검수로 넘어갈 수 있습니다.",
-          run: canWork ? () => openAssign(selected) : null,
-          side: undoSide
+              : asIs
+                ? selected.receiptCount > 0
+                  ? `${nextSeq}회차 — 지난 회차 로케이션이 그대로 있습니다. 그대로면 바로 검수로 넘어가고, 바꾸려면 '로케이션 바꾸기'를 누르세요.`
+                  : "로케이션이 미리 정해져 있습니다. 그대로면 바로 검수로 넘어가고, 바꾸려면 '로케이션 바꾸기'를 누르세요."
+                : "창고 · 로케이션을 지정하면 검수로 넘어갑니다.",
+          run: canWork ? (asIs ? () => void doAssignAsIs(selected) : () => void openAssign(selected)) : null,
+          sides: [asIs ? { label: "로케이션 바꾸기", icon: "pin", run: () => void openAssign(selected) } : null, undoSide]
         };
+      }
       case "located":
         return {
           label: "검수 · 입고확정",
@@ -605,7 +649,7 @@ export const DashboardInbound = () => {
               ? `${nextSeq}회차 검수입니다. 이번에 받은 수량만 넣으세요 — 덜 오면 남은 수량은 다시 입고예정으로 기다립니다.`
               : "검수 수량을 확인하고 입고확정하면 격납대기 재고가 생성됩니다. 덜 오면 남은 수량은 입고예정으로 기다립니다.",
           run: canWork ? () => navigate("/inbound/inbound-confirm") : null,
-          side: undoSide
+          sides: [undoSide]
         };
       case "closed":
         return {
@@ -613,22 +657,35 @@ export const DashboardInbound = () => {
           tone: "info" as const,
           hint: `받은 것 없이 닫았습니다${selected.closeReason ? ` — ${selected.closeReason}` : ""}.`,
           run: null,
-          side: null
+          sides: []
         };
-      default:
+      default: {
+        // 입고 끝 — 아직 격납 안 한 것이 있으면 격납 대기로, 다 했으면 끝 (격납 대기를 못 여는 사람에겐 단추 없이 안내만)
+        const waitQty = selected.putawayWaitQty ?? 0;
+        const ended =
+          selected.closedQty > 0
+            ? `입고 끝 — 받음 ${num(selected.receivedQty)}, 덜 온 수량(${num(selected.closedQty)})은 닫았습니다${selected.closeReason ? ` (${selected.closeReason})` : ""}.`
+            : `입고확정 완료 — 받음 ${num(selected.receivedQty)}.`;
+        if (waitQty > 0) {
+          return {
+            label: "격납 대기로 이동",
+            tone: "success" as const,
+            hint: `${ended} 아직 격납 안 한 ${num(waitQty)}개가 격납 대기에 있습니다.${canOpenPutaway ? "" : " 격납은 물류팀(관리자 · 물류 · 입고 · 재고 담당)이 합니다."}`,
+            run: canOpenPutaway ? () => navigate("/stock/putaway") : null,
+            sides: []
+          };
+        }
         return {
-          label: "격납 지시 생성",
+          label: "",
           tone: "success" as const,
-          hint:
-            selected.closedQty > 0
-              ? `입고 끝 — 받음 ${num(selected.receivedQty)}, 덜 온 수량(${num(selected.closedQty)})은 닫았습니다${selected.closeReason ? ` (${selected.closeReason})` : ""}. 격납 대기 화면으로 넘어갑니다.`
-              : "입고확정 완료 · 격납대기 재고가 생성되었습니다. 격납 대기 화면으로 넘어갑니다.",
-          run: () => navigate("/stock/putaway"),
-          side: null
+          hint: `${ended} 격납까지 끝났습니다.`,
+          run: null,
+          sides: []
         };
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, unlocated, navigate, canWork, canPlan]);
+  }, [selected, unlocated, linesReady, navigate, canWork, canPlan, canOpenPutaway]);
 
   const viewNote = VIEWS.find((v) => v.key === view)?.note ?? "";
 
@@ -999,12 +1056,14 @@ export const DashboardInbound = () => {
                         <Icon name="grid" size={14} />
                         QR 라벨
                       </button>
-                      {cta.side ? (
-                        <button type="button" className="inb-btn" disabled={busy} onClick={cta.side.run}>
-                          <Icon name={cta.side.icon} size={14} />
-                          {cta.side.label}
-                        </button>
-                      ) : null}
+                      {cta.sides.map((side) =>
+                        side ? (
+                          <button key={side.label} type="button" className="inb-btn" disabled={busy} onClick={side.run}>
+                            <Icon name={side.icon} size={14} />
+                            {side.label}
+                          </button>
+                        ) : null
+                      )}
                       {cta.run ? (
                         <button type="button" className="btn-primary inb-cta" disabled={busy} onClick={cta.run}>
                           {cta.label}
@@ -1289,6 +1348,10 @@ export const DashboardInbound = () => {
             </span>
           </div>
         ) : null}
+        {/* 입고 때 고른 칸 = 격납할 자리 (2026-10-30) — 격납 창이 이 칸을 기본으로 채운다 */}
+        <p className="inb-assign-note">
+          고른 로케이션이 격납할 자리입니다 — 격납 때 기본으로 채워지고, 그때 다른 칸으로 바꿀 수도 있습니다.
+        </p>
         {linesToAssign(assignTarget).map((ln) => (
           <label key={ln.id} className="ds-field">
             <span>

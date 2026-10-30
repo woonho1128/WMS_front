@@ -19,7 +19,8 @@ type PutawayRow = {
   warehouseId: number;
   warehouseName: string;
   warehouseType: string;
-  locationCode: string; // 현재(입고) 로케이션
+  /** 입고 때 지정한 로케이션 = 격납할 자리 (2026-10-30) — 격납 창이 기본으로 채운다 */
+  locationCode: string;
   locationType: string;
   lotNo: string;
   receivedDate: string | null;
@@ -27,7 +28,16 @@ type PutawayRow = {
 };
 
 /** 로케이션에 지금 든 재고 한 줄 */
-type LocationStock = { itemCode: string; itemName: string; lotNo: string; onHand: number; unit: string };
+type LocationStock = { itemCode: string; itemName: string; lotNo: string; onHand: number; unit: string; stockStatus?: string };
+
+/** 격납할 재고 자신 — 그 칸에 격납대기로 놓여 있으니 '지금 든 것'에서 뺀다 */
+type SelfStock = { itemCode: string; lotNo: string };
+
+const isSelf = (stock: LocationStock, self: SelfStock | undefined) =>
+  self != null &&
+  stock.itemCode === self.itemCode &&
+  stock.lotNo === self.lotNo &&
+  (stock.stockStatus ?? "PUTAWAY_WAIT") === "PUTAWAY_WAIT";
 
 type LocationOption = {
   id: number;
@@ -44,16 +54,16 @@ type LocationOption = {
  * 격납할 칸에 지금 무엇이 들어 있나 — 이미 재고가 있어도 넣을 수 있다(막지 않음).
  * 다른 품목이 있으면 혼적이 된다는 것만 미리 알린다 (2026-09-22 현업 회의 9번).
  */
-const contentsOf = (loc: LocationOption | undefined, itemCode: string) => {
-  const stocks = loc?.stocks ?? [];
-  const otherKinds = new Set(stocks.filter((stock) => stock.itemCode !== itemCode).map((stock) => stock.itemCode)).size;
-  const sameItem = stocks.filter((stock) => stock.itemCode === itemCode);
+const contentsOf = (loc: LocationOption | undefined, self: SelfStock) => {
+  const stocks = (loc?.stocks ?? []).filter((stock) => !isSelf(stock, self));
+  const otherKinds = new Set(stocks.filter((stock) => stock.itemCode !== self.itemCode).map((stock) => stock.itemCode)).size;
+  const sameItem = stocks.filter((stock) => stock.itemCode === self.itemCode);
   return { known: loc?.stocks != null, stocks, otherKinds, sameItem };
 };
 
 /** 선택 목록 한 줄 끝에 붙는 내용 요약 — "이미 섞인 칸"과 "넣으면 섞이는 칸"을 가른다 */
-const optionNote = (loc: LocationOption, itemCode: string) => {
-  const { known, stocks, otherKinds } = contentsOf(loc, itemCode);
+const optionNote = (loc: LocationOption, self: SelfStock) => {
+  const { known, stocks, otherKinds } = contentsOf(loc, self);
   if (!known) return "";
   if (!stocks.length) return " — 빈 칸";
   if (!otherKinds) return " — 같은 품목";
@@ -118,8 +128,12 @@ export const PutawayPage = () => {
     setAssigns([{ lid: "", qty: row.qty, qr: "" }]); // 기본 1행 = 전량
     try {
       const locs = await apiGet<LocationOption[]>(`/warehouses/${row.warehouseId}/locations`);
-      // 격납 대상 = 피킹/보충/직출 로케이션 (현재 로케이션 제외)
-      setLocations(locs.filter((l) => PUTAWAY_TARGET_TYPES.includes(l.locationType) && l.code !== row.locationCode));
+      // 격납 대상 = 피킹/보충/직출 로케이션. 입고 때 지정한 칸 = 격납할 자리라 그 칸도 고를 수 있고 기본으로 채운다
+      // (2026-10-30 — 예전엔 '현재 로케이션'이라며 빼서 지정한 자리로는 격납을 못 했다)
+      const targets = locs.filter((l) => PUTAWAY_TARGET_TYPES.includes(l.locationType));
+      setLocations(targets);
+      const planned = targets.find((l) => l.code === row.locationCode);
+      if (planned) setAssigns([{ lid: planned.id, qty: row.qty, qr: "" }]);
     } catch {
       setLocations([]);
     }
@@ -128,8 +142,12 @@ export const PutawayPage = () => {
   // ---- 배정 행 조작/검증 ----
   const setAssign = (i: number, patch: Partial<AssignRow>) =>
     setAssigns((prev) => prev.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  // 나눠 담을 줄 — 아직 배정 안 한 수량을 미리 넣는다
   const addRow = () =>
-    setAssigns((prev) => [...prev, { lid: "", qty: "", qr: "" }]);
+    setAssigns((prev) => {
+      const left = (target?.qty ?? 0) - prev.reduce((s, a) => s + (Number(a.qty) || 0), 0);
+      return [...prev, { lid: "", qty: left > 0 ? left : "", qr: "" }];
+    });
   const removeRow = (i: number) =>
     setAssigns((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
 
@@ -155,13 +173,14 @@ export const PutawayPage = () => {
     try {
       const assignments = assigns.map((a) => ({ toLocationId: a.lid, qty: Number(a.qty) }));
       await apiPost(`/stocks/putaway/${target.stockId}/complete`, { assignments });
+      // "PC-A-01 40EA / PC-A-02 20EA" — 숫자 뒤에 조사를 붙이지 않게 괄호로 묶는다 ("20로" 처럼 어색해지지 않게)
       const summaryText = assignments
-        .map((a) => `${locations.find((l) => l.id === a.toLocationId)?.code} ${a.qty}`)
+        .map((a) => `${locations.find((l) => l.id === a.toLocationId)?.code} ${a.qty.toLocaleString()}${target.unit}`)
         .join(" / ");
       setNotice(
         assignments.length > 1
-          ? `${target.lotNo} 격납 완료 — ${summaryText}로 분할 적치, 가용재고로 전환되었습니다.`
-          : `${target.lotNo} 격납 완료 — ${summaryText}로 이동, 가용재고로 전환되었습니다.`
+          ? `${target.lotNo} 격납 완료 (나눠 담음: ${summaryText}) — 가용재고로 전환되었습니다.`
+          : `${target.lotNo} 격납 완료 (${summaryText}) — 가용재고로 전환되었습니다.`
       );
       setTarget(null);
       await load();
@@ -206,7 +225,7 @@ export const PutawayPage = () => {
       <DashboardCard className="outbound-table-card" title={`격납 대기 목록 (${filtered.length}건)`}>
         <div className="outbound-list-toolbar">
           <p className="outbound-notice">
-            {notice ?? "격납 버튼으로 피킹/보충/직출 로케이션을 선택하고, 여러 로케이션에 수량을 나눠 배정할 수 있습니다. 각 로케이션 QR을 확인하면 격납이 확정됩니다."}
+            {notice ?? "격납을 누르면 입고 때 지정한 로케이션이 채워져 있습니다 — 그대로 그 칸 QR 을 확인하거나, 다른 칸 · 여러 칸으로 나눠 담을 수 있습니다. 각 로케이션 QR을 확인하면 격납이 확정됩니다."}
           </p>
         </div>
         {error ? (
@@ -222,7 +241,7 @@ export const PutawayPage = () => {
                 <th>SKU</th>
                 <th>품목명</th>
                 <th>창고</th>
-                <th>현재 로케이션</th>
+                <th title="입고 때 지정한 로케이션 — 격납할 자리">지정 로케이션</th>
                 <th>입고일</th>
                 <th className="num">수량</th>
                 {/* 이 목록은 전부 격납대기라 폰 카드에서는 뺀다 (카드 한 장이 줄 하나만큼 짧아진다) */}
@@ -308,10 +327,12 @@ export const PutawayPage = () => {
                     <option value="">로케이션 선택</option>
                     {locations.map((l) => {
                       const takenByOther = a.lid !== l.id && usedLids.includes(l.id);
+                      const planned = target != null && l.code === target.locationCode;
                       return (
                         <option key={l.id} value={l.id} disabled={takenByOther}>
                           {l.code} · {l.zoneName} ({LOC_TYPE_LABEL[l.locationType] ?? l.locationType})
-                          {takenByOther ? " — 이 격납에서 이미 고름" : target ? optionNote(l, target.itemCode) : ""}
+                          {planned ? " · 입고 때 지정" : ""}
+                          {takenByOther ? " — 이 격납에서 이미 고름" : target ? optionNote(l, target) : ""}
                         </option>
                       );
                     })}
@@ -337,7 +358,7 @@ export const PutawayPage = () => {
                   삭제
                 </button>
               </div>
-              {loc && target ? <LocationContents loc={loc} itemCode={target.itemCode} /> : null}
+              {loc && target ? <LocationContents loc={loc} self={target} /> : null}
               <label className="ds-field">
                 <span>로케이션 QR 확인 (휴대폰 카메라로 찍거나 코드 입력)</span>
                 <div className="cs-inline">
@@ -395,9 +416,10 @@ export const PutawayPage = () => {
   );
 };
 
-/** 고른 칸에 지금 든 것 + 혼적 안내 (막지 않는다) */
-const LocationContents = ({ loc, itemCode }: { loc: LocationOption; itemCode: string }) => {
-  const { known, stocks, otherKinds, sameItem } = contentsOf(loc, itemCode);
+/** 고른 칸에 지금 든 것 + 혼적 안내 (막지 않는다). 격납할 재고 자신(그 칸의 격납대기)은 빼고 보여 준다 */
+const LocationContents = ({ loc, self }: { loc: LocationOption; self: SelfStock }) => {
+  const itemCode = self.itemCode;
+  const { known, stocks, otherKinds, sameItem } = contentsOf(loc, self);
   if (!known) return null;
   return (
     <div className="pa-contents">

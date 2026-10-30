@@ -210,12 +210,14 @@
 .inb-line-bar { height: 4px; }
 
 .inb-hint { margin: 0 15px 10px; font-size: 12px; }
+.inb-assign-note { margin: 0 0 10px; font-size: 11.5px; color: var(--ink-muted); line-height: 1.5; }
 .inb-detail-actions {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin-top: auto; padding: 0 15px 14px;
 }
+/* 보조 단추가 둘(로케이션 바꾸기 · 도착 취소)이어도 좁은 폭에선 채운 단추가 아랫줄로 내려간다 */
 .inb-cta {
-  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  flex: 1 1 180px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   height: 40px; border-radius: var(--r-md); border: 1px solid var(--primary);
   font-size: 13px; font-weight: 700; cursor: pointer;
 }

@@ -33,6 +33,8 @@ type InboundRow = {
   receiptCount: number;
   nextLotNo: string | null;
   lastLotNo: string | null;
+  /** 받은 것 중 아직 격납 안 한 수량 (0 이면 격납까지 끝) */
+  putawayWaitQty?: number;
 };
 
 type InboundLine = {
@@ -55,7 +57,10 @@ type ConfirmResult = { status: string; receiptSeq: number; lotNo: string; receiv
 
 const num = (n: number) => n.toLocaleString("ko-KR");
 
-/** ERP 전송 대상 구분 — 공장간이동·외주는 ERP 미연동 (프로세스 문서 §2, §5) */
+/**
+ * ERP 쪽 구분 — 공장간이동 · 외주는 ERP 미연동 (프로세스 문서 §2, §5).
+ * 일반 입고도 ERP 입고결과 자동 전송은 아직 없다 (ERP 담당 답을 받은 뒤) — 그 전에는 ERP 입고 등록을 지금 방식대로 한다.
+ */
 const erpBadge = (row: InboundRow) => {
   if (row.inTypeCode === "MVR" || row.type === "이동") {
     return { label: "공장간이동 · ERP 미전송", tone: "teal" };
@@ -63,8 +68,11 @@ const erpBadge = (row: InboundRow) => {
   if (row.type === "외주" || row.warehouseType === "외주") {
     return { label: "외주 재고 · ERP 미연동", tone: "consign" };
   }
-  return { label: "ERP 입고결과 전송 대상", tone: "info" };
+  return { label: "ERP 입고 대상 · 자동 전송 전", tone: "info" };
 };
+
+/** 화면에 붙여 쓰는 줄 — 빈 칸은 건너뛴다 ("공급처 · · 창고" 처럼 점이 겹치지 않게) */
+const joinParts = (...parts: Array<string | null | undefined>) => parts.filter((part) => part && part.trim()).join(" · ");
 
 /** 받은 적이 있고 남은 수량을 기다리는 건 — 확정 완료 탭에 '부분 입고'로 */
 const isPartial = (r: InboundRow) => r.status === "scheduled" && r.receivedQty > 0 && r.remainingQty > 0;
@@ -76,6 +84,8 @@ export const InboundConfirmPage = () => {
   const navigate = useNavigate();
   // 도착 · 검수 · 입고확정 = 입고 확정 · 처리 (서버도 같은 기능으로 막는다)
   const canWork = useCan("inbound/inbound-confirm:work");
+  // 격납 대기 화면을 열 수 있는 사람에게만 그리로 가는 단추
+  const canOpenPutaway = useCan("stock/putaway:view");
 
   const [rows, setRows] = useState<InboundRow[]>([]);
   const [linesById, setLinesById] = useState<Record<number, InboundLine[]>>({});
@@ -203,7 +213,11 @@ export const InboundConfirmPage = () => {
 
   const listFlag = (r: InboundRow) => {
     if (isPartial(r)) return { label: `남음 ${num(r.remainingQty)} 대기`, tone: "info" };
-    if (r.status === "confirmed") return r.closedQty > 0 ? { label: `끝 · 닫음 ${num(r.closedQty)}`, tone: "success" } : { label: "격납대기 생성", tone: "success" };
+    if (r.status === "confirmed") {
+      // 끝난 입고 — 아직 격납 안 한 것이 있으면 그것부터 (예전엔 늘 '격납대기 생성'이라 격납이 끝났는지 몰랐다)
+      if ((r.putawayWaitQty ?? 0) > 0) return { label: `격납 대기 ${num(r.putawayWaitQty ?? 0)}`, tone: "info" };
+      return r.closedQty > 0 ? { label: `끝 · 닫음 ${num(r.closedQty)}`, tone: "success" } : { label: "입고 완료", tone: "success" };
+    }
     const s = sums(r);
     if (s.over) return { label: `초과 ${s.over}`, tone: "warning" };
     if (s.short) return { label: `덜 옴 ${s.short}`, tone: "info" };
@@ -220,7 +234,10 @@ export const InboundConfirmPage = () => {
       };
     }
     if (selected.status === "confirmed") {
-      return { tone: "success", icon: "check", text: "격납대기 재고가 생성되었습니다. 재고관리 → 격납 대기에서 격납을 진행하세요." };
+      const waitQty = selected.putawayWaitQty ?? 0;
+      return waitQty > 0
+        ? { tone: "info", icon: "clock", text: `아직 격납 안 한 ${num(waitQty)}개가 격납 대기에 있습니다 — 재고관리 → 격납 대기에서 격납하세요.` }
+        : { tone: "success", icon: "check", text: "입고 완료 — 격납까지 끝났습니다." };
     }
     if (selLines.length && selSums.rec === 0) {
       return {
@@ -281,9 +298,10 @@ export const InboundConfirmPage = () => {
             </b>
           </div>
           <div className="cfm-kpi">
+            {/* 아래 '확정 완료' 탭과 같은 수 — 나눠 입고 중인 건(위 '남은 수량 대기')도 받은 회차는 확정됐다 */}
             <span>확정 완료</span>
             <b className="is-ok">
-              {head.done}
+              {head.doneTab}
               <small>건</small>
             </b>
           </div>
@@ -337,7 +355,7 @@ export const InboundConfirmPage = () => {
                       key={r.id}
                       className={`cfm-row${selId === r.id ? " is-sel" : ""}`}
                       onClick={() => setSelId(r.id)}
-                      title={`${r.inboundNo} · ${r.supplierName} · ${r.inTypeName} · ${r.warehouseName}`}
+                      title={joinParts(r.inboundNo, r.supplierName, r.inTypeName, r.warehouseName)}
                     >
                       <td>
                         <div className="cfm-no">
@@ -392,8 +410,7 @@ export const InboundConfirmPage = () => {
                     {erp ? <span className={`ds-badge ${erp.tone}`}>{erp.label}</span> : null}
                   </div>
                   <div className="cfm-sub">
-                    {selected.supplierName} · {selected.inTypeName} · {selected.warehouseName} · PO{" "}
-                    {selected.poNo ?? "—"}
+                    {joinParts(selected.supplierName, selected.inTypeName, selected.warehouseName, `PO ${selected.poNo ?? "—"}`)}
                   </div>
                 </div>
                 <button type="button" className="cfm-btn" onClick={() => setLabelTarget(selected)}>
@@ -498,10 +515,13 @@ export const InboundConfirmPage = () => {
 
               <div className="cfm-actions">
                 {!waiting ? (
-                  <button type="button" className="btn-primary cfm-cta" onClick={() => navigate("/stock/putaway")}>
-                    격납 대기로 이동
-                    <Icon name="arrowR" size={15} />
-                  </button>
+                  // 아직 격납 안 한 것이 있고 격납 대기를 열 수 있을 때만
+                  (selected.putawayWaitQty ?? 0) > 0 && canOpenPutaway ? (
+                    <button type="button" className="btn-primary cfm-cta" onClick={() => navigate("/stock/putaway")}>
+                      격납 대기로 이동
+                      <Icon name="arrowR" size={15} />
+                    </button>
+                  ) : null
                 ) : (
                   <button
                     type="button"
@@ -546,6 +566,7 @@ export const InboundConfirmPage = () => {
             이번에 받은 수량만큼 <b>격납대기 재고</b>가 생성됩니다 ({confirmTarget ? lotOf(confirmTarget) : ""}). 격납 완료 시
             가용재고로 전환됩니다.
             {confirmTarget ? ` (${erpBadge(confirmTarget).label})` : ""}
+            {confirmTarget && erpBadge(confirmTarget).tone === "info" ? " ERP 입고 등록은 지금 방식대로 합니다." : ""}
           </span>
         </div>
         {selSums.short ? (
