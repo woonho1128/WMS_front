@@ -942,7 +942,8 @@ export function createDashboardMock(ctx: DashboardMockCtx) {
     const shippedQty = sumOf(shipEvents, (event) => event.qty);
     const since = new Date(Date.parse(ctx.today) - 30 * 86400000).toISOString().slice(0, 10);
     const misshipQty = sumOf(
-      ctx.returns().filter((row) => row.reason === "오배송" && String(row.receivedAt).slice(0, 10) >= since),
+      // 사유는 '오배송(품목상이)' 처럼 뒤에 설명이 붙어 온다 — 앞부분으로 (서버와 같다)
+      ctx.returns().filter((row) => String(row.reason ?? "").startsWith("오배송") && String(row.receivedAt).slice(0, 10) >= since),
       (row) => row.qty
     );
     const misshipRate = percent(misshipQty, SHIPPED_30D + shippedQty, 2);
