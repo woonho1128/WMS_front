@@ -5,6 +5,7 @@ import type { LoginResult } from "./authService";
 import { createAccessMock } from "./mockAccess";
 import { createAccountMock, type MockAccount } from "./mockAccountAdmin";
 import { createDashboardMock, regionOf } from "./mockDashboard";
+import { createInboundPlanMock } from "./mockInboundPlan";
 import { createItemImportMock } from "./mockItemImport";
 import { createOmsChangeMock } from "./mockOmsChange";
 import { createOutboundPhotoMock } from "./mockOutboundPhoto";
@@ -221,7 +222,9 @@ let manualOrders: AnyRecord[] = [
 ];
 
 let inbounds = [
-  { id: 112, inboundNo: "IN-20260620-001", poNo: "PO-9018", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "운송장 별도 확인", status: "scheduled", expectedAt: "2026-06-20", qty: 660 },
+  { id: 112, inboundNo: "IN-20260620-001", poNo: "PO-9018", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "운송장 별도 확인", status: "scheduled", expectedAt: "2026-06-20", qty: 660,
+    // 소싱팀이 화면에서 넣은 입고예정 (도착 시간 · 차량 · 파레트 — 기사 연락처는 비워 둔다)
+    arrivalTime: "10:00", vehicle: "5톤", palletQty: 6, planSource: "SCREEN", createdBy: "sourcing", createdByName: "소싱담당", createdAt: "2026-06-15 14:20" },
   { id: 113, inboundNo: "IN-20260613-001", poNo: "PO-9014", supplierCode: "SUP001", supplierName: "다온테크놀로지", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "일반", inTypeCode: "DGR", inTypeName: "국내입고", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "긴급 입고", status: "registered", expectedAt: "2026-06-13", qty: 330 },
   { id: 111, inboundNo: "IN-20260607-001", poNo: "OPO-002", supplierCode: "OEM002", supplierName: "인천외주가공", warehouseId: 5, warehouseName: "외주공장", warehouseType: "외주", type: "외주", inTypeCode: "OEM", inTypeName: "외주입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: null, status: "located", expectedAt: "2026-06-07", qty: 120 },
   // 나눠 입고 — 1차로 295 만 와서 남은 125 를 입고예정으로 기다린다 (receipts 1회차)
@@ -230,7 +233,8 @@ let inbounds = [
   { id: 125, inboundNo: "IN-20260530-001", poNo: "PO-9006", supplierCode: "SUP003", supplierName: "대성정밀공업", warehouseId: 3, warehouseName: "안산공장", warehouseType: "일반", type: "일반", inTypeCode: "IMP", inTypeName: "수입입고", purchaseGroupCode: "PG33", purchaseGroupName: "박서준", remark: "통관 완료분", status: "confirmed", expectedAt: "2026-05-30", qty: 600, closedAt: "2026-05-30 16:20", closeReason: "통관 수량 차이 — 발주 줄임" },
   // 공장 간 재고 이동 → 입고 프로세스로 처리(이동입고). 일반입고와 구분(type=이동, MVR).
   { id: 140, inboundNo: "IN-MV-20260616-001", poNo: null, moveRef: "MV-20260616-001", supplierCode: "WH-CW", supplierName: "창원공장(출발)", warehouseId: 2, warehouseName: "제천공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "창원→제천 공장 간 재고 이동 (로케이션 지정 완료)", status: "located", expectedAt: "2026-06-16", qty: 150 },
-  { id: 141, inboundNo: "IN-MV-20260617-002", poNo: null, moveRef: "MV-20260617-002", supplierCode: "WH-AS", supplierName: "안산공장(출발)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "안산→창원 공장 간 재고 이동 (입고예정)", status: "scheduled", expectedAt: today, qty: 80 }
+  { id: 141, inboundNo: "IN-MV-20260617-002", poNo: null, moveRef: "MV-20260617-002", supplierCode: "WH-AS", supplierName: "안산공장(출발)", warehouseId: 1, warehouseName: "창원공장", warehouseType: "일반", type: "이동", inTypeCode: "MVR", inTypeName: "공장간이동", purchaseGroupCode: "PG41", purchaseGroupName: "이지은", remark: "안산→창원 공장 간 재고 이동 (입고예정)", status: "scheduled", expectedAt: today, qty: 80,
+    arrivalTime: "14:00", vehicle: "11톤", palletQty: 4 }
 ];
 
 const inboundLines: Record<number, AnyRecord[]> = {
@@ -936,6 +940,23 @@ const outboundPhotoMock = createOutboundPhotoMock({
   log: (entry) => activityLogs.push({ id: activityLogs.length + 1, refType: "OUTBOUND", erpSent: false, ...entry })
 });
 
+/* 입고예정 등록 · 고치기 · 공급사 추가 · 엑셀 가져오기 — 서버와 같은 규칙 (입고 예정 · 처리 기능) */
+const inboundPlanMock = createInboundPlanMock({
+  today,
+  inbounds: () => inbounds,
+  inboundLines,
+  items: () => items,
+  warehouses,
+  lineView: inboundLineView,
+  can: (feature) => can(feature),
+  operator: () => {
+    const user = useAuthStore.getState().user;
+    return user ? { id: user.id, name: user.name } : null;
+  },
+  log: (entry) => activityLogs.push({ id: activityLogs.length + 1, erpSent: false, ...entry }),
+  nowText
+});
+
 /* 품목 가져오기 (엑셀 · CSV) — 서버와 같은 규칙. 관리자 역할일 때만 */
 const itemImportMock = createItemImportMock({
   items: () => items,
@@ -1001,6 +1022,12 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
       lastMessage = accessHandled[1];
       return copy(accessHandled[0]) as T;
     }
+    // 입고예정 등록 · 고치기 · 공급사 추가 · 가져오기 (저장 문구도 함께)
+    const planHandled = inboundPlanMock.mutate(method, clean, body);
+    if (planHandled !== undefined) {
+      lastMessage = planHandled[1];
+      return copy(planHandled[0]) as T;
+    }
     // 출고확정 · 출고일 변경은 서버가 주문 시스템 · ERP 반영을 기다린다 — 목도 조금 더 기다려 그 화면을 보인다
     if (/^\/outbounds\/\d+\/(confirm|schedule)$/.test(clean)) await delay(900);
     if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
@@ -1036,6 +1063,8 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
 
   if (clean === "/dashboard/tasks") return copy(dashboardTasks()) as T;
   if (clean === "/dashboard/stock-mix") return copy(stockMix()) as T;
+  const planData = inboundPlanMock.get(clean);
+  if (planData !== undefined) return copy(planData) as T;
   if (clean === "/inbounds") return copy(inbounds.map(inboundView)) as T;
   if (clean === "/inbounds/dock-schedule") return copy(dockScheduleOf(url.searchParams.get("date") ?? today)) as T;
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) {

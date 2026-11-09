@@ -8,6 +8,9 @@ import { ResponsiveTable } from "../../components/ui/ResponsiveTable/ResponsiveT
 import { apiGet, apiPost, apiPut } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import { addDays, shiftDays, todayStr, weekdayKo } from "../../shared/appDate";
+import { InboundPlanImportModal } from "../inbound/InboundPlanImportModal";
+import { InboundPlanModal } from "../inbound/InboundPlanModal";
+import { PLAN_WORK, isAfternoon, type PlanSaved } from "../inbound/inboundPlan";
 import "./DashboardInbound.css";
 
 /* ============================================================
@@ -46,7 +49,19 @@ type InboundRow = {
   closeReason: string | null;
   /** 받은 것 중 아직 격납 안 한 수량 — 회차 LOT 의 격납대기 재고 (0 이면 격납까지 끝) */
   putawayWaitQty?: number;
+  /* 입고예정 등록 — 도착 시간 · 차량 · 파레트 · 기사 연락처(입고가 끝나고 30일 뒤 지움) · 넣은 사람 */
+  arrivalTime?: string | null;
+  vehicle?: string | null;
+  palletQty?: number | null;
+  driverPhone?: string | null;
+  planSource?: string | null;
+  createdBy?: string | null;
+  createdByName?: string | null;
+  createdAt?: string | null;
+  updatedByName?: string | null;
 };
+
+const SOURCE_LABEL: Record<string, string> = { SCREEN: "화면", EXCEL: "엑셀" };
 
 /** 상세의 보조 단추 */
 type SideAction = { label: string; icon: string; run: () => void };
@@ -209,6 +224,11 @@ export const DashboardInbound = () => {
   // 기능 — 도착 · 지정 · 검수 = 입고 확정 · 처리, 남은 수량 닫기 = 입고 예정 · 남은 수량 닫기 (서버가 같은 기능으로 막는다)
   const canWork = useCan("inbound/inbound-confirm:work");
   const canPlan = useCan("inbound/inbound-schedule:close");
+  // 입고예정 등록 · 고치기 · 엑셀 가져오기 = 입고 예정 · 처리 (처음 값: 관리자 · 물류 · 입고 · 소싱)
+  const canPlanWork = useCan(PLAN_WORK);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planEditId, setPlanEditId] = useState<number | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   // 격납 대기 화면을 열 수 있는 사람에게만 그리로 가는 단추 (소싱은 못 연다)
   const canOpenPutaway = useCan("stock/putaway:view");
 
@@ -230,15 +250,26 @@ export const DashboardInbound = () => {
       .finally(() => setLinesLoading((p) => p.filter((x) => x !== id)));
   };
 
-  const load = () => {
+  /** 목록 다시 읽기 — selectId 가 있으면(방금 만들거나 고친 건) 조회기간을 넓혀 그 건을 골라 보인다 */
+  const load = (selectId?: number) => {
     setLoading(true);
     setError(null);
     apiGet<InboundRow[]>("/inbounds")
-      .then(setRows)
+      .then((list) => {
+        setRows(list);
+        const row = selectId == null ? undefined : list.find((r) => r.id === selectId);
+        if (row) {
+          const date = row.expectedAt ?? "";
+          if (date && dateFrom && date < dateFrom) setDateFrom(date);
+          if (date && dateTo && date > dateTo) setDateTo(date);
+          setSelId(row.id);
+          setRevealId(row.id);
+        }
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "조회 실패"))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  useEffect(() => load(), []);
   useEffect(() => {
     apiGet<WarehouseOption[]>("/warehouses").then(setWarehouses).catch(() => {});
   }, []);
@@ -262,6 +293,32 @@ export const DashboardInbound = () => {
   const refresh = () => {
     load();
     if (view === "dock") loadDock(dockDate);
+  };
+
+  /* ---------- 입고예정 등록 · 고치기 · 가져오기 ---------- */
+  const openPlanCreate = () => {
+    setPlanEditId(null);
+    setPlanOpen(true);
+  };
+  const openPlanEdit = (id: number) => {
+    setPlanEditId(id);
+    setPlanOpen(true);
+  };
+  /** 저장했다 — 목록에서 그 건을 골라 보인다 (가려지면 필터를 푼다), 경고는 안내 끝에 */
+  const afterPlanSaved = (saved: PlanSaved, message: string) => {
+    setPlanOpen(false);
+    setNotice(saved.warnings.length ? `${message} ${saved.warnings.join(" ")}` : message);
+    setStage("all");
+    setTypeFilter("");
+    setKeyword("");
+    setView("list");
+    reloadDetail(saved.id);
+    load(saved.id);
+  };
+  const afterImport = (message: string) => {
+    setImportOpen(false);
+    setNotice(message);
+    load();
   };
 
   /**
@@ -579,10 +636,10 @@ export const DashboardInbound = () => {
   const exportCsv = () =>
     downloadCsv(
       `입고예정_${dateFrom}_${dateTo}`,
-      ["입고번호", "PO", "공급처", "창고", "구분", "입고형태", "구매그룹", "예정일", "예정수량", "받은수량", "닫은수량", "남은수량", "입고회차", "상태"],
+      ["입고번호", "PO", "공급처", "창고", "구분", "입고형태", "구매그룹", "예정일", "도착시간", "차량", "파레트", "예정수량", "받은수량", "닫은수량", "남은수량", "입고회차", "상태"],
       filtered.map((r) => [
         r.inboundNo, r.poNo, r.supplierName, r.warehouseName, r.type, r.inTypeName,
-        r.purchaseGroupName, r.expectedAt, r.qty, r.receivedQty, r.closedQty, r.remainingQty, r.receiptCount,
+        r.purchaseGroupName, r.expectedAt, r.arrivalTime, r.vehicle, r.palletQty, r.qty, r.receivedQty, r.closedQty, r.remainingQty, r.receiptCount,
         STAGE_MAP[r.status]?.label ?? r.status
       ])
     );
@@ -602,9 +659,11 @@ export const DashboardInbound = () => {
     if (!selected) return null;
     const partial = isPartial(selected);
     const nextSeq = selected.receiptCount + 1;
+    // 받은 것이 없으면 입고예정 자체를 닫는다(= 취소, 지우기는 없다), 받았으면 끝내 안 오는 남은 수량만
     const closeSide: SideAction | null = canPlan && selected.remainingQty > 0
-      ? { label: "남은 수량 닫기", icon: "ban", run: () => void openClose(selected) }
+      ? { label: selected.receivedQty > 0 ? "남은 수량 닫기" : "입고예정 닫기", icon: "ban", run: () => void openClose(selected) }
       : null;
+    const editSide: SideAction | null = canPlanWork ? { label: "고치기", icon: "edit", run: () => openPlanEdit(selected.id) } : null;
     const undoSide: SideAction | null = canWork ? { label: "도착 취소", icon: "rotateCcw", run: () => void doUndoArrival(selected) } : null;
     const workersOnly = "도착 · 검수 · 입고확정은 물류팀(관리자 · 물류 · 입고 담당)이 합니다.";
     switch (selected.status) {
@@ -618,7 +677,7 @@ export const DashboardInbound = () => {
               ? "입고예정 건입니다. 물건이 도착하면 입고 등록 후 창고·로케이션을 지정하세요."
               : "입고예정 건입니다. 도착하면 물류팀이 입고 등록 · 검수를 합니다.",
           run: canWork ? () => doRegister(selected.id) : null,
-          sides: [closeSide]
+          sides: [editSide, closeSide]
         };
       case "registered": {
         // 이번에 받을 줄의 로케이션이 다 있으면(2회차 · 미리 정해 온 칸) 창 없이 그대로 지정 — 바꿀 때만 창을 연다
@@ -685,7 +744,7 @@ export const DashboardInbound = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, unlocated, linesReady, navigate, canWork, canPlan, canOpenPutaway]);
+  }, [selected, unlocated, linesReady, navigate, canWork, canPlan, canPlanWork, canOpenPutaway]);
 
   const viewNote = VIEWS.find((v) => v.key === view)?.note ?? "";
 
@@ -813,15 +872,18 @@ export const DashboardInbound = () => {
                   <Icon name="download" size={14} />
                   내보내기
                 </button>
-                <button
-                  type="button"
-                  className="inb-btn"
-                  disabled
-                  title="입고예정 직접 등록 · 엑셀 가져오기는 준비 중입니다 (관리자 · 물류 · 입고 · 소싱 담당)"
-                >
-                  <Icon name="plus" size={14} />
-                  입고예정 등록
-                </button>
+                {canPlanWork ? (
+                  <>
+                    <button type="button" className="inb-btn" onClick={() => setImportOpen(true)} title="엑셀 · CSV 로 여러 건 한 번에">
+                      <Icon name="upload" size={14} />
+                      엑셀 가져오기
+                    </button>
+                    <button type="button" className="inb-btn" onClick={openPlanCreate}>
+                      <Icon name="plus" size={14} />
+                      입고예정 등록
+                    </button>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -866,6 +928,7 @@ export const DashboardInbound = () => {
                               title={`${dayLabel(r.expectedAt)} 도크 스케줄 보기`}
                             >
                               {r.expectedAt.slice(5)}
+                              {r.arrivalTime ? <span className="inb-time">{r.arrivalTime}</span> : null}
                             </button>
                           ) : (
                             "-"
@@ -961,8 +1024,44 @@ export const DashboardInbound = () => {
                   </div>
                   <div>
                     <dt>예정일</dt>
-                    <dd>{selected.expectedAt ?? "-"}</dd>
+                    <dd>
+                      {selected.expectedAt ?? "-"}
+                      {selected.arrivalTime ? ` ${selected.arrivalTime}` : ""}
+                      {isAfternoon(selected.arrivalTime) ? <span className="inb-pm">오후</span> : null}
+                    </dd>
                   </div>
+                  {selected.vehicle || selected.palletQty != null ? (
+                    <div>
+                      <dt>차량 · 파레트</dt>
+                      <dd>{[selected.vehicle, selected.palletQty != null ? `파레트 ${num(selected.palletQty)}` : null].filter(Boolean).join(" · ")}</dd>
+                    </div>
+                  ) : null}
+                  {selected.driverPhone ? (
+                    <div>
+                      <dt>기사 연락처</dt>
+                      <dd>
+                        <a className="inb-tel" href={`tel:${selected.driverPhone}`}>
+                          {selected.driverPhone}
+                        </a>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {selected.createdBy ? (
+                    <div>
+                      <dt>등록</dt>
+                      <dd title={selected.updatedByName ? `마지막으로 고친 사람 ${selected.updatedByName}` : undefined}>
+                        {selected.createdByName ?? selected.createdBy}
+                        {selected.planSource ? ` · ${SOURCE_LABEL[selected.planSource] ?? selected.planSource}` : ""}
+                        {selected.createdAt ? ` · ${selected.createdAt.slice(5)}` : ""}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {selected.remark ? (
+                    <div className="inb-meta-wide">
+                      <dt>메모</dt>
+                      <dd>{selected.remark}</dd>
+                    </div>
+                  ) : null}
                 </dl>
 
                 {selected.receivedQty > 0 || selected.closedQty > 0 ? (
@@ -1379,7 +1478,7 @@ export const DashboardInbound = () => {
       {/* ---------- 남은 수량 닫기 ---------- */}
       <Modal
         open={closeTarget !== null}
-        title="남은 수량 닫기"
+        title={closeTarget && closeTarget.receivedQty === 0 ? "입고예정 닫기" : "남은 수량 닫기"}
         desc={closeTarget ? `${closeTarget.inboundNo} · 남음 ${num(closeTarget.remainingQty)}` : ""}
         icon="ban"
         iconBg="var(--c-warning-bg)"
@@ -1398,10 +1497,17 @@ export const DashboardInbound = () => {
       >
         <div className="ds-callout info" style={{ marginBottom: 12 }}>
           <Icon name="alert" size={16} />
-          <span>
-            끝내 안 오는 수량을 닫습니다 — ERP 발주를 줄이거나 닫은 만큼. 닫은 수량은 더 기다리지 않고, 남은 것이 없으면 입고가
-            끝납니다(받은 것이 없으면 '닫힘').
-          </span>
+          {closeTarget && closeTarget.receivedQty === 0 ? (
+            <span>
+              받은 것 없이 입고예정을 닫습니다 — 잘못 넣었거나 오지 않게 된 입고예정. 지우지 않고 '닫힘'으로 남아 누가 언제 왜 닫았는지
+              보입니다. 일부 품목만 닫으려면 아래 수량을 고치세요.
+            </span>
+          ) : (
+            <span>
+              끝내 안 오는 수량을 닫습니다 — ERP 발주를 줄이거나 닫은 만큼. 닫은 수량은 더 기다리지 않고, 남은 것이 없으면 입고가
+              끝납니다(받은 것이 없으면 '닫힘').
+            </span>
+          )}
         </div>
         <label className="ds-field">
           <span>닫는 이유</span>
@@ -1409,7 +1515,7 @@ export const DashboardInbound = () => {
             value={closeReason}
             maxLength={200}
             onChange={(e) => setCloseReason(e.target.value)}
-            placeholder="예: 공급사 결품 — ERP 발주 줄임"
+            placeholder={closeTarget && closeTarget.receivedQty === 0 ? "예: 잘못 등록 — 같은 PO 로 다시 넣음" : "예: 공급사 결품 — ERP 발주 줄임"}
             autoFocus
           />
         </label>
@@ -1440,6 +1546,10 @@ export const DashboardInbound = () => {
           </div>
         ) : null}
       </Modal>
+
+      {/* ---------- 입고예정 등록 · 고치기 · 엑셀 가져오기 ---------- */}
+      <InboundPlanModal open={planOpen} editId={planEditId} rows={rows} onClose={() => setPlanOpen(false)} onSaved={afterPlanSaved} />
+      <InboundPlanImportModal open={importOpen} onClose={() => setImportOpen(false)} onApplied={afterImport} />
 
       <Modal
         open={labelTarget !== null}

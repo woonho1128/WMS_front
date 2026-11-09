@@ -138,6 +138,16 @@
   text-decoration: underline dotted; text-underline-offset: 3px;
 }
 .inb-date-link:hover { background: var(--primary-bg); color: var(--primary-ink); text-decoration-style: solid; }
+/* 입고예정 등록 — 도착 시간 · 오후 표시 · 기사 연락처 · 메모 */
+.inb-time { margin-left: 5px; font-size: 11px; color: var(--ink-faint); }
+.inb-pm {
+  margin-left: 6px; padding: 0 6px; border-radius: var(--r-pill);
+  background: var(--c-warning-bg); color: var(--c-warning-ink); font-size: 10.5px; font-weight: 700;
+}
+.inb-tel { color: var(--primary-ink); text-decoration: none; }
+.inb-tel:hover { text-decoration: underline; }
+.inb-meta > .inb-meta-wide { grid-column: 1 / -1; }
+.inb-meta > .inb-meta-wide dd { white-space: normal; font-weight: 600; line-height: 1.5; }
 
 .inb-pager {
   display: flex; align-items: center; justify-content: space-between;
