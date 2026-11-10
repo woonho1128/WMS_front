@@ -253,10 +253,56 @@
 .item-spec-grid input { width: 100%; min-width: 0; box-sizing: border-box; }
 .item-spec-hint { margin: 10px 0 0; font-size: 12px; line-height: 1.55; color: var(--ink-muted); }
 
+/* 목록의 물류 정보 칸 (2026-11-10) */
+.item-tihi { margin-left: 4px; color: var(--ink-faint); font-size: 11px; }
+.item-faint { color: var(--ink-faint); }
+.item-tag {
+  display: inline-flex; align-items: center; height: 18px; margin-left: 6px; padding: 0 6px; border-radius: 4px;
+  font-size: 10.5px; font-weight: 700; background: var(--surface-2); color: var(--ink-muted);
+}
+.item-tag.is-warn { background: var(--c-warning-bg); color: var(--c-warning-ink); }
+.item-table td.item-remark { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+
+/* '물류 정보' 창 (2026-11-10) — 제원 · 재고 기준 · 담당 · 위치 */
+.ds-modal.item-logi-modal { width: 720px; }
+.item-logi { display: grid; gap: 0; }
+.item-logi-group { display: grid; gap: 10px; padding: 0 0 14px; }
+.item-logi-group + .item-logi-group { padding-top: 14px; border-top: 1px dashed var(--border); }
+.item-logi-group h4 { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font-size: 12.5px; font-weight: 800; color: var(--ink-strong); }
+.item-logi-group h4 span { font-size: 11.5px; font-weight: 500; color: var(--ink-faint); }
+.item-logi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.item-logi .ds-field { margin-bottom: 0; }
+.item-logi input,
+.item-logi select,
+.item-logi textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+.item-logi textarea { min-height: 64px; resize: vertical; font-family: inherit; }
+.item-logi-wide { grid-column: span 2; }
+.item-logi-calc {
+  height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 8px;
+  border: 1px dashed var(--border-strong); background: var(--surface-2); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.item-logi-calc b { font-weight: 800; color: var(--ink-strong); }
+.item-logi-calc em {
+  margin-left: auto; font-style: normal; font-size: 11px; font-weight: 700;
+  padding: 1px 8px; border-radius: var(--r-pill); background: var(--primary-bg); color: var(--primary-ink);
+}
+.item-logi-sub { font-size: 11px; color: var(--ink-faint); }
+.item-logi-picks { display: grid; gap: 6px; }
+.item-logi-label { font-size: 11px; font-weight: 700; color: var(--ink-muted); }
+.item-logi-pick { display: grid; grid-template-columns: 9em minmax(0, 1fr); align-items: center; gap: 10px; }
+.item-logi-pick > span { font-size: 12px; color: var(--ink-muted); overflow-wrap: anywhere; }
+.item-logi-note { margin: 0; font-size: 12px; color: var(--ink-muted); }
+.item-logi-note.is-warn { color: var(--c-warning-ink); font-weight: 700; }
+.item-logi-count { float: right; font-style: normal; font-weight: 500; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
 @media (max-width: 1200px) {
   .item-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+@media (max-width: 760px) {
+  .item-logi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 640px) {
@@ -264,4 +310,10 @@
   .item-spec-grid { grid-template-columns: minmax(0, 1fr); }
   /* 16px 미만이면 iOS 가 입력할 때 화면을 확대한다 */
   .item-spec-grid input { min-height: 42px; font-size: 16px; }
+  .item-logi-grid { grid-template-columns: minmax(0, 1fr); }
+  .item-logi-wide { grid-column: auto; }
+  .item-logi-pick { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .item-logi input,
+  .item-logi select,
+  .item-logi textarea { min-height: 42px; font-size: 16px; }
 }

@@ -115,6 +115,8 @@ const seedPermissions = (): MPerm[] => [
   perm("WMS_MASTER_VIEW", "기준정보 보기", "기준정보", "VIEW", 60, views("master/item-master", "master/location-master", "master/carrier-master", "master/stock-policy")),
   perm("WMS_MASTER_EDIT", "기준정보 수정", "기준정보", "WORK", 61, viewWork("master/item-master", "master/location-master", "master/carrier-master", "master/stock-policy")),
   perm("WMS_ITEM_IMPORT", "품목 가져오기", "기준정보", "SPECIAL", 62, [viewOf("master/item-master"), "master/item-master:import"]),
+  // 품목 마스터 '물류 정보'만 (로케이션 · 배송사 · 재고 정책은 빼고) — 처음 값: 소싱 (2026-11-10)
+  perm("WMS_ITEM_EDIT", "품목 물류 정보 수정", "기준정보", "WORK", 63, viewWork("master/item-master")),
   perm("WMS_REPORT_VIEW", "분석 · 이력 보기", "분석 · 이력", "VIEW", 70, views("analytics/inbound-summary", "analytics/outbound-summary", "analytics/progress", "analytics/shortage", "analytics/aging-stock", "history/inbound-history", "history/transfer-history", "history/outbound-history", "communication/ai-chatbot")),
   perm("WMS_SYSTEM_LOG_VIEW", "전체 로그 보기", "분석 · 이력", "SPECIAL", 71, views("history/system-logs")),
   perm("WMS_ACCOUNT_MANAGE", "계정 · 권한 관리", "시스템", "SPECIAL", 80, viewWork("system/users", "system/menus", "system/permissions"), true)
@@ -132,7 +134,7 @@ const seedRoles = (): MRole[] => [
   role(3, "inbound", "입고 담당", "입고예정 · 도착 · 검수 · 입고확정 · 격납", ["WMS_DASHBOARD_VIEW", "WMS_INBOUND_VIEW", "WMS_INBOUND_PLAN", "WMS_INBOUND_WORK", "WMS_STOCK_VIEW", "WMS_STOCK_WORK", "WMS_MASTER_VIEW", "WMS_REPORT_VIEW"]),
   role(4, "outbound", "출고 담당", "피킹 · 출고확정 · 출고일 · 인수자 · 배차", ["WMS_DASHBOARD_VIEW", "WMS_OUTBOUND_VIEW", "WMS_OUTBOUND_WORK", "WMS_OUTBOUND_DELIVERY_EDIT", "WMS_DISPATCH_VIEW", "WMS_DISPATCH_WORK", "WMS_STOCK_VIEW", "WMS_MASTER_VIEW", "WMS_REPORT_VIEW"]),
   role(5, "inventory", "재고 담당", "격납 · 보충 · 이동 · 실사", ["WMS_DASHBOARD_VIEW", "WMS_STOCK_VIEW", "WMS_STOCK_WORK", "WMS_STOCK_ADJUST", "WMS_MASTER_VIEW", "WMS_REPORT_VIEW"]),
-  role(6, "sourcing", "소싱팀", "입고예정 넣기 · 고치기 · 남은 수량 닫기", ["WMS_DASHBOARD_VIEW", "WMS_INBOUND_VIEW", "WMS_INBOUND_PLAN", "WMS_STOCK_VIEW", "WMS_MASTER_VIEW", "WMS_REPORT_VIEW"]),
+  role(6, "sourcing", "소싱팀", "입고예정 넣기 · 고치기 · 남은 수량 닫기", ["WMS_DASHBOARD_VIEW", "WMS_INBOUND_VIEW", "WMS_INBOUND_PLAN", "WMS_STOCK_VIEW", "WMS_MASTER_VIEW", "WMS_ITEM_EDIT", "WMS_REPORT_VIEW"]),
   role(7, "partner", "배송사", "바깥 사람 · 배차 보기 · 자기 건만(범위는 나중)", ["WMS_DISPATCH_VIEW"], { outside: true }),
   role(8, "sales", "영업팀", "보기만 · 전체 로그 빼고", VIEWERS),
   role(9, "cs", "CS팀", "보기만 · 전체 로그 빼고", VIEWERS),

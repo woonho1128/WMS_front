@@ -25,6 +25,11 @@ type PutawayRow = {
   lotNo: string;
   receivedDate: string | null;
   qty: number;
+  /** 품목 비고 (품목 마스터 '물류 정보') */
+  itemRemark?: string | null;
+  /** 이 창고에서 품목의 피킹 로케이션 (쓰는 피킹 칸일 때만) — '피킹 로케이션' 단추로 채운다 */
+  pickLocationId?: number | null;
+  pickLocationCode?: string | null;
 };
 
 /** 로케이션에 지금 든 재고 한 줄 */
@@ -138,6 +143,9 @@ export const PutawayPage = () => {
       setLocations([]);
     }
   };
+
+  /** 품목의 피킹 로케이션 — 이 창고의 격납 대상 칸 목록에 있을 때만 단추로 */
+  const pickOption = target?.pickLocationId != null ? locations.find((l) => l.id === target.pickLocationId) ?? null : null;
 
   // ---- 배정 행 조작/검증 ----
   const setAssign = (i: number, patch: Partial<AssignRow>) =>
@@ -312,6 +320,23 @@ export const PutawayPage = () => {
           </span>
         </div>
 
+        {/* 품목 마스터의 비고 · 피킹 로케이션 (2026-11-10) — 단추를 누르면 첫 줄의 로케이션이 그 칸으로 바뀐다 */}
+        {target?.itemRemark ? <p className="pa-item-remark">비고 · {target.itemRemark}</p> : null}
+        {pickOption ? (
+          <div className="pa-pick-bar">
+            <span>품목의 피킹 로케이션</span>
+            <button
+              type="button"
+              className={`pa-pick-chip${assigns[0]?.lid === pickOption.id ? " is-on" : ""}`}
+              disabled={assigns.some((a, idx) => idx > 0 && a.lid === pickOption.id)}
+              onClick={() => setAssign(0, { lid: pickOption.id, qr: "" })}
+              title="누르면 첫 줄의 로케이션이 이 칸으로 바뀝니다"
+            >
+              {pickOption.code}
+            </button>
+          </div>
+        ) : null}
+
         {assigns.map((a, i) => {
           const loc = locations.find((l) => l.id === a.lid);
           const verified = rowVerified(a);
@@ -328,10 +353,12 @@ export const PutawayPage = () => {
                     {locations.map((l) => {
                       const takenByOther = a.lid !== l.id && usedLids.includes(l.id);
                       const planned = target != null && l.code === target.locationCode;
+                      const pickOfItem = pickOption != null && pickOption.id === l.id;
                       return (
                         <option key={l.id} value={l.id} disabled={takenByOther}>
                           {l.code} · {l.zoneName} ({LOC_TYPE_LABEL[l.locationType] ?? l.locationType})
                           {planned ? " · 입고 때 지정" : ""}
+                          {pickOfItem ? " · 품목의 피킹 로케이션" : ""}
                           {takenByOther ? " — 이 격납에서 이미 고름" : target ? optionNote(l, target) : ""}
                         </option>
                       );

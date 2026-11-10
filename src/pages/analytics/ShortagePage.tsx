@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardCard } from "../dashboard/components/DashboardCard";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
+import { useAuthStore } from "../../app/store/authStore";
 import { apiGet } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
 import "../dashboard/DashboardOutbound.css"; // 공용 테이블/필터 스타일 재사용
@@ -19,6 +20,9 @@ type ShortageRow = {
   daysOfStock: number | null;
   shortageEta: string | null;
   risk: string; // 위험/주의/정상
+  /** 발주 담당자 (품목 마스터 '물류 정보') — 누구에게 알릴지 */
+  purchaseManagerId?: string | null;
+  purchaseManagerName?: string | null;
 };
 
 const RISK_TONE: Record<string, "danger" | "warning" | "success"> = {
@@ -33,6 +37,8 @@ export const ShortagePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [riskFilter, setRiskFilter] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
+  const myId = useAuthStore((s) => s.user?.id ?? null);
 
   const load = () => {
     setLoading(true);
@@ -45,8 +51,8 @@ export const ShortagePage = () => {
   useEffect(load, []);
 
   const filtered = useMemo(
-    () => (riskFilter ? rows.filter((r) => r.risk === riskFilter) : rows),
-    [rows, riskFilter]
+    () => rows.filter((r) => (!riskFilter || r.risk === riskFilter) && (!mineOnly || r.purchaseManagerId === myId)),
+    [rows, riskFilter, mineOnly, myId]
   );
 
   const summary = useMemo(
@@ -61,10 +67,10 @@ export const ShortagePage = () => {
   const exportCsv = () =>
     downloadCsv(
       `쇼트관리_${new Date().toISOString().slice(0, 10)}`,
-      ["SKU", "품목명", "평균일출고", "안전재고", "현재가용", "발주시점", "리드타임", "잔여재고일수", "쇼트예상일", "위험도"],
+      ["SKU", "품목명", "평균일출고", "안전재고", "현재가용", "발주시점", "리드타임", "잔여재고일수", "쇼트예상일", "위험도", "발주담당자"],
       filtered.map((r) => [
         r.itemCode, r.itemName, r.avgDailyOut, r.safetyStock, r.available, r.reorderPoint,
-        r.leadTime, r.daysOfStock ?? "", r.shortageEta ?? "", r.risk
+        r.leadTime, r.daysOfStock ?? "", r.shortageEta ?? "", r.risk, r.purchaseManagerName ?? ""
       ])
     );
 
@@ -85,6 +91,13 @@ export const ShortagePage = () => {
               <option value="위험">위험</option>
               <option value="주의">주의</option>
               <option value="정상">정상</option>
+            </select>
+          </label>
+          <label>
+            <span>발주 담당자</span>
+            <select value={mineOnly ? "mine" : ""} onChange={(e) => setMineOnly(e.target.value === "mine")}>
+              <option value="">모두</option>
+              <option value="mine">내 품목</option>
             </select>
           </label>
           <div className="outbound-filter-actions">
@@ -117,13 +130,14 @@ export const ShortagePage = () => {
                 <th className="num">잔여재고일수</th>
                 <th>쇼트 예상일</th>
                 <th>위험도</th>
+                <th>발주 담당자</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
+                <tr><td colSpan={10} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>불러오는 중...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>해당 위험도의 품목이 없습니다.</td></tr>
+                <tr><td colSpan={10} style={{ textAlign: "center", padding: 28, color: "var(--ink-faint)" }}>{mineOnly ? "내가 발주 담당인 품목이 없습니다." : "해당 위험도의 품목이 없습니다."}</td></tr>
               ) : (
                 filtered.map((r) => (
                   <tr key={r.itemCode} className={r.risk === "위험" ? "row-warning" : ""}>
@@ -136,6 +150,7 @@ export const ShortagePage = () => {
                     <td className="num">{r.daysOfStock != null ? `${r.daysOfStock}일` : "—"}</td>
                     <td>{r.shortageEta ?? "출고 없음"}</td>
                     <td><StatusBadge tone={RISK_TONE[r.risk] ?? "gray"}>{r.risk}</StatusBadge></td>
+                    <td>{r.purchaseManagerName ?? <span style={{ color: "var(--ink-faint)" }}>-</span>}</td>
                   </tr>
                 ))
               )}

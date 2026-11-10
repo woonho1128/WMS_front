@@ -52,6 +52,19 @@
 /* 격납하려는 품목과 같은 줄 */
 .pa-contents-row.is-same .pa-contents-name { color: var(--primary-ink); }
 
+/* 품목 마스터의 비고 · '피킹 로케이션' 단추 (2026-11-10) — 단추는 첫 줄의 로케이션을 그 칸으로 바꾼다 */
+.pa-item-remark { margin: -2px 0 10px; font-size: 12px; line-height: 1.5; color: var(--c-warning-ink); overflow-wrap: anywhere; }
+.pa-pick-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.pa-pick-bar > span { font-size: 11.5px; font-weight: 700; color: var(--ink-muted); }
+.pa-pick-chip {
+  height: 32px; padding: 0 12px; border-radius: var(--r-pill);
+  border: 1px solid var(--primary-line); background: var(--primary-bg); color: var(--primary-ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.pa-pick-chip:hover:not(:disabled) { border-color: var(--primary); }
+.pa-pick-chip.is-on { background: var(--primary); border-color: var(--primary); color: var(--ink-on-accent); }
+.pa-pick-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* 폰: 로케이션 고르는 칸을 한 줄 통째로 — 한 줄에 셋을 넣으면 셀렉트가 99px 라
    "로케이션 선…" 으로 잘리고 라벨이 세 줄로 꺾였다 (2026-09-22). 수량 · 삭제는 다음 줄 */
 @media (max-width: 640px) {

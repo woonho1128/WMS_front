@@ -82,6 +82,10 @@ type InboundLine = {
   receivedQty: number;
   closedQty: number;
   remainingQty: number;
+  /** 품목 비고 (품목 마스터 '물류 정보') */
+  itemRemark?: string | null;
+  /** 품목의 창고별 피킹 로케이션 (쓰는 피킹 칸만) — 지정 창이 고른 창고의 것을 단추로 보인다 */
+  pickLocations?: Array<{ warehouseId: number; locationId: number; locationCode: string }>;
 };
 
 /** 입고 회차 — 입고확정 한 번 (회차마다 LOT) */
@@ -1451,27 +1455,44 @@ export const DashboardInbound = () => {
         <p className="inb-assign-note">
           고른 로케이션이 격납할 자리입니다 — 격납 때 기본으로 채워지고, 그때 다른 칸으로 바꿀 수도 있습니다.
         </p>
-        {linesToAssign(assignTarget).map((ln) => (
-          <label key={ln.id} className="ds-field">
-            <span>
-              {ln.itemCode} · {ln.itemName}
-              {ln.receivedQty > 0 ? ` (남음 ${num(ln.remainingQty)})` : ""}
-            </span>
-            <select
-              value={assignLocs[ln.id] ?? ""}
-              onChange={(e) =>
-                setAssignLocs((p) => ({ ...p, [ln.id]: e.target.value === "" ? "" : Number(e.target.value) }))
-              }
-            >
-              <option value="">로케이션 선택</option>
-              {whLocations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.code} · {l.zoneName}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
+        {linesToAssign(assignTarget).map((ln) => {
+          // 품목에 정해 둔 이 창고의 피킹 로케이션 — 단추로 한 번에 채운다 (처음 값으로 채우지는 않는다 — 보관 칸으로 갈 때도 있다)
+          const pick = (ln.pickLocations ?? []).find((p) => p.warehouseId === assignWh && whLocations.some((l) => l.id === p.locationId));
+          const label = `${ln.itemCode} · ${ln.itemName}${ln.receivedQty > 0 ? ` (남음 ${num(ln.remainingQty)})` : ""}`;
+          return (
+            <div key={ln.id} className="ds-field inb-assign-line">
+              <span>{label}</span>
+              {ln.itemRemark ? <small className="inb-item-remark">비고 · {ln.itemRemark}</small> : null}
+              <div className="inb-assign-row">
+                <select
+                  aria-label={`${label} 로케이션`}
+                  value={assignLocs[ln.id] ?? ""}
+                  onChange={(e) =>
+                    setAssignLocs((p) => ({ ...p, [ln.id]: e.target.value === "" ? "" : Number(e.target.value) }))
+                  }
+                >
+                  <option value="">로케이션 선택</option>
+                  {whLocations.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.code} · {l.zoneName}
+                      {pick && pick.locationId === l.id ? " · 피킹 로케이션" : ""}
+                    </option>
+                  ))}
+                </select>
+                {pick ? (
+                  <button
+                    type="button"
+                    className={`inb-pick-chip${assignLocs[ln.id] === pick.locationId ? " is-on" : ""}`}
+                    onClick={() => setAssignLocs((p) => ({ ...p, [ln.id]: pick.locationId }))}
+                    title="품목 마스터에 정해 둔 피킹 로케이션으로 채웁니다"
+                  >
+                    피킹 로케이션 {pick.locationCode}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </Modal>
 
       {/* ---------- QR 입고라벨 ---------- */}

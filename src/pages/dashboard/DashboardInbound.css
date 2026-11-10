@@ -221,6 +221,22 @@
 
 .inb-hint { margin: 0 15px 10px; font-size: 12px; }
 .inb-assign-note { margin: 0 0 10px; font-size: 11.5px; color: var(--ink-muted); line-height: 1.5; }
+/* 지정 창의 품목 줄 — 비고 · '피킹 로케이션' 단추 (품목 마스터 보강, 2026-11-10) */
+.inb-assign-line { display: grid; gap: 5px; }
+.inb-assign-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.inb-assign-row select { flex: 1 1 auto; min-width: 0; }
+.inb-item-remark { font-size: 11.5px; color: var(--c-warning-ink); line-height: 1.45; overflow-wrap: anywhere; }
+.inb-pick-chip {
+  flex: none; height: 32px; padding: 0 12px; border-radius: var(--r-pill);
+  border: 1px solid var(--primary-line); background: var(--primary-bg); color: var(--primary-ink);
+  font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer;
+}
+.inb-pick-chip:hover { border-color: var(--primary); }
+.inb-pick-chip.is-on { background: var(--primary); border-color: var(--primary); color: var(--ink-on-accent); }
+@media (max-width: 560px) {
+  .inb-assign-row { flex-wrap: wrap; }
+  .inb-assign-row select { flex-basis: 100%; }
+}
 .inb-detail-actions {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin-top: auto; padding: 0 15px 14px;

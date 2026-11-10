@@ -22,6 +22,15 @@ export type ItemImportRow = {
   unitVolumeCm3?: string;
   unitsPerPallet?: string;
   active?: string;
+  /** 물류 정보 (2026-11-10) — TI · HI 가 둘 다 있으면 파레트 입수는 TI × HI */
+  ti?: string;
+  hi?: string;
+  leadTimeDays?: string;
+  /** WMS 사용자 아이디 또는 이름 */
+  purchaseManager?: string;
+  /** 로케이션 코드 — 창고가 다르면 쉼표로 여러 개. 적은 창고만 바뀐다 */
+  pickLocations?: string;
+  remark?: string;
 };
 
 type Field = Exclude<keyof ItemImportRow, "rowNo">;
@@ -41,7 +50,13 @@ export const ITEM_IMPORT_COLUMNS: Column[] = [
   { field: "safetyStock", header: "안전재고", aliases: ["안전재고", "safetystock"], examples: ["10", ""] },
   { field: "unitWeightKg", header: "단위중량(kg)", aliases: ["단위중량kg", "단위중량", "중량kg", "중량", "weightkg"], examples: ["25.5", ""] },
   { field: "unitVolumeCm3", header: "단위부피(cm3)", aliases: ["단위부피cm3", "단위부피", "부피cm3", "부피", "volumecm3"], examples: ["180000", ""] },
+  { field: "ti", header: "TI(1단 수량)", aliases: ["ti1단수량", "ti", "1단수량", "한단수량", "단당수량"], examples: ["3", ""] },
+  { field: "hi", header: "HI(단수)", aliases: ["hi단수", "hi", "단수", "적재단수"], examples: ["4", ""] },
   { field: "unitsPerPallet", header: "파레트입수", aliases: ["파레트입수", "팔레트입수", "파렛트입수", "unitsperpallet"], examples: ["12", ""] },
+  { field: "leadTimeDays", header: "리드타임(일)", aliases: ["리드타임일", "리드타임", "leadtime", "leadtimedays"], examples: ["14", ""] },
+  { field: "purchaseManager", header: "발주담당자", aliases: ["발주담당자", "발주담당", "구매담당자", "purchasemanager"], examples: ["sourcing", ""] },
+  { field: "pickLocations", header: "피킹로케이션", aliases: ["피킹로케이션", "피킹위치", "pickinglocation", "picklocation"], examples: ["A-01-01", ""] },
+  { field: "remark", header: "비고", aliases: ["비고", "remark", "note"], examples: ["파손 주의", ""] },
   { field: "active", header: "사용(Y/N)", aliases: ["사용", "사용yn", "사용여부", "active"], examples: ["Y", "Y"] }
 ];
 

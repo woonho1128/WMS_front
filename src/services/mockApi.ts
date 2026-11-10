@@ -7,6 +7,7 @@ import { createAccountMock, type MockAccount } from "./mockAccountAdmin";
 import { createDashboardMock, regionOf } from "./mockDashboard";
 import { createInboundPlanMock } from "./mockInboundPlan";
 import { createItemImportMock } from "./mockItemImport";
+import { createItemLogisticsMock, type PickRef } from "./mockItemLogistics";
 import { createOmsChangeMock } from "./mockOmsChange";
 import { createOutboundPhotoMock } from "./mockOutboundPhoto";
 import { createWarehouseMock } from "./mockWarehouse";
@@ -123,11 +124,17 @@ const items = [
   // 물류 제원 — unitWeightKg 단위 중량(랙 허용 하중 · 배차 총중량), unitVolumeCm3 단위 부피(배차), unitsPerPallet 파레트 입수.
   // 비어 있으면(null) 미등록 — 배차 · 출고 요청서의 합계가 '모름'이 된다 (0 으로 치지 않는다)
   // erpItemCode — 주문 시스템의 출고요청이 품목을 찾는 열쇠 (가짜 값). 비어 있는 품목은 "ERP 단품코드 없음" 으로 보인다
-  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25 as number | null, unitVolumeCm3: 1500 as number | null, category: "음향기기", consign: false, active: true, erpItemCode: "ERP-10241" as string | null, barcode: null as string | null },
-  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08 as number | null, unitVolumeCm3: 500 as number | null, category: "케이블", consign: false, active: true, erpItemCode: "ERP-10822" as string | null, barcode: null as string | null },
-  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45 as number | null, unitVolumeCm3: 1200 as number | null, category: "배터리", consign: false, active: true, erpItemCode: "ERP-12044" as string | null, barcode: null as string | null },
-  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2 as number | null, unitVolumeCm3: 2500 as number | null, category: "주방용품", consign: true, active: true, erpItemCode: null as string | null, barcode: null as string | null },
-  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03 as number | null, unitVolumeCm3: 100 as number | null, category: "부자재", consign: false, active: true, erpItemCode: null as string | null, barcode: null as string | null }
+  // 물류 정보 (2026-11-10) — ti · hi(둘 다 있으면 입수 = ti × hi) · leadTimeDays · purchaseManagerId(데모 계정) · remark · picks(창고별 피킹 로케이션)
+  { id: 1, itemCode: "SKU-10241", itemName: "무선 블루투스 이어버드 (블랙)", spec: "BT5.3", unit: "EA", safetyStock: 120, unitsPerPallet: 60, unitWeightKg: 0.25 as number | null, unitVolumeCm3: 1500 as number | null, category: "음향기기", consign: false, active: true, erpItemCode: "ERP-10241" as string | null, barcode: null as string | null,
+    ti: 6 as number | null, hi: 10 as number | null, leadTimeDays: 14, purchaseManagerId: "sourcing" as string | null, remark: "포장 상자 눌림 주의 — 3단 이상 쌓지 않기" as string | null, picks: [{ warehouseId: 1, locationId: 101 }] as PickRef[] },
+  { id: 2, itemCode: "SKU-10822", itemName: "USB-C 고속충전 케이블 1.2m", spec: "1.2m", unit: "EA", safetyStock: 180, unitsPerPallet: 50, unitWeightKg: 0.08 as number | null, unitVolumeCm3: 500 as number | null, category: "케이블", consign: false, active: true, erpItemCode: "ERP-10822" as string | null, barcode: null as string | null,
+    ti: null as number | null, hi: null as number | null, leadTimeDays: 21, purchaseManagerId: "sourcing" as string | null, remark: null as string | null, picks: [{ warehouseId: 4, locationId: 401 }, { warehouseId: 3, locationId: 301 }] as PickRef[] },
+  { id: 3, itemCode: "SKU-12044", itemName: "20000mAh 보조배터리", spec: "20Ah", unit: "EA", safetyStock: 80, unitsPerPallet: 20, unitWeightKg: 0.45 as number | null, unitVolumeCm3: 1200 as number | null, category: "배터리", consign: false, active: true, erpItemCode: "ERP-12044" as string | null, barcode: null as string | null,
+    ti: 4 as number | null, hi: 5 as number | null, leadTimeDays: 7, purchaseManagerId: null as string | null, remark: null as string | null, picks: [{ warehouseId: 2, locationId: 201 }] as PickRef[] },
+  { id: 4, itemCode: "SKU-20114", itemName: "[외주] 시즌 한정 머그컵 세트", spec: "2P", unit: "SET", safetyStock: 40, unitsPerPallet: 12, unitWeightKg: 1.2 as number | null, unitVolumeCm3: 2500 as number | null, category: "주방용품", consign: true, active: true, erpItemCode: null as string | null, barcode: null as string | null,
+    ti: null as number | null, hi: null as number | null, leadTimeDays: 30, purchaseManagerId: null as string | null, remark: "유리 — 파손 주의" as string | null, picks: [] as PickRef[] },
+  { id: 5, itemCode: "SKU-30001", itemName: "스테인리스 볼트 M8", spec: "M8", unit: "EA", safetyStock: 300, unitsPerPallet: 100, unitWeightKg: 0.03 as number | null, unitVolumeCm3: 100 as number | null, category: "부자재", consign: false, active: true, erpItemCode: null as string | null, barcode: null as string | null,
+    ti: null as number | null, hi: null as number | null, leadTimeDays: 7, purchaseManagerId: null as string | null, remark: null as string | null, picks: [] as PickRef[] }
 ];
 
 /** 품목 목록 행 — 서버 ItemResponse 와 같은 모양 (제원은 null = 미등록) */
@@ -147,7 +154,9 @@ const itemRow = (it: AnyRecord) => {
     active: it.active,
     unitWeightKg: positive(it.unitWeightKg),
     unitVolumeCm3: positive(it.unitVolumeCm3),
-    unitsPerPallet: positive(it.unitsPerPallet)
+    unitsPerPallet: positive(it.unitsPerPallet),
+    // TI · HI · 리드타임 · 발주 담당자 · 비고 · 창고별 피킹 로케이션 (서버 ItemResponse 의 새 칸)
+    ...itemLogisticsMock.view(it)
   };
 };
 
@@ -957,10 +966,33 @@ const inboundPlanMock = createInboundPlanMock({
   nowText
 });
 
+/* 품목 마스터 '물류 정보' — 서버와 같은 규칙 (품목 마스터 · 처리 기능 — 처음 값: 물류 · 소싱) */
+const itemLogisticsMock = createItemLogisticsMock({
+  items: () => items,
+  warehouses,
+  locations: () => locations,
+  // 발주 담당자로 고를 사람 = 데모 계정 (역할 이름은 권한 목에서)
+  users: () =>
+    Object.values(mockAccounts).map((a) => {
+      let roles: string | null = null;
+      try {
+        roles = accessMock.me(a.id, a.name, false).roles.map((r) => r.name).join(", ") || null;
+      } catch {
+        roles = null;
+      }
+      return { id: a.id, name: a.name, locked: Boolean(a.locked), roles };
+    }),
+  can: (feature) => can(feature),
+  operator: () => useAuthStore.getState().user?.id ?? "system",
+  log: (entry) => activityLogs.push({ id: activityLogs.length + 1, erpSent: false, ...entry }),
+  nowText
+});
+
 /* 품목 가져오기 (엑셀 · CSV) — 서버와 같은 규칙. 관리자 역할일 때만 */
 const itemImportMock = createItemImportMock({
   items: () => items,
-  can: (feature) => can(feature)
+  can: (feature) => can(feature),
+  logistics: itemLogisticsMock
 });
 
 /* 변경·취소 확인 — 피킹이 시작된 뒤 주문 시스템에서 온 변경 · 취소. 승인 · 거절은 머리글의 역할 선택을 따른다 */
@@ -1028,6 +1060,13 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
       lastMessage = planHandled[1];
       return copy(planHandled[0]) as T;
     }
+    // 품목 '물류 정보' 저장 (예전 PUT /items/{id}/specs 를 대신한다)
+    const logisticsHandled = itemLogisticsMock.mutate(method, clean, body);
+    if (logisticsHandled !== undefined) {
+      lastMessage = logisticsHandled[1];
+      const saved = logisticsHandled[0] as AnyRecord;
+      return copy({ ...saved, item: itemRow(saved.item) }) as T;
+    }
     // 출고확정 · 출고일 변경은 서버가 주문 시스템 · ERP 반영을 기다린다 — 목도 조금 더 기다려 그 화면을 보인다
     if (/^\/outbounds\/\d+\/(confirm|schedule)$/.test(clean)) await delay(900);
     if (clean === "/chatbot/ask") return copy(chatbotAnswer(body.question ?? "")) as T;
@@ -1070,8 +1109,11 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean.match(/^\/inbounds\/\d+\/lines$/)) {
     const id = Number(clean.split("/")[2]);
     const row = inbounds.find((r) => r.id === id);
-    return copy((inboundLines[id] ?? []).map((ln) => inboundLineView(row, ln))) as T;
+    // 품목 비고 · 창고별 피킹 로케이션 — 입고 지정 창의 '피킹 로케이션' 단추 (서버 InboundController.lines 와 같은 칸)
+    return copy((inboundLines[id] ?? []).map((ln) => ({ ...inboundLineView(row, ln), ...itemLogisticsMock.lineExtras(ln.itemCode) }))) as T;
   }
+  const logisticsData = itemLogisticsMock.get(clean);
+  if (logisticsData !== undefined) return copy(logisticsData) as T;
   if (clean.match(/^\/inbounds\/\d+\/receipts$/)) return copy(inboundReceipts[Number(clean.split("/")[2])] ?? []) as T;
   if (clean === "/outbounds") return copy(outbounds.map((o) => {
     const { totalWeightKg, weightMissing } = orderTotals(o.id);
@@ -1082,7 +1124,13 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
   if (clean.match(/^\/outbounds\/\d+\/sheet$/)) return copy(outboundSheet(Number(clean.split("/")[2]))) as T;
   if (clean.match(/^\/outbounds\/\d+\/delivery$/)) return copy(deliveryOf(Number(clean.split("/")[2]))) as T;
   if (clean === "/stocks") return copy(stocks) as T;
-  if (clean === "/stocks/putaway") return copy(stocks.filter((s) => s.stockStatus === "PUTAWAY_WAIT").map(({ allocated, available, safetyStock, ...s }) => ({ ...s, qty: s.onHand }))) as T;
+  if (clean === "/stocks/putaway")
+    return copy(
+      stocks
+        .filter((s) => s.stockStatus === "PUTAWAY_WAIT")
+        // 이 창고에서 품목의 피킹 로케이션 · 비고 — 격납 창의 '피킹 로케이션' 단추
+        .map(({ allocated, available, safetyStock, ...s }) => ({ ...s, qty: s.onHand, ...itemLogisticsMock.putawayExtras(s.itemCode, s.warehouseId) }))
+    ) as T;
   if (clean === "/stocks/replenishment") return copy(computeReplenishment()) as T;
   if (clean === "/stocks/fifo") return copy(fifoRows()) as T;
   if (clean === "/erp-compare/dates") return copy([today, "2026-06-16", "2026-06-15"]) as T;
@@ -1104,7 +1152,7 @@ export async function mockRequest<T>(path: string, init?: RequestInit): Promise<
     const unitPrice = 1500 + ([...s.itemCode].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % 20) * 400;
     return { itemCode: s.itemCode, itemName: s.itemName, warehouseName: s.warehouseName, locationCode: s.locationCode, lotNo: s.lotNo, receivedDate: s.receivedDate, agingDays, qty: s.onHand, unitPrice, amount: s.onHand * unitPrice, longTerm: agingDays >= 365 };
   })) as T;
-  if (clean === "/analytics/shortage") return copy(shortageRows) as T;
+  if (clean === "/analytics/shortage") return copy(shortageRows.map((r) => ({ ...r, ...itemLogisticsMock.managerOf(r.itemCode) }))) as T;
   if (clean === "/analytics/inbound-summary" || clean === "/analytics/outbound-summary") return copy(analyticsRows) as T;
   if (clean === "/snapshots/months") return copy(["2026-06", "2026-05"]) as T;
   if (clean === "/snapshots") return copy(items.slice(0, 4).map((item, idx) => ({ snapshotMonth: url.searchParams.get("month") ?? "2026-06", itemCode: item.itemCode, itemName: item.itemName, warehouseName: warehouses[idx]?.name ?? "창원공장", wmsQty: 120 + idx * 85, erpQty: 118 + idx * 85, diff: idx % 2 === 0 ? 2 : 0, capturedAt: "2026-06-17 10:00" }))) as T;
@@ -1258,25 +1306,6 @@ function handleMutation(clean: string, body: AnyRecord) {
       if (!vehicle) throw new Error(`제원(중량·파레트 입수) 미등록 품목이 있어 차량을 추천할 수 없습니다 — 차량을 직접 고르세요. (${row.outboundNo})`);
       dispatched.unshift({ id: Date.now(), dispatchNo: `DP-${Date.now()}`, outboundNo: row.outboundNo, customerName: row.customerName, shipAddress: row.shipAddress, region: regionOf(row.shipAddress), carrierName: carrier?.name ?? null, vehicleType: vehicle, totalWeightKg: totals.totalWeightKg, totalVolumeM3: totals.totalVolumeM3, palletCount: totals.palletCount, dispatchDate: today });
     }
-  } else if (clean.match(/^\/items\/\d+\/specs$/)) {
-    // 물류 제원 — 서버 ItemService.updateSpecs 와 같은 검증 (비우면 미등록)
-    const item = items.find((it) => it.id === Number(clean.split("/")[2])) as AnyRecord | undefined;
-    if (!item) throw new Error("품목을 찾을 수 없습니다.");
-    const kg = body.unitWeightKg == null || body.unitWeightKg === "" ? null : Number(body.unitWeightKg);
-    if (kg != null && (!(kg > 0) || kg > 10000)) throw new Error("단위 중량은 0 보다 크고 10000 kg 이하여야 합니다. 모르면 비워 두세요.");
-    if (kg != null && Math.round(kg * 1000) < 1) throw new Error("단위 중량은 0.001 kg(1g) 이상이어야 합니다.");
-    const whole = (value: unknown, max: number, label: string) => {
-      if (value == null || value === "") return null;
-      const n = Number(value);
-      if (!Number.isInteger(n) || n <= 0 || n > max) throw new Error(`${label}은(는) 1 이상 ${max} 이하여야 합니다. 모르면 비워 두세요.`);
-      return n;
-    };
-    const volume = whole(body.unitVolumeCm3, 10_000_000, "단위 부피(cm³)");
-    const upp = whole(body.unitsPerPallet, 100_000, "파레트당 수량");
-    item.unitWeightKg = kg == null ? null : Math.round(kg * 1000) / 1000;
-    item.unitVolumeCm3 = volume;
-    item.unitsPerPallet = upp;
-    return itemRow(item);
   } else if (clean === "/notices") {
     notices.unshift({ id: Date.now(), category: body.category, title: body.title, content: body.content, author: "관리자", pinned: Boolean(body.pinned), createdAt: new Date().toISOString() });
   } else if (clean === "/carriers") {

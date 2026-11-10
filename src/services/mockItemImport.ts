@@ -7,14 +7,23 @@
    ⚠ 목이라 메모리에만 있다 — 새로고침하면 처음 품목으로 돌아간다.
    ============================================================ */
 
+import { MAX_HI, MAX_LEAD_DAYS, MAX_REMARK, MAX_TI, MIN_LEAD_DAYS, mismatch, pairProblem, type PickRef } from "./mockItemLogistics";
+
 type AnyRecord = Record<string, any>;
 type Action = "NEW" | "UPDATE" | "SAME" | "ERROR";
+
+type Spot = { warehouseId: number; warehouseName: string; locationId: number; locationCode: string };
 
 export type ItemImportMockCtx = {
   /** 목 품목 배열 (itemCode · itemName · erpItemCode … — mockApi 의 items) — 새 품목은 여기에 더한다 */
   items: () => AnyRecord[];
   /** 지금 로그인한 사람의 기능 (데모의 서버 검사) */
   can: (feature: string) => boolean;
+  /** 물류 정보 칸(2026-11-10) — 발주 담당자 · 피킹 로케이션 찾기와 바뀐 칸 글자 (mockItemLogistics) */
+  logistics: {
+    lookup: () => { users: Array<{ id: string; name: string; locked?: boolean }>; spots: Spot[] };
+    fields: Array<[string, (it: AnyRecord) => string | null]>;
+  };
 };
 
 const MAX_ROWS = 10_000;
@@ -29,20 +38,19 @@ const exponentError = (label: string, value: string) =>
 const YES = new Set(["y", "yes", "예", "o", "1", "true", "t", "사용", "외주"]);
 const NO = new Set(["n", "no", "아니오", "아니요", "x", "0", "false", "f", "미사용", "일반"]);
 
-const SHOWN: Array<[string, (it: AnyRecord) => string | null]> = [
+/** 품목 사본 칸 — 바뀐 칸 글자 (물류 쪽 칸은 ctx.logistics.fields — 화면 '물류 정보'와 같은 이름) */
+const MASTER_SHOWN: Array<[string, (it: AnyRecord) => string | null]> = [
   ["품목명", (it) => it.itemName ?? null],
   ["ERP 단품코드", (it) => it.erpItemCode ?? null],
   ["규격", (it) => it.spec ?? null],
   ["단위", (it) => it.unit ?? null],
   ["품목그룹", (it) => it.category ?? null],
   ["바코드", (it) => it.barcode ?? null],
-  ["외주", (it) => (it.consign ? "외주" : "일반")],
-  ["안전재고", (it) => String(it.safetyStock ?? 0)],
-  ["단위 중량", (it) => (Number(it.unitWeightKg) > 0 ? `${Number(Number(it.unitWeightKg).toFixed(3))} kg` : null)],
-  ["단위 부피", (it) => (Number(it.unitVolumeCm3) > 0 ? `${it.unitVolumeCm3} cm³` : null)],
-  ["파레트 입수", (it) => (Number(it.unitsPerPallet) > 0 ? String(it.unitsPerPallet) : null)],
-  ["사용", (it) => (it.active ? "사용" : "미사용")]
+  ["외주", (it) => (it.consign ? "외주" : "일반")]
 ];
+const ACTIVE_SHOWN: [string, (it: AnyRecord) => string | null] = ["사용", (it) => (it.active ? "사용" : "미사용")];
+/** 피킹 로케이션 칸 — 로케이션 코드를 쉼표 · 공백 · 세미콜론으로 나눈다 */
+const CODE_SPLIT = /[,;\s]+/;
 
 const clean = (value: unknown): string | null => {
   if (value == null) return null;
@@ -65,6 +73,8 @@ export function createItemImportMock(ctx: ItemImportMockCtx) {
     if (rows.length > MAX_ROWS) throw new Error(`한 번에 ${MAX_ROWS}줄까지 가져올 수 있습니다 (${rows.length}줄) — 파일을 나눠 올리세요.`);
     const existing = new Map(ctx.items().map((it) => [key(String(it.itemCode)), it]));
     const seen = new Map<string, number>();
+    const { users, spots } = ctx.logistics.lookup();
+    const shown = [...MASTER_SHOWN, ...ctx.logistics.fields, ACTIVE_SHOWN];
     const entries = rows.map((row, i): Entry => {
       const e: Entry = { rowNo: Number(row?.rowNo) > 0 ? Number(row.rowNo) : i + 1, code: null, name: clean(row?.name), before: null, after: null, changes: [], errors: [] };
       const code = clean(row?.code);
@@ -89,8 +99,9 @@ export function createItemImportMock(ctx: ItemImportMockCtx) {
       seen.set(key(code), e.rowNo);
       e.before = existing.get(key(code)) ?? null;
       const after: AnyRecord = e.before
-        ? { ...e.before }
-        : { itemCode: code, itemName: null, unit: "EA", safetyStock: 0, consign: false, active: true, unitWeightKg: null, unitVolumeCm3: null, unitsPerPallet: null, erpItemCode: null, spec: null, category: null, barcode: null };
+        ? { ...e.before, picks: [...((e.before.picks ?? []) as PickRef[])] }
+        : { itemCode: code, itemName: null, unit: "EA", safetyStock: 0, consign: false, active: true, unitWeightKg: null, unitVolumeCm3: null, unitsPerPallet: null, erpItemCode: null, spec: null, category: null, barcode: null,
+            ti: null, hi: null, leadTimeDays: 7, purchaseManagerId: null, remark: null, picks: [] as PickRef[] };
       e.after = after;
 
       const text = (label: string, raw: unknown, max: number, set: (v: string) => void) => {
@@ -137,11 +148,63 @@ export function createItemImportMock(ctx: ItemImportMockCtx) {
         else after.unitWeightKg = Math.round(kg * 1000) / 1000;
       }
       whole("단위 부피(cm³)", row.unitVolumeCm3, 1, MAX_VOLUME_CM3, (v) => (after.unitVolumeCm3 = v));
-      whole("파레트 입수", row.unitsPerPallet, 1, MAX_UNITS_PER_PALLET, (v) => (after.unitsPerPallet = v));
+
+      // TI · HI · 파레트 입수 — 반영한 뒤의 TI · HI 가 둘 다 있으면 입수 = TI × HI (서버 palletSpecs 와 같다)
+      const pallet: { ti: number | null; hi: number | null; upp: number | null } = { ti: null, hi: null, upp: null };
+      whole("TI", row.ti, 1, MAX_TI, (v) => (pallet.ti = v));
+      whole("HI", row.hi, 1, MAX_HI, (v) => (pallet.hi = v));
+      whole("파레트 입수", row.unitsPerPallet, 1, MAX_UNITS_PER_PALLET, (v) => (pallet.upp = v));
+      if (pallet.ti != null) after.ti = pallet.ti;
+      if (pallet.hi != null) after.hi = pallet.hi;
+      const pair = pairProblem(after.ti ?? null, after.hi ?? null);
+      if (pair) e.errors.push(pair);
+      else if (after.ti != null) {
+        const mm = mismatch(after.ti, after.hi, pallet.upp);
+        if (mm) e.errors.push(mm);
+        else after.unitsPerPallet = after.ti * after.hi;
+      } else if (pallet.upp != null) after.unitsPerPallet = pallet.upp;
+
+      whole("리드타임(일)", row.leadTimeDays, MIN_LEAD_DAYS, MAX_LEAD_DAYS, (v) => (after.leadTimeDays = v));
+
+      // 발주 담당자 — 아이디(대소문자 구분 없이) 또는 이름. 같은 이름이 둘이면 아이디로
+      const manager = clean(row.purchaseManager);
+      if (manager) {
+        const byId = users.find((u) => u.id.toLowerCase() === manager.toLowerCase());
+        const named = users.filter((u) => clean(u.name) === manager);
+        const user = byId ?? (named.length === 1 ? named[0] : undefined);
+        if (!byId && named.length > 1) e.errors.push(`이름이 같은 사용자가 있습니다(${manager}) — 발주 담당자는 아이디로 넣어 주세요`);
+        else if (!user) e.errors.push(`발주 담당자 '${manager}' 를 찾을 수 없습니다 — WMS 사용자 아이디나 이름으로 넣어 주세요`);
+        else if (user.id !== after.purchaseManagerId) {
+          if (user.locked) e.errors.push(`잠긴 사용자는 발주 담당자로 넣을 수 없습니다 (${user.name})`);
+          else after.purchaseManagerId = user.id;
+        }
+      }
+
+      // 피킹 로케이션 — 로케이션 코드(창고는 저절로). 적은 창고만 바꾸고 나머지 창고는 그대로
+      const pickText = clean(row.pickLocations);
+      if (pickText) {
+        const byWarehouse = new Map<number, PickRef>(((after.picks ?? []) as PickRef[]).map((p) => [p.warehouseId, p]));
+        const named = new Set<number>();
+        for (const c of pickText.split(CODE_SPLIT).filter(Boolean)) {
+          const spot = spots.find((s) => s.locationCode.toLowerCase() === c.toLowerCase());
+          if (!spot) {
+            e.errors.push(`피킹 로케이션 '${c}' 를 찾을 수 없습니다 — 쓰는 피킹(PICKING) 칸의 코드로 넣어 주세요`);
+            break;
+          }
+          if (named.has(spot.warehouseId)) {
+            e.errors.push(`같은 창고(${spot.warehouseName})의 피킹 로케이션이 둘입니다 — 창고마다 하나`);
+            break;
+          }
+          named.add(spot.warehouseId);
+          byWarehouse.set(spot.warehouseId, { warehouseId: spot.warehouseId, locationId: spot.locationId });
+        }
+        after.picks = [...byWarehouse.values()];
+      }
+      text("비고", row.remark, MAX_REMARK, (v) => (after.remark = v));
       e.name = after.itemName ?? null;
 
       if (e.before) {
-        for (const [label, show] of SHOWN) {
+        for (const [label, show] of shown) {
           const was = show(e.before);
           const now = show(after);
           if (was !== now) e.changes.push(`${label}: ${was ?? "(없음)"} → ${now ?? "(없음)"}`);
