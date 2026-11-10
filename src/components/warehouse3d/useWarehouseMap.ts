@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiGet } from "../../services/http";
-import { WAREHOUSE_MAP_READY } from "./mapReady";
 import {
+  defaultWarehouseOf,
   zoneHoldsRacks,
   type ColorMode,
   type FocusRequest,
@@ -14,7 +14,7 @@ import {
 /* ============================================================
    3D 맵을 쓰는 화면(대시보드 · 재고 이동 · 로케이션 관리)이 공유하는 상태
    레이아웃 로딩 · 층 · 선택 · 카메라 포커스 · 색 기준 · 검색 강조 · 슬롯 상세
-   서버에 지도 API 가 아직 없으면(mapReady.ts) 아무것도 부르지 않고 notReady — 화면은 '준비 중'을 보인다
+   창고를 정하지 않고 열면 창고 요약의 기본 창고(설정)부터 보인다
    ============================================================ */
 
 const COLOR_KEY = "wms.map.colorMode";
@@ -38,10 +38,14 @@ type Options = {
 
 export const useWarehouseMap = (options: Options = {}) => {
   const autoSelectZone = options.autoSelectZone ?? true;
-  const [warehouseId, setWarehouseIdState] = useState(options.warehouseId ?? 4);
+  /** null = 아직 모름 — 요약이 오면 기본 창고로 */
+  const [chosenId, setChosenId] = useState<number | null>(options.warehouseId ?? null);
+  const chosenRef = useRef(chosenId);
+  chosenRef.current = chosenId;
+  const warehouseId = chosenId ?? 0;
   const [summary, setSummary] = useState<LayoutSummaryRow[]>([]);
   const [layout, setLayout] = useState<WarehouseLayout | null>(null);
-  const [loading, setLoading] = useState(WAREHOUSE_MAP_READY);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [floor, setFloorState] = useState("1F");
   const [selection, setSelection] = useState<MapSelection>({ zoneId: null, locationId: null });
@@ -54,14 +58,29 @@ export const useWarehouseMap = (options: Options = {}) => {
   const detailSeq = useRef(0);
 
   const loadSummary = useCallback(() => {
-    if (!WAREHOUSE_MAP_READY) return;
     apiGet<LayoutSummaryRow[]>("/warehouse/layout-summary")
-      .then(setSummary)
-      .catch(() => setSummary([]));
+      .then((rows) => {
+        setSummary(rows);
+        if (chosenRef.current != null) return;
+        const first = defaultWarehouseOf(rows);
+        if (first != null) {
+          setChosenId(first);
+        } else {
+          setError("볼 수 있는 창고가 없습니다");
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        setSummary([]);
+        // 창고를 정해 연 화면은 요약 없이도 지도를 보인다 — 정하지 않았으면 열 창고를 모른다
+        if (chosenRef.current == null) {
+          setError(err instanceof Error ? err.message : "창고 목록 조회 실패");
+          setLoading(false);
+        }
+      });
   }, []);
 
   const loadLayout = useCallback(async (id: number) => {
-    if (!WAREHOUSE_MAP_READY) return null;
     setLoading(true);
     setError(null);
     try {
@@ -79,7 +98,7 @@ export const useWarehouseMap = (options: Options = {}) => {
   const loadDetail = useCallback(async (locationId: number | null) => {
     detailSeq.current += 1;
     const seq = detailSeq.current;
-    if (locationId == null || !WAREHOUSE_MAP_READY) {
+    if (locationId == null) {
       setDetail(null);
       setDetailLoading(false);
       return;
@@ -98,8 +117,8 @@ export const useWarehouseMap = (options: Options = {}) => {
   useEffect(loadSummary, [loadSummary]);
 
   useEffect(() => {
-    void loadLayout(warehouseId);
-  }, [warehouseId, loadLayout]);
+    if (chosenId != null) void loadLayout(chosenId);
+  }, [chosenId, loadLayout]);
 
   // 층이 레이아웃에 없으면 첫 층으로
   useEffect(() => {
@@ -141,7 +160,7 @@ export const useWarehouseMap = (options: Options = {}) => {
   const setFloor = useCallback((code: string) => setFloorState(code), []);
 
   const setWarehouseId = useCallback((id: number) => {
-    setWarehouseIdState(id);
+    setChosenId(id);
     setSelection({ zoneId: null, locationId: null });
     setHighlight(null);
   }, []);
@@ -188,11 +207,11 @@ export const useWarehouseMap = (options: Options = {}) => {
 
   /** 저장 후 다시 읽기 — 선택은 유지한다 */
   const refresh = useCallback(async () => {
-    const data = await loadLayout(warehouseId);
+    const data = chosenId != null ? await loadLayout(chosenId) : null;
     loadSummary();
     await loadDetail(selection.locationId);
     return data;
-  }, [loadLayout, loadSummary, loadDetail, warehouseId, selection.locationId]);
+  }, [loadLayout, loadSummary, loadDetail, chosenId, selection.locationId]);
 
   const floorZones = useMemo(() => (layout?.zones ?? []).filter((zone) => zone.floor === floor), [layout, floor]);
   const selectedZone = useMemo(
@@ -209,8 +228,6 @@ export const useWarehouseMap = (options: Options = {}) => {
     layout,
     loading,
     error,
-    /** 서버에 3D 지도가 아직 없다 — '준비 중'을 보인다 (MapPending) */
-    notReady: !WAREHOUSE_MAP_READY,
     floor,
     setFloor,
     floorZones,

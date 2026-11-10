@@ -38,18 +38,23 @@ const ADJUST_REASONS = [
 const isBadType = (type: string) => type === "DEFECT" || type === "DAMAGED";
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+/** 옮길 수 있는 수량 — 가용은 가용 수량(할당 제외), 불량은 현재고, 격납대기 등은 0 (격납 화면에서) */
 export const movableQty = (stock: Pick<SlotStock, "stockStatus" | "available" | "onHand">) =>
-  stock.stockStatus === "AVAILABLE" ? stock.available : stock.onHand;
+  stock.stockStatus === "AVAILABLE" ? stock.available : stock.stockStatus === "DEFECT" ? stock.onHand : 0;
 
-/** 도착 칸에 옮길 수 있는 최대 수량 — 남은 파레트 자리와 남은 허용 하중 중 작은 쪽 */
+/**
+ * 도착 칸에 옮길 수 있는 최대 수량 — 남은 파레트 자리와 남은 허용 하중 중 작은 쪽.
+ * 파레트 입수 · 단위 중량을 모르는 품목(0)은 그 한도를 보지 않는다 (서버 LoadGuard 와 같게)
+ */
 const limitsFor = (stock: SlotStock, to: Pick<LayoutSlot, "capacity" | "pallets" | "loadKg" | "maxLoadKg">) => {
-  const upp = stock.unitsPerPallet || 1;
+  const knownUpp = stock.unitsPerPallet > 0;
+  const upp = knownUpp ? stock.unitsPerPallet : 1;
   const free = Math.max(to.capacity - to.pallets, 0);
-  const byCapacity = Math.floor(free * upp + 1e-6);
+  const byCapacity = knownUpp ? Math.floor(free * upp + 1e-6) : Number.POSITIVE_INFINITY;
   const freeKg = to.maxLoadKg == null ? null : Math.max(to.maxLoadKg - to.loadKg, 0);
   const byWeight = freeKg == null || !(stock.unitWeightKg > 0) ? Number.POSITIVE_INFINITY : Math.floor(freeKg / stock.unitWeightKg + 1e-6);
   const max = Math.max(Math.min(movableQty(stock), byCapacity, byWeight), 0);
-  return { upp, free: round2(free), byCapacity, freeKg: freeKg == null ? null : round2(freeKg), byWeight, max };
+  return { upp, knownUpp, free: round2(free), byCapacity, freeKg: freeKg == null ? null : round2(freeKg), byWeight, max };
 };
 
 type Toast = { tone: "success" | "danger" | "info"; text: string } | null;
@@ -204,7 +209,8 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
   );
 
   const adjustDiff = adjust ? adjust.newQty - adjust.stock.onHand : 0;
-  const adjustLarge = adjust ? Math.abs(adjustDiff) >= (adjust.stock.unitsPerPallet || 1) : false;
+  // 1파레트 이상 조정은 한 번 더 확인 — 파레트 입수를 모르면 묻지 않는다
+  const adjustLarge = adjust && adjust.stock.unitsPerPallet > 0 ? Math.abs(adjustDiff) >= adjust.stock.unitsPerPallet : false;
   const adjustError = !adjust
     ? null
     : adjustDiff === 0
@@ -347,7 +353,7 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
                 code={move.from.code}
                 type={move.from.locationType}
                 before={move.from.pallets}
-                after={round2(move.from.pallets - move.qty / moveLimits.upp)}
+                after={moveLimits.knownUpp ? round2(move.from.pallets - move.qty / moveLimits.upp) : move.from.pallets}
                 capacity={move.from.capacity}
                 load={{ before: move.from.loadKg, after: move.from.loadKg - move.qty * moveStock.unitWeightKg, max: move.from.maxLoadKg }}
               />
@@ -357,7 +363,7 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
                 code={move.to.code}
                 type={move.to.locationType}
                 before={move.to.pallets}
-                after={round2(move.to.pallets + move.qty / moveLimits.upp)}
+                after={moveLimits.knownUpp ? round2(move.to.pallets + move.qty / moveLimits.upp) : move.to.pallets}
                 capacity={move.to.capacity}
                 load={{ before: move.to.loadKg, after: move.to.loadKg + move.qty * moveStock.unitWeightKg, max: move.to.maxLoadKg }}
               />
@@ -394,7 +400,9 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
                 </button>
               </div>
               <p className="sa-hint">
-                도착 칸 여유 {moveLimits.free} 파레트 = {moveLimits.byCapacity.toLocaleString()} {moveStock.unit} (파레트당 {moveLimits.upp})
+                {moveLimits.knownUpp
+                  ? `도착 칸 여유 ${moveLimits.free} 파레트 = ${moveLimits.byCapacity.toLocaleString()} ${moveStock.unit} (파레트당 ${moveLimits.upp})`
+                  : "파레트 입수를 모르는 품목 — 칸 자리는 보지 않습니다 (품목 마스터 '물류 정보'에서 넣으면 계산됩니다)"}
                 {moveLimits.freeKg != null && Number.isFinite(moveLimits.byWeight)
                   ? ` · 허용 하중 여유 ${formatKg(moveLimits.freeKg)}kg = ${moveLimits.byWeight.toLocaleString()} ${moveStock.unit} (단위당 ${moveStock.unitWeightKg}kg)`
                   : ""}
@@ -459,7 +467,7 @@ export const useStockActions = (map: WarehouseMapState, options: { onChanged?: (
                 <Stepper
                   value={adjust.newQty}
                   min={adjust.stock.allocated}
-                  max={adjust.stock.onHand + adjust.stock.unitsPerPallet * 5}
+                  max={adjust.stock.onHand + (adjust.stock.unitsPerPallet > 0 ? adjust.stock.unitsPerPallet * 5 : 9999)}
                   onChange={(newQty) => setAdjust({ ...adjust, newQty, confirmLarge: false })}
                 />
               </div>

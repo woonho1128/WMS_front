@@ -4,7 +4,6 @@ import { Icon } from "../../components/ui/Icon";
 import { MapSearch } from "../../components/warehouse3d/MapSearch";
 import { MapSidePanel } from "../../components/warehouse3d/MapSidePanel";
 import { useWarehouseMap } from "../../components/warehouse3d/useWarehouseMap";
-import { MapPending } from "../../components/warehouse3d/MapPending";
 import { bucketOf, zoneHoldsRacks, type MapSearchItem, type MapSearchLocation } from "../../components/warehouse3d/types";
 import { LocationLabelDialog, type LabelTarget } from "./LocationLabels";
 import { RackBoard } from "./RackBoard";
@@ -123,7 +122,6 @@ export const LocationCapaView = ({ warehouseId, onWarehouseChange, focusRequest,
               <span className="nx-eyebrow">CAPA</span>
               <span className="nx-sect-title">{layout?.warehouse.name ?? "창고"} 적치 현황</span>
             </div>
-            {map.notReady ? null : (
             <div className="lp-map-tools">
               <div className="lp-seg" role="tablist" aria-label="CAPA 보기">
                 <button type="button" role="tab" aria-selected={view === "3d"} className={view === "3d" ? "is-on" : ""} onClick={() => switchView("3d")}>
@@ -153,7 +151,6 @@ export const LocationCapaView = ({ warehouseId, onWarehouseChange, focusRequest,
                 배치 편집
               </button>
             </div>
-            )}
           </div>
           <div className="lp-map-stage">
             {layout && view === "rack" ? (
@@ -186,7 +183,7 @@ export const LocationCapaView = ({ warehouseId, onWarehouseChange, focusRequest,
               </Suspense>
             ) : (
               <div className="lp-loading">
-                {map.notReady ? <MapPending /> : map.error ? `레이아웃 조회 실패: ${map.error}` : "레이아웃을 불러오는 중…"}
+                {map.error ? `레이아웃 조회 실패: ${map.error}` : "레이아웃을 불러오는 중…"}
               </div>
             )}
           </div>
@@ -207,9 +204,7 @@ export const LocationCapaView = ({ warehouseId, onWarehouseChange, focusRequest,
             </div>
           ) : null}
         </div>
-        {map.notReady ? (
-          <div className="nx-empty">구역별 점유 · 가용은 3D 창고 지도와 함께 준비 중입니다.</div>
-        ) : noLayout ? (
+        {noLayout ? (
           <div className="nx-empty">이 창고는 레이아웃이 없어 CAPA를 계산할 수 없습니다. [배치 편집]에서 층·구역·랙을 먼저 만드세요.</div>
         ) : (
           <div className="lp-table-wrap">

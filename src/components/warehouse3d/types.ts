@@ -275,7 +275,13 @@ export type LayoutSummaryRow = {
   floors: number;
   locations: number;
   placed: number;
+  /** 설정의 기본 창고 — 지도를 처음 열 때 이 창고 */
+  defaultWarehouse?: boolean;
 };
+
+/** 지도를 처음 열 창고 — 기본 창고, 없으면 배치가 있는 첫 창고, 그것도 없으면 첫 창고 */
+export const defaultWarehouseOf = (rows: LayoutSummaryRow[]): number | null =>
+  (rows.find((row) => row.defaultWarehouse) ?? rows.find((row) => row.placed > 0) ?? rows[0])?.warehouseId ?? null;
 
 /* ---------- 적치율 구간 — 3D 색상 · 범례 · 목록이 공유한다 ---------- */
 

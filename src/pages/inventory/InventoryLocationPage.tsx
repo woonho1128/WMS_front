@@ -6,8 +6,7 @@ import { Icon } from "../../components/ui/Icon";
 import { ResponsiveTable } from "../../components/ui/ResponsiveTable";
 import { apiGet, apiPost, apiPut, apiDelete } from "../../services/http";
 import { downloadCsv } from "../../shared/csv";
-import { zoneHoldsRacks, type LayoutRack, type LayoutSummaryRow } from "../../components/warehouse3d/types";
-import { WAREHOUSE_MAP_READY } from "../../components/warehouse3d/mapReady";
+import { defaultWarehouseOf, zoneHoldsRacks, type LayoutRack, type LayoutSummaryRow } from "../../components/warehouse3d/types";
 import { LocationCapaView } from "./LocationCapaView";
 import { LocationLabelDialog, type LabelTarget } from "./LocationLabels";
 import { LayoutEditor } from "./layoutEditor/LayoutEditor";
@@ -101,7 +100,8 @@ const TYPE_KEYS = Object.keys(TYPE_META);
 
 export const InventoryLocationPage = () => {
   const [tab, setTab] = useState<Tab>("list");
-  const [mapWarehouseId, setMapWarehouseId] = useState(4);
+  /** 지도 · 배치 탭의 창고 — null = 아직 모름 (배치 요약이 오면 기본 창고) */
+  const [mapWarehouseId, setMapWarehouseId] = useState<number | null>(null);
   const [layoutSummary, setLayoutSummary] = useState<LayoutSummaryRow[]>([]);
   const [focusRequest, setFocusRequest] = useState<{ locationId: number; warehouseId: number; nonce: number } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -144,10 +144,16 @@ export const InventoryLocationPage = () => {
     Promise.all([
       apiGet<LocationRow[]>("/locations"),
       apiGet<ZoneOption[]>("/zones"),
-      // 3D 배치 요약은 서버에 지도 API 가 생긴 뒤에만(mapReady.ts) — 없는 API 를 같이 부르면 목록까지 실패한다
-      WAREHOUSE_MAP_READY ? apiGet<LayoutSummaryRow[]>("/warehouse/layout-summary") : Promise.resolve<LayoutSummaryRow[]>([])
+      // 배치 요약은 지도 탭 · 배치 탭의 창고 고르기용 — 실패해도 목록은 보인다
+      apiGet<LayoutSummaryRow[]>("/warehouse/layout-summary").catch(() => [] as LayoutSummaryRow[])
     ])
-      .then(([l, z, s]) => { setRows(l); setZones(z); setLayoutSummary(s); })
+      .then(([l, z, s]) => {
+        setRows(l);
+        setZones(z);
+        setLayoutSummary(s);
+        // 지도 · 배치 탭은 처음엔 기본 창고(설정)부터
+        setMapWarehouseId((prev) => prev ?? defaultWarehouseOf(s));
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "조회 실패"))
       .finally(() => setLoading(false));
   };
@@ -157,8 +163,7 @@ export const InventoryLocationPage = () => {
   useEffect(() => {
     setNewRackId("");
     setNewCell("");
-    // 랙은 3D 배치와 함께 생긴다 — 그 전에는 미배치로만 등록한다
-    if (newZone === "" || !WAREHOUSE_MAP_READY) {
+    if (newZone === "") {
       setZoneRacks([]);
       return;
     }
@@ -180,6 +185,7 @@ export const InventoryLocationPage = () => {
 
   const openIn3D = (r: LocationRow) => {
     const warehouseId = r.warehouseId ?? mapWarehouseId;
+    if (warehouseId == null) return;
     setMapWarehouseId(warehouseId);
     setFocusRequest({ locationId: r.id, warehouseId, nonce: Date.now() });
     setTab("capa");
@@ -243,9 +249,7 @@ export const InventoryLocationPage = () => {
       });
       setNotice(
         `로케이션 ${newCode} 생성 완료${
-          newRackId !== "" && newCell ? " — 3D 에 바로 나타납니다"
-          : WAREHOUSE_MAP_READY ? " — 미배치 상태입니다 (배치 탭에서 랙 칸에 놓으세요)"
-          : " — 미배치 상태입니다"
+          newRackId !== "" && newCell ? " — 3D 에 바로 나타납니다" : " — 미배치 상태입니다 (배치 탭에서 랙 칸에 놓으세요)"
         }`
       );
       setCreateOpen(false);
@@ -371,7 +375,11 @@ export const InventoryLocationPage = () => {
         </div>
       </header>
 
-      {tab === "capa" ? (
+      {tab !== "list" && mapWarehouseId == null ? (
+        <div className="nx-empty">{loading ? "창고 목록을 불러오는 중…" : "볼 수 있는 창고가 없습니다"}</div>
+      ) : null}
+
+      {tab === "capa" && mapWarehouseId != null ? (
         <LocationCapaView
           warehouseId={mapWarehouseId}
           onWarehouseChange={setMapWarehouseId}
@@ -381,7 +389,7 @@ export const InventoryLocationPage = () => {
         />
       ) : null}
 
-      {tab === "layout" ? (
+      {tab === "layout" && mapWarehouseId != null ? (
         // 폰에서는 편집기가 캔버스 대신 목록 · 속성값 화면으로 바뀐다 (LayoutEditor 안에서 갈라진다)
         <LayoutEditor
           warehouseId={mapWarehouseId}
@@ -616,8 +624,7 @@ export const InventoryLocationPage = () => {
               onChange={(e) => { setNewRackId(e.target.value === "" ? "" : Number(e.target.value)); setNewCell(""); }}
             >
               <option value="">
-                {!WAREHOUSE_MAP_READY ? "미배치로 등록 (배치는 3D 와 함께 준비 중)"
-                  : newZone === "" ? "Zone 먼저 선택"
+                {newZone === "" ? "Zone 먼저 선택"
                   : zoneRacks.length ? "미배치로 등록"
                   : "이 Zone 에 랙 없음"}
               </option>

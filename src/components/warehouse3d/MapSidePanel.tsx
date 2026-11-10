@@ -66,7 +66,7 @@ export const MapSidePanel = ({ map, title = "로케이션 현황", stockAction, 
           <div className="wmp-head">
             <div className="nx-sect">
               <span className="nx-sect-title">{title}</span>
-              <span className="nx-sect-sub">{map.notReady ? "준비 중" : `${layout?.warehouse.name ?? ""} · ${map.floor}`}</span>
+              <span className="nx-sect-sub">{`${layout?.warehouse.name ?? ""} · ${map.floor}`}</span>
             </div>
             {headAction}
           </div>
@@ -83,7 +83,6 @@ export const MapSidePanel = ({ map, title = "로케이션 현황", stockAction, 
             {layout && !map.floorZones.length ? (
               <div className="nx-empty">이 층에 등록된 구역이 없습니다.</div>
             ) : null}
-            {map.notReady ? <div className="nx-empty">구역 현황도 3D 창고 지도와 함께 준비 중입니다.</div> : null}
           </div>
 
           {layout && layout.unplaced.length ? (
@@ -353,7 +352,10 @@ const LocationDetail = ({
                         {stock.onHand.toLocaleString()} <small>{stock.unit}</small>
                       </b>
                       <small>
-                        가용 {stock.available.toLocaleString()} · 할당 {stock.allocated.toLocaleString()} · {Math.round((stock.onHand / stock.unitsPerPallet) * 100) / 100} 파레트
+                        가용 {stock.available.toLocaleString()} · 할당 {stock.allocated.toLocaleString()} ·{" "}
+                        {stock.unitsPerPallet > 0
+                          ? `${Math.round((stock.onHand / stock.unitsPerPallet) * 100) / 100} 파레트`
+                          : "파레트 입수 모름 (적치 계산에서 빠짐)"}
                       </small>
                     </span>
                   </div>

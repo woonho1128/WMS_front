@@ -637,7 +637,9 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
         type: warehouse.type,
         floors: floors.filter((floor) => floor.warehouseId === warehouse.id).length,
         locations: whLocations.length,
-        placed: whLocations.filter((loc) => rackOf(loc.rackId)).length
+        placed: whLocations.filter((loc) => rackOf(loc.rackId)).length,
+        // 서버는 설정의 기본 창고 — 지도를 처음 열 때 이 창고
+        defaultWarehouse: warehouse.id === ICHEON_ID
       };
     });
 
@@ -831,6 +833,10 @@ export function createWarehouseMock(ctx: WarehouseMockCtx) {
     if (!Number.isInteger(qty) || qty <= 0) fail("이동 수량을 확인하세요.");
     if (dest.code === src.locationCode) fail("출발과 도착 로케이션이 같습니다.");
     if (!dest.active) fail(`사용중지된 로케이션(${dest.code})으로는 이동할 수 없습니다.`);
+    // 격납대기 등은 격납 화면에서 — 가용 · 불량만 옮긴다 (서버 StockService.generalMove 와 같게)
+    if (src.stockStatus !== "AVAILABLE" && src.stockStatus !== "DEFECT") {
+      fail("가용 · 불량 재고만 옮길 수 있습니다 — 격납대기 재고는 격납 화면에서 처리하세요.");
+    }
 
     const movable = src.stockStatus === "AVAILABLE" ? Number(src.available) : Number(src.onHand);
     if (qty > movable) fail(`이동 가능 수량(${movable})을 넘었습니다.`);
